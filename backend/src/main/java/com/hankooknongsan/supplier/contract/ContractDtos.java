@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.hankooknongsan.supplier.auth.AppUser;
+import com.hankooknongsan.supplier.common.ExpiryPolicy;
+import com.hankooknongsan.supplier.common.ExpiryStatus;
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,18 +32,20 @@ public final class ContractDtos {
             @Size(max = 1000) String memo) {
     }
 
-    /** 계약 목록·상세 응답 */
+    /** 계약 목록·상세 응답. daysLeft·expiryStatus는 조회 시점의 오늘 기준으로 계산한 값이다. */
     public record ContractItem(Long id, Long supplierId, String supplierName, String contractNumber, String title,
-                               LocalDate startDate, LocalDate endDate, boolean autoRenew,
+                               LocalDate startDate, LocalDate endDate, Integer daysLeft, ExpiryStatus expiryStatus,
+                               boolean autoRenew,
                                RenewalStatus renewalStatus, Long ownerId, String ownerName, boolean active,
                                Long prevId, String documentUrl, String memo, LocalDateTime createdAt,
                                String createdBy, LocalDateTime updatedAt, String updatedBy) {
 
-        /** 계약 엔티티를 응답 형식으로 변환한다. */
-        static ContractItem of(Contract c) {
+        /** 계약 엔티티를 응답 형식으로 변환한다. 종료일이 없는 계약은 무기한이므로 "정상"으로 판정한다. */
+        static ContractItem of(Contract c, ExpiryPolicy policy) {
             AppUser owner = c.getOwner();
             return new ContractItem(c.getId(), c.getSupplier().getId(), c.getSupplier().getName(),
-                    c.getContractNumber(), c.getTitle(), c.getStartDate(), c.getEndDate(), c.isAutoRenew(),
+                    c.getContractNumber(), c.getTitle(), c.getStartDate(), c.getEndDate(),
+                    policy.daysLeft(c.getEndDate()), policy.status(c.getEndDate(), true), c.isAutoRenew(),
                     c.getRenewalStatus(), owner == null ? null : owner.getId(), owner == null ? null : owner.getName(),
                     c.isActive(), c.getPrev() == null ? null : c.getPrev().getId(), c.getDocumentUrl(), c.getMemo(),
                     c.getCreatedAt(), c.getCreatedBy(), c.getUpdatedAt(), c.getUpdatedBy());

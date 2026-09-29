@@ -17,6 +17,11 @@ export async function searchContracts(search: ContractSearch): Promise<PageRespo
   return (await api.get('/contracts', { params: toParams(search) })).data
 }
 
+/** 계약 한 건을 조회한다. */
+export async function fetchContract(id: number): Promise<ContractItem> {
+  return (await api.get(`/contracts/${id}`)).data
+}
+
 /** 계약을 등록한다. */
 export async function createContract(req: ContractRequest): Promise<Saved<ContractItem>> {
   return (await api.post('/contracts', req)).data

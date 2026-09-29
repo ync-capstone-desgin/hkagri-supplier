@@ -82,7 +82,7 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
         mode === 'create' ? await createContract(req)
           : mode === 'edit' ? await updateContract(contract!.id, req)
             : await renewContract(contract!.id, req)
-      await Promise.all(['contracts', 'suppliers', 'supplier'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+      await Promise.all(['contracts', 'suppliers', 'supplier', 'expiries', 'dashboard'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
       message.success(mode === 'renew' ? '갱신 계약을 등록했습니다. 기존 계약은 이전 이력으로 옮겨졌습니다.' : '저장했습니다.')
       saved.warnings.forEach((w) => message.warning(w, 6))
       onClose()

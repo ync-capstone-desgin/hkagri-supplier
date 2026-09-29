@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.hankooknongsan.supplier.auth.Role;
+import com.hankooknongsan.supplier.expiry.ExpiryPeriod;
 import com.hankooknongsan.supplier.supplier.SupplierStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +31,9 @@ public class CodeController {
         Map<String, List<Code>> codes = new LinkedHashMap<>();
         codes.put("supplierStatus", of(SupplierStatus.values()));
         codes.put("renewalStatus", of(RenewalStatus.values()));
+        codes.put("expiryStatus", of(ExpiryStatus.values()));
+        codes.put("expiryPeriod", of(ExpiryPeriod.values()));
+        codes.put("targetType", of(TargetType.values()));
         codes.put("role", of(Role.values()));
         return codes;
     }

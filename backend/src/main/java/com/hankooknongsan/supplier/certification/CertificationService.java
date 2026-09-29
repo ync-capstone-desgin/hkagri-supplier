@@ -10,6 +10,7 @@ import com.hankooknongsan.supplier.certification.CertificationDtos.Certification
 import com.hankooknongsan.supplier.certification.CertificationDtos.CertificationRequest;
 import com.hankooknongsan.supplier.certification.CertificationDtos.Saved;
 import com.hankooknongsan.supplier.common.BusinessException;
+import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import com.hankooknongsan.supplier.supplier.Supplier;
@@ -32,6 +33,7 @@ public class CertificationService {
     private final CertTypeRepository certTypes;
     private final SupplierService supplierService;
     private final AppUserRepository users;
+    private final ExpiryPolicy policy;
 
     /** 인증 종류 목록을 표시 순서대로 조회한다. */
     public List<CertTypeItem> certTypes() {
@@ -46,12 +48,12 @@ public class CertificationService {
                                                   Pageable pageable) {
         return PageResponse.of(certifications.search(supplierId, keyword == null ? "" : keyword.trim(),
                 certType == null ? "" : certType, ownerId, renewalStatus, includeInactive, pageable),
-                CertificationItem::of);
+                this::toItem);
     }
 
     /** 인증 한 건을 조회한다. 없으면 404. */
     public CertificationItem get(Long id) {
-        return CertificationItem.of(find(id));
+        return toItem(find(id));
     }
 
     /** 인증을 등록한다. 같은 종류·번호의 인증이 이미 있으면 저장은 하되 경고를 돌려준다. */
@@ -60,7 +62,7 @@ public class CertificationService {
         Certification x = new Certification(supplierService.find(req.supplierId()));
         List<String> warnings = apply(x, req, null);
         certifications.save(x);
-        return new Saved(CertificationItem.of(x), warnings);
+        return new Saved(toItem(x), warnings);
     }
 
     /** 인증 정보를 수정한다. */
@@ -69,7 +71,7 @@ public class CertificationService {
         Certification x = find(id);
         List<String> warnings = apply(x, req, id);
         certifications.flush();
-        return new Saved(CertificationItem.of(x), warnings);
+        return new Saved(toItem(x), warnings);
     }
 
     /** 갱신 처리상태(미착수·갱신진행·갱신완료·갱신안함)를 바꾼다. */
@@ -78,7 +80,7 @@ public class CertificationService {
         Certification x = find(id);
         x.changeRenewalStatus(status);
         certifications.flush();
-        return CertificationItem.of(x);
+        return toItem(x);
     }
 
     /**
@@ -98,7 +100,7 @@ public class CertificationService {
         List<String> warnings = apply(renewed, req, null);
         renewed.linkPrevious(old);
         certifications.save(renewed);
-        return new Saved(CertificationItem.of(renewed), warnings);
+        return new Saved(toItem(renewed), warnings);
     }
 
     /** ID로 인증 엔티티를 찾는다. */
@@ -133,6 +135,11 @@ public class CertificationService {
         x.update(supplier, type, number, req.issuedDate(), req.expiryDate(), owner,
                 blankToNull(req.documentUrl()), blankToNull(req.memo()));
         return warnings;
+    }
+
+    /** 인증 엔티티를 오늘 기준 D-day가 포함된 응답 형식으로 변환한다. */
+    CertificationItem toItem(Certification x) {
+        return CertificationItem.of(x, policy);
     }
 
     /** 빈 문자열을 null로 바꾸고 앞뒤 공백을 제거한다. */

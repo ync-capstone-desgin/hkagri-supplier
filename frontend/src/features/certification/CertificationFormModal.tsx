@@ -80,7 +80,7 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
         mode === 'create' ? await createCertification(req)
           : mode === 'edit' ? await updateCertification(certification!.id, req)
             : await renewCertification(certification!.id, req)
-      await Promise.all(['certifications', 'suppliers', 'supplier'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+      await Promise.all(['certifications', 'suppliers', 'supplier', 'expiries', 'dashboard'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
       message.success(mode === 'renew' ? '갱신 인증을 등록했습니다. 기존 인증은 이전 이력으로 옮겨졌습니다.' : '저장했습니다.')
       saved.warnings.forEach((w) => message.warning(w, 6))
       onClose()

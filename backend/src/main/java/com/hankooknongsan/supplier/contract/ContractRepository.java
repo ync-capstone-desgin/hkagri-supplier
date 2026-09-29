@@ -1,5 +1,8 @@
 package com.hankooknongsan.supplier.contract;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +33,23 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     Page<Contract> search(@Param("supplierId") Long supplierId, @Param("keyword") String keyword,
                           @Param("ownerId") Long ownerId, @Param("renewalStatus") RenewalStatus renewalStatus,
                           @Param("includeInactive") boolean includeInactive, Pageable pageable);
+
+    /**
+     * 종료일이 기간(from ~ until) 안에 있는 유효 계약을 조회한다. (만료 예정 목록·대시보드용)
+     * 하한이 없으면 아주 이른 날짜를 넘긴다 (PostgreSQL에서 날짜 null 파라미터 형식 추론 문제를 피하기 위함).
+     */
+    @EntityGraph(attributePaths = {"supplier", "owner"})
+    @Query("""
+            select c from Contract c
+            where c.active = true and c.endDate between :from and :until
+              and (:ownerId is null or c.owner.id = :ownerId)
+              and (:renewalStatus is null or c.renewalStatus = :renewalStatus)
+            """)
+    List<Contract> findEnding(@Param("from") LocalDate from, @Param("until") LocalDate until,
+                              @Param("ownerId") Long ownerId, @Param("renewalStatus") RenewalStatus renewalStatus);
+
+    /** 유효 계약 수를 센다. (대시보드용) */
+    long countByActiveTrue();
 
     /** 같은 업체에 같은 계약번호가 이미 있는지 찾는다. (중복 경고용, 자기 자신은 제외) */
     @Query("""

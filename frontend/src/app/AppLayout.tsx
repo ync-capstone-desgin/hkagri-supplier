@@ -2,6 +2,7 @@ import { Avatar, Dropdown, Layout, Menu, Tabs, Tag, Typography } from 'antd'
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, useNavigate } from 'react-router'
 import { useAuth } from './AuthContext'
+import { ClockIndicator } from './ClockIndicator'
 import { findMenu, MENU } from './menu'
 import { useTabs } from './TabsContext'
 import { BRAND } from './theme'
@@ -30,13 +31,14 @@ export function AppLayout() {
     <Layout style={{ height: '100%' }}>
       <Header style={{ display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #e5e7eb' }}>
         <img src="/favicon.svg" width={28} height={28} alt="" />
-        <Typography.Text strong style={{ fontSize: 17, color: BRAND }}>
+        <Typography.Text strong style={{ fontSize: 17, color: BRAND, whiteSpace: 'nowrap' }}>
           협력업체 통합관리
         </Typography.Text>
         <Tag color="green" style={{ marginInlineStart: 4 }}>
           PoC
         </Tag>
         <div style={{ flex: 1 }} />
+        <ClockIndicator />
         <Dropdown
           menu={{
             items: [{ key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout }],
@@ -44,14 +46,15 @@ export function AppLayout() {
         >
           <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Avatar size="small" icon={<UserOutlined />} style={{ background: BRAND }} />
-            <span>
+            <span style={{ whiteSpace: 'nowrap' }}>
               {me?.name} <Typography.Text type="secondary">({label('role', me?.role)})</Typography.Text>
             </span>
           </span>
         </Dropdown>
       </Header>
       <Layout>
-        <Sider width={200} style={{ borderRight: '1px solid #e5e7eb' }}>
+        {/* 화면이 좁으면(1200px 미만) 메뉴를 아이콘만 남기고 접는다. */}
+        <Sider width={200} breakpoint="xl" collapsedWidth={64} style={{ borderRight: '1px solid #e5e7eb' }}>
           <Menu
             mode="inline"
             selectedKeys={activeMenu ? [activeMenu.path] : []}

@@ -33,6 +33,8 @@ springdoc:
 
 app:
   zone: Asia/Seoul
+  # 만료 예정으로 보는 최대 기간(일). 오늘부터 이 기간 안에 만료되면 "만료예정"
+  expiry-horizon-days: 90
   mail-from: noreply@supplier-poc.local
   scan-cron: "0 0 8 * * *"
   relay-delay-ms: 10000

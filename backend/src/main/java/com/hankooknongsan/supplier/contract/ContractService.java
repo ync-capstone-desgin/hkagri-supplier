@@ -6,6 +6,7 @@ import java.util.List;
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
 import com.hankooknongsan.supplier.common.BusinessException;
+import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import com.hankooknongsan.supplier.contract.ContractDtos.ContractItem;
@@ -30,17 +31,18 @@ public class ContractService {
     private final ContractRepository contracts;
     private final SupplierService supplierService;
     private final AppUserRepository users;
+    private final ExpiryPolicy policy;
 
     /** 조건에 맞는 계약 목록을 조회한다. */
     public PageResponse<ContractItem> search(Long supplierId, String keyword, Long ownerId,
                                              RenewalStatus renewalStatus, boolean includeInactive, Pageable pageable) {
         return PageResponse.of(contracts.search(supplierId, keyword == null ? "" : keyword.trim(), ownerId,
-                renewalStatus, includeInactive, pageable), ContractItem::of);
+                renewalStatus, includeInactive, pageable), this::toItem);
     }
 
     /** 계약 한 건을 조회한다. 없으면 404. */
     public ContractItem get(Long id) {
-        return ContractItem.of(find(id));
+        return toItem(find(id));
     }
 
     /** 계약을 등록한다. 계약번호가 같은 업체에 이미 있으면 저장은 하되 경고를 돌려준다. */
@@ -49,7 +51,7 @@ public class ContractService {
         Contract c = new Contract(supplierService.find(req.supplierId()));
         List<String> warnings = apply(c, req, null);
         contracts.save(c);
-        return new Saved(ContractItem.of(c), warnings);
+        return new Saved(toItem(c), warnings);
     }
 
     /** 계약 정보를 수정한다. */
@@ -58,7 +60,7 @@ public class ContractService {
         Contract c = find(id);
         List<String> warnings = apply(c, req, id);
         contracts.flush();
-        return new Saved(ContractItem.of(c), warnings);
+        return new Saved(toItem(c), warnings);
     }
 
     /** 갱신 처리상태(미착수·갱신진행·갱신완료·갱신안함)를 바꾼다. */
@@ -67,7 +69,7 @@ public class ContractService {
         Contract c = find(id);
         c.changeRenewalStatus(status);
         contracts.flush();
-        return ContractItem.of(c);
+        return toItem(c);
     }
 
     /**
@@ -87,7 +89,7 @@ public class ContractService {
         List<String> warnings = apply(renewed, req, null);
         renewed.linkPrevious(old);
         contracts.save(renewed);
-        return new Saved(ContractItem.of(renewed), warnings);
+        return new Saved(toItem(renewed), warnings);
     }
 
     /** ID로 계약 엔티티를 찾는다. */
@@ -120,6 +122,11 @@ public class ContractService {
         c.update(supplier, number, req.title().trim(), req.startDate(), req.endDate(), Boolean.TRUE.equals(req.autoRenew()), owner,
                 blankToNull(req.documentUrl()), blankToNull(req.memo()));
         return warnings;
+    }
+
+    /** 계약 엔티티를 오늘 기준 D-day가 포함된 응답 형식으로 변환한다. */
+    ContractItem toItem(Contract c) {
+        return ContractItem.of(c, policy);
     }
 
     /** 빈 문자열을 null로 바꾸고 앞뒤 공백을 제거한다. */

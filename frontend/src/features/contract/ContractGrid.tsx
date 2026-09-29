@@ -9,6 +9,7 @@ import { toProblem } from '../../api/client'
 import type { ContractItem, RenewalStatus } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
 import { DataGrid } from '../../components/DataGrid'
+import { DdayBadge } from '../../components/DdayBadge'
 import { RenewalStatusSelect, RenewalStatusTag } from '../../components/RenewalStatusTag'
 import { ContractFormModal, type ContractFormMode } from './ContractFormModal'
 
@@ -34,7 +35,7 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
   const handleStatusChange = async (row: ContractItem, status: RenewalStatus) => {
     try {
       await changeContractRenewalStatus(row.id, status)
-      await queryClient.invalidateQueries({ queryKey: ['contracts'] })
+      await Promise.all(['contracts', 'expiries', 'dashboard'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
       message.success(`${row.contractNumber} 처리상태를 변경했습니다.`)
     } catch (e) {
       message.error(toProblem(e).detail)
@@ -68,6 +69,12 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
     },
     { field: 'startDate', headerName: '시작일', width: 115, cellClass: 'num' },
     { field: 'endDate', headerName: '종료일', width: 115, cellClass: 'num', valueFormatter: (p) => p.value ?? '무기한' },
+    {
+      field: 'daysLeft', headerName: 'D-day', width: 130,
+      cellRenderer: (p: { data: ContractItem }) => p.data.active
+        ? <DdayBadge daysLeft={p.data.daysLeft} status={p.data.expiryStatus} />
+        : null,
+    },
     { field: 'autoRenew', headerName: '자동연장', width: 95, cellDataType: false, valueFormatter: (p) => (p.value ? '예' : '-') },
     {
       field: 'renewalStatus', headerName: '갱신 처리', width: 150,

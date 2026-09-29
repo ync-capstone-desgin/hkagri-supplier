@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
-import com.hankooknongsan.supplier.common.AppClock;
+import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierDetail;
@@ -28,12 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SupplierService {
 
-    /** 목록의 "만료건수" 기준: 만료됐거나 오늘부터 90일 안에 만료되는 유효 계약·인증 */
-    static final int EXPIRING_HORIZON_DAYS = 90;
-
     private final SupplierRepository suppliers;
     private final AppUserRepository users;
-    private final AppClock clock;
+    private final ExpiryPolicy policy;
 
     /** 조건에 맞는 협력업체 목록을 페이지 단위로 조회한다. */
     public PageResponse<SupplierListItem> search(String keyword, SupplierStatus status, String certType,
@@ -95,13 +92,16 @@ public class SupplierService {
                 blankToNull(req.contactPhone()), blankToNull(req.contactEmail()), owner, blankToNull(req.memo()));
     }
 
-    /** 업체들의 계약·인증 건수를 한 번에 조회해 업체 ID별로 묶는다. */
+    /**
+     * 업체들의 계약·인증 건수를 한 번에 조회해 업체 ID별로 묶는다.
+     * "만료건수"는 만료 판정 규칙과 같은 기준(이미 만료 + 만료예정 기간 이내)을 쓴다.
+     */
     private Map<Long, SupplierCounts> countsOf(List<Supplier> list) {
         if (list.isEmpty()) {
             return Map.of();
         }
         return suppliers.counts(list.stream().map(Supplier::getId).toList(),
-                        clock.today().plusDays(EXPIRING_HORIZON_DAYS))
+                        policy.horizon())
                 .stream().collect(Collectors.toMap(SupplierCounts::getId, Function.identity()));
     }
 

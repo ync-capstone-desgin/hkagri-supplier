@@ -9,6 +9,15 @@ export type SupplierStatus = 'ACTIVE' | 'SUSPENDED' | 'TERMINATED'
 /** 계약·인증 갱신 처리상태 */
 export type RenewalStatus = 'NONE' | 'IN_PROGRESS' | 'DONE' | 'NOT_RENEWING'
 
+/** 날짜로 계산한 만료상태 */
+export type ExpiryStatus = 'EXPIRED' | 'IMMINENT' | 'NORMAL' | 'UNKNOWN'
+
+/** 만료 관리 대상 종류 */
+export type TargetType = 'CONTRACT' | 'CERTIFICATION'
+
+/** 만료 예정 목록 조회 구간 */
+export type ExpiryPeriod = 'EXPIRED' | 'D7' | 'D30' | 'D90' | 'UNKNOWN'
+
 /** 로그인한 사용자 정보 */
 export interface Me {
   id: number
@@ -124,6 +133,9 @@ export interface ContractItem {
   startDate: string
   /** null이면 무기한 */
   endDate: string | null
+  /** 종료일까지 남은 일수 (지나면 음수, 무기한이면 null) */
+  daysLeft: number | null
+  expiryStatus: ExpiryStatus
   autoRenew: boolean
   renewalStatus: RenewalStatus
   ownerId: number | null
@@ -178,6 +190,9 @@ export interface CertificationItem {
   issuedDate: string
   /** null이면 만료일 없음(확인 필요) */
   expiryDate: string | null
+  /** 만료일까지 남은 일수 (지나면 음수, 없으면 null) */
+  daysLeft: number | null
+  expiryStatus: ExpiryStatus
   renewalStatus: RenewalStatus
   ownerId: number | null
   ownerName: string | null
@@ -211,4 +226,60 @@ export interface CertificationSearch {
   ownerId?: number
   renewalStatus?: RenewalStatus
   includeInactive?: boolean
+}
+
+/** 만료 예정 목록의 한 행 (계약·인증 공통) */
+export interface ExpiryItem {
+  targetType: TargetType
+  targetId: number
+  supplierId: number
+  supplierName: string
+  supplierStatus: SupplierStatus
+  /** 계약명 또는 인증 종류 이름 */
+  name: string
+  /** 계약번호 또는 인증번호 */
+  number: string
+  expiryDate: string | null
+  daysLeft: number | null
+  expiryStatus: ExpiryStatus
+  renewalStatus: RenewalStatus
+  ownerId: number | null
+  ownerName: string | null
+}
+
+/** 만료 예정 목록 검색 조건 */
+export interface ExpirySearch {
+  period: ExpiryPeriod
+  targetType?: TargetType
+  ownerId?: number
+  renewalStatus?: RenewalStatus
+}
+
+/** 대시보드 요약 */
+export interface DashboardSummary {
+  today: string
+  supplierTotal: number
+  supplierActive: number
+  activeContracts: number
+  activeCertifications: number
+  expired: number
+  within7: number
+  within30: number
+  within90: number
+  unknown: number
+  inProgress: number
+  notStarted: number
+  /** 조치 대상 중 로그인 사용자 담당 건수 */
+  mine: number
+  urgent: ExpiryItem[]
+}
+
+/** 기준일 정보 */
+export interface ClockInfo {
+  today: string
+  /** 시연용으로 실제 날짜에서 옮겨져 있는지 */
+  shifted: boolean
+  /** 기준일 변경 기능 사용 가능 여부 (dev 환경) */
+  demoClock: boolean
+  horizonDays: number
 }

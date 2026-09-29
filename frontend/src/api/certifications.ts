@@ -25,6 +25,11 @@ export async function searchCertifications(search: CertificationSearch): Promise
   return (await api.get('/certifications', { params: toParams(search) })).data
 }
 
+/** 인증 한 건을 조회한다. */
+export async function fetchCertification(id: number): Promise<CertificationItem> {
+  return (await api.get(`/certifications/${id}`)).data
+}
+
 /** 인증을 등록한다. */
 export async function createCertification(req: CertificationRequest): Promise<Saved<CertificationItem>> {
   return (await api.post('/certifications', req)).data

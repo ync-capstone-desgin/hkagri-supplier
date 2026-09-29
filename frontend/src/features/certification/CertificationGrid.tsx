@@ -9,6 +9,7 @@ import { toProblem } from '../../api/client'
 import type { CertificationItem, RenewalStatus } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
 import { DataGrid } from '../../components/DataGrid'
+import { DdayBadge } from '../../components/DdayBadge'
 import { RenewalStatusSelect, RenewalStatusTag } from '../../components/RenewalStatusTag'
 import { CertificationFormModal, type CertificationFormMode } from './CertificationFormModal'
 
@@ -34,7 +35,7 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
   const handleStatusChange = async (row: CertificationItem, status: RenewalStatus) => {
     try {
       await changeCertificationRenewalStatus(row.id, status)
-      await queryClient.invalidateQueries({ queryKey: ['certifications'] })
+      await Promise.all(['certifications', 'expiries', 'dashboard'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
       message.success(`${row.certificateNumber} 처리상태를 변경했습니다.`)
     } catch (e) {
       message.error(toProblem(e).detail)
@@ -68,6 +69,12 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
     { field: 'certificateNumber', headerName: '인증번호', width: 150, cellClass: 'num' },
     { field: 'issuedDate', headerName: '발급일', width: 115, cellClass: 'num' },
     { field: 'expiryDate', headerName: '만료일', width: 115, cellClass: 'num', valueFormatter: (p) => p.value ?? '없음' },
+    {
+      field: 'daysLeft', headerName: 'D-day', width: 130,
+      cellRenderer: (p: { data: CertificationItem }) => p.data.active
+        ? <DdayBadge daysLeft={p.data.daysLeft} status={p.data.expiryStatus} />
+        : null,
+    },
     {
       field: 'renewalStatus', headerName: '갱신 처리', width: 150,
       cellRenderer: (p: { data: CertificationItem }) =>

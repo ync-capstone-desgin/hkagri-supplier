@@ -48,7 +48,7 @@ export function TabsProvider({ children }: { children: ReactNode }) {
       setTabs(next)
       if (path === activePath) {
         const neighbor = next[Math.min(index, next.length - 1)]
-        navigate(neighbor ? neighbor.path : '/suppliers')
+        navigate(neighbor ? neighbor.path : '/dashboard')
       }
     },
     [tabs, activePath, navigate],

@@ -28,7 +28,7 @@ public final class SupplierDtos {
             @Size(max = 1000) String memo) {
     }
 
-    /** 협력업체 목록 그리드의 한 행. expiringCount는 만료됐거나 90일 안에 만료되는 계약·인증 수 */
+    /** 협력업체 목록 그리드의 한 행. expiringCount는 만료됐거나 만료예정 기간(기본 90일) 안에 만료되는 계약·인증 수 */
     public record SupplierListItem(Long id, String code, String name, SupplierStatus status, String contactName,
                                    Long ownerId, String ownerName, long contractCount, long certCount,
                                    long expiringCount) {

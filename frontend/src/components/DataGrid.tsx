@@ -26,12 +26,16 @@ const gridTheme = themeQuartz.withParams({
  * 한글 메뉴, 정렬·크기조절 기본 적용, 페이지당 50행을 설정하고 행 더블클릭 이벤트를 전달한다.
  * rowClassRules로 조건에 맞는 행에 CSS 클래스를 붙일 수 있다 (예: 이전 이력 행 흐리게).
  */
-export function DataGrid<T extends { id: number }>({ rows, columns, loading, onRowDoubleClick, rowClassRules, height = 560 }: {
+export function DataGrid<T extends object>({ rows, columns, loading, onRowDoubleClick, rowClassRules, rowId, paginate = true, height = 560 }: {
   rows: T[] | undefined
   columns: ColDef<T>[]
   loading?: boolean
   onRowDoubleClick?: (row: T) => void
   rowClassRules?: RowClassRules<T>
+  /** 행 식별값. 기본은 id 필드 */
+  rowId?: (row: T) => string
+  /** 페이지 나누기 표시 여부 (기본 true) */
+  paginate?: boolean
   height?: number
 }) {
   return (
@@ -42,9 +46,9 @@ export function DataGrid<T extends { id: number }>({ rows, columns, loading, onR
         columnDefs={columns}
         loading={loading}
         localeText={AG_GRID_LOCALE_KR}
-        getRowId={(p) => String(p.data.id)}
+        getRowId={(p) => (rowId ? rowId(p.data) : String((p.data as { id: number }).id))}
         defaultColDef={{ sortable: true, resizable: true, minWidth: 80 }}
-        pagination
+        pagination={paginate}
         paginationPageSize={50}
         paginationPageSizeSelector={[20, 50, 100]}
         overlayNoRowsTemplate="조건에 맞는 데이터가 없습니다."

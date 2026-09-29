@@ -12,6 +12,8 @@ import { RequireAuth } from './app/RequireAuth'
 import { TabsProvider } from './app/TabsContext'
 import { theme } from './app/theme'
 import { CertificationListPage } from './features/certification/CertificationListPage'
+import { DashboardPage } from './features/dashboard/DashboardPage'
+import { ExpiryListPage } from './features/expiry/ExpiryListPage'
 import { ContractListPage } from './features/contract/ContractListPage'
 import { SupplierDetailPage } from './features/supplier/SupplierDetailPage'
 import { SupplierListPage } from './features/supplier/SupplierListPage'
@@ -32,7 +34,7 @@ const queryClient = new QueryClient({
 
 /**
  * 앱 진입점: 전역 설정(한글 로케일·테마·데이터 캐시·로그인 상태)을 감싸고 화면 경로를 정의한다.
- * 첫 화면은 대시보드가 생기기 전까지 협력업체 목록이다.
+ * 로그인 후 첫 화면은 대시보드다.
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -52,12 +54,14 @@ createRoot(document.getElementById('root')!).render(
                     </RequireAuth>
                   }
                 >
-                  <Route index element={<Navigate to="/suppliers" replace />} />
+                  <Route index element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/suppliers" element={<SupplierListPage />} />
                   <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
                   <Route path="/contracts" element={<ContractListPage />} />
                   <Route path="/certifications" element={<CertificationListPage />} />
-                  <Route path="*" element={<Navigate to="/suppliers" replace />} />
+                  <Route path="/expiries" element={<ExpiryListPage />} />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>
               </Routes>
             </AuthProvider>

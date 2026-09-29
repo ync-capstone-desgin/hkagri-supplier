@@ -1,5 +1,8 @@
 package com.hankooknongsan.supplier.certification;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +34,34 @@ public interface CertificationRepository extends JpaRepository<Certification, Lo
                                @Param("certType") String certType, @Param("ownerId") Long ownerId,
                                @Param("renewalStatus") RenewalStatus renewalStatus,
                                @Param("includeInactive") boolean includeInactive, Pageable pageable);
+
+    /**
+     * 만료일이 기간(from ~ until) 안에 있는 유효 인증을 조회한다. (만료 예정 목록·대시보드용)
+     */
+    @EntityGraph(attributePaths = {"supplier", "owner", "certType"})
+    @Query("""
+            select x from Certification x
+            where x.active = true and x.expiryDate between :from and :until
+              and (:ownerId is null or x.owner.id = :ownerId)
+              and (:renewalStatus is null or x.renewalStatus = :renewalStatus)
+            """)
+    List<Certification> findExpiring(@Param("from") LocalDate from, @Param("until") LocalDate until,
+                                     @Param("ownerId") Long ownerId,
+                                     @Param("renewalStatus") RenewalStatus renewalStatus);
+
+    /** 만료일이 비어 있는 유효 인증을 조회한다. ("확인필요" 대상) */
+    @EntityGraph(attributePaths = {"supplier", "owner", "certType"})
+    @Query("""
+            select x from Certification x
+            where x.active = true and x.expiryDate is null
+              and (:ownerId is null or x.owner.id = :ownerId)
+              and (:renewalStatus is null or x.renewalStatus = :renewalStatus)
+            """)
+    List<Certification> findWithoutExpiry(@Param("ownerId") Long ownerId,
+                                          @Param("renewalStatus") RenewalStatus renewalStatus);
+
+    /** 유효 인증 수를 센다. (대시보드용) */
+    long countByActiveTrue();
 
     /** 같은 인증 종류·인증번호가 이미 등록돼 있는지 찾는다. (중복 경고용, 자기 자신은 제외) */
     @Query("""
