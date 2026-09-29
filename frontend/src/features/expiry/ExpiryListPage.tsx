@@ -117,13 +117,13 @@ export function ExpiryListPage() {
     { field: 'expiryDate', headerName: '만료일', width: 115, cellClass: 'num', valueFormatter: (p) => p.value ?? '없음' },
     { field: 'ownerName', headerName: '담당자', width: 100 },
     {
-      field: 'renewalStatus', headerName: '갱신 처리', width: 150,
+      field: 'renewalStatus', headerName: '갱신 처리', width: 160,
       cellRenderer: (p: { data: ExpiryItem }) => canEdit
         ? <RenewalStatusSelect value={p.data.renewalStatus} onChange={(s) => handleStatusChange(p.data, s)} />
         : <RenewalStatusTag status={p.data.renewalStatus} />,
     },
     ...(canEdit ? [{
-      headerName: '작업', width: 120, sortable: false, pinned: 'right',
+      headerName: '작업', width: 130, sortable: false, pinned: 'right',
       cellRenderer: (p: { data: ExpiryItem }) => (
         <Button size="small" type="primary" ghost icon={<SyncOutlined />} onClick={() => handleRenew(p.data)}>갱신 등록</Button>
       ),

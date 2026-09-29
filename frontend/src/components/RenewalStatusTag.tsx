@@ -32,7 +32,7 @@ export function RenewalStatusSelect({ value, onChange, disabled }: {
       variant="borderless"
       value={value}
       disabled={disabled}
-      style={{ width: 128 }}
+      style={{ width: 124 }}
       onChange={onChange}
       options={options('renewalStatus').map((o) => ({ ...o, disabled: o.value === 'DONE' }))}
       labelRender={({ value: v }) => <RenewalStatusTag status={v as RenewalStatus} />}

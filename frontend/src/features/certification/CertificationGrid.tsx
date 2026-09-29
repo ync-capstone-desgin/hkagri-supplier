@@ -76,7 +76,7 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
         : null,
     },
     {
-      field: 'renewalStatus', headerName: '갱신 처리', width: 150,
+      field: 'renewalStatus', headerName: '갱신 처리', width: 160,
       cellRenderer: (p: { data: CertificationItem }) =>
         canEdit && p.data.active
           ? <RenewalStatusSelect value={p.data.renewalStatus} onChange={(s) => handleStatusChange(p.data, s)} />

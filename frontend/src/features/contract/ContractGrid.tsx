@@ -77,7 +77,7 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
     },
     { field: 'autoRenew', headerName: '자동연장', width: 95, cellDataType: false, valueFormatter: (p) => (p.value ? '예' : '-') },
     {
-      field: 'renewalStatus', headerName: '갱신 처리', width: 150,
+      field: 'renewalStatus', headerName: '갱신 처리', width: 160,
       cellRenderer: (p: { data: ContractItem }) =>
         canEdit && p.data.active
           ? <RenewalStatusSelect value={p.data.renewalStatus} onChange={(s) => handleStatusChange(p.data, s)} />
