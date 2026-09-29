@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: supplier-poc
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:supplier}
+    username: ${DB_USER:supplier}
+    password: ${DB_PASSWORD:supplier}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Seoul
+  flyway:
+    locations: classpath:db/migration
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+  mvc:
+    async:
+      request-timeout: -1
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  zone: Asia/Seoul
+  mail-from: noreply@supplier-poc.local
+  scan-cron: "0 0 8 * * *"
+  relay-delay-ms: 10000
+  seed-password: ${SEED_PASSWORD:demo1234!}

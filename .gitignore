@@ -1,0 +1,18 @@
+# 환경변수·비밀정보
+.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Backend (Gradle)
+backend/.gradle/
+backend/build/
+backend/bin/
+backend/out/
+
+# Frontend (Node)
+frontend/node_modules/
+frontend/dist/

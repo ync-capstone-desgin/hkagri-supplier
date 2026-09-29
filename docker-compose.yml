@@ -1,0 +1,21 @@
+# 로컬 개발·시연용 인프라. 기능이 추가되면 서비스를 늘린다.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: supplier-poc-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-supplier}
+      POSTGRES_USER: ${DB_USER:-supplier}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-supplier}
+      TZ: Asia/Seoul
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-supplier}"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  db-data:
