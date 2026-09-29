@@ -20,8 +20,8 @@ export interface MenuEntry {
 export const MENU: MenuEntry[] = [
   { path: '/dashboard', label: '대시보드', icon: <DashboardOutlined />, planned: true },
   { path: '/suppliers', label: '협력업체', icon: <ShopOutlined /> },
-  { path: '/contracts', label: '계약 관리', icon: <FileTextOutlined />, planned: true },
-  { path: '/certifications', label: '인증 관리', icon: <AuditOutlined />, planned: true },
+  { path: '/contracts', label: '계약 관리', icon: <FileTextOutlined /> },
+  { path: '/certifications', label: '인증 관리', icon: <AuditOutlined /> },
   { path: '/expiries', label: '만료 예정', icon: <AlertOutlined />, planned: true },
   { path: '/notifications', label: '알림함', icon: <BellOutlined />, planned: true },
   { path: '/settings', label: '기준정보', icon: <SettingOutlined />, planned: true },

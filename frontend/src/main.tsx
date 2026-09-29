@@ -11,6 +11,8 @@ import { AuthProvider } from './app/AuthContext'
 import { RequireAuth } from './app/RequireAuth'
 import { TabsProvider } from './app/TabsContext'
 import { theme } from './app/theme'
+import { CertificationListPage } from './features/certification/CertificationListPage'
+import { ContractListPage } from './features/contract/ContractListPage'
 import { SupplierDetailPage } from './features/supplier/SupplierDetailPage'
 import { SupplierListPage } from './features/supplier/SupplierListPage'
 import { LoginPage } from './pages/LoginPage'
@@ -53,6 +55,8 @@ createRoot(document.getElementById('root')!).render(
                   <Route index element={<Navigate to="/suppliers" replace />} />
                   <Route path="/suppliers" element={<SupplierListPage />} />
                   <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
+                  <Route path="/contracts" element={<ContractListPage />} />
+                  <Route path="/certifications" element={<CertificationListPage />} />
                   <Route path="*" element={<Navigate to="/suppliers" replace />} />
                 </Route>
               </Routes>

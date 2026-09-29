@@ -1,14 +1,19 @@
 package com.hankooknongsan.supplier.supplier;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
+import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierDetail;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierListItem;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierRequest;
+import com.hankooknongsan.supplier.supplier.SupplierRepository.SupplierCounts;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,27 +28,35 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SupplierService {
 
+    /** 목록의 "만료건수" 기준: 만료됐거나 오늘부터 90일 안에 만료되는 유효 계약·인증 */
+    static final int EXPIRING_HORIZON_DAYS = 90;
+
     private final SupplierRepository suppliers;
     private final AppUserRepository users;
+    private final AppClock clock;
 
     /** 조건에 맞는 협력업체 목록을 페이지 단위로 조회한다. */
-    public PageResponse<SupplierListItem> search(String keyword, SupplierStatus status, Pageable pageable) {
-        Page<Supplier> page = suppliers.search(nullToEmpty(keyword).trim(), status, pageable);
-        return PageResponse.of(page, SupplierService::toListItem);
+    public PageResponse<SupplierListItem> search(String keyword, SupplierStatus status, String certType,
+                                                 Pageable pageable) {
+        Page<Supplier> page = suppliers.search(nullToEmpty(keyword).trim(), status, nullToEmpty(certType), pageable);
+        Map<Long, SupplierCounts> counts = countsOf(page.getContent());
+        return PageResponse.of(page, s -> toListItem(s, counts.get(s.getId())));
     }
 
     /** 조건에 맞는 협력업체 전체를 조회한다. (엑셀 다운로드용) */
-    public List<SupplierListItem> searchAll(String keyword, SupplierStatus status) {
-        return search(keyword, status, Pageable.ofSize(10_000)).content();
+    public List<SupplierListItem> searchAll(String keyword, SupplierStatus status, String certType) {
+        return search(keyword, status, certType, Pageable.ofSize(10_000)).content();
     }
 
     /** 협력업체 한 곳의 상세정보를 조회한다. 없으면 404. */
     public SupplierDetail get(Long id) {
         Supplier s = find(id);
+        SupplierCounts c = countsOf(List.of(s)).get(id);
         AppUser owner = s.getOwner();
         return new SupplierDetail(s.getId(), s.getCode(), s.getName(), s.getBusinessNumber(), s.getStatus(),
                 s.getContactName(), s.getContactPhone(), s.getContactEmail(),
                 owner == null ? null : owner.getId(), owner == null ? null : owner.getName(), s.getMemo(),
+                c.getContractCount(), c.getCertCount(), c.getExpiringCount(),
                 s.getCreatedAt(), s.getCreatedBy(), s.getUpdatedAt(), s.getUpdatedBy());
     }
 
@@ -82,11 +95,22 @@ public class SupplierService {
                 blankToNull(req.contactPhone()), blankToNull(req.contactEmail()), owner, blankToNull(req.memo()));
     }
 
-    /** 엔티티를 목록 행 DTO로 변환한다. */
-    private static SupplierListItem toListItem(Supplier s) {
+    /** 업체들의 계약·인증 건수를 한 번에 조회해 업체 ID별로 묶는다. */
+    private Map<Long, SupplierCounts> countsOf(List<Supplier> list) {
+        if (list.isEmpty()) {
+            return Map.of();
+        }
+        return suppliers.counts(list.stream().map(Supplier::getId).toList(),
+                        clock.today().plusDays(EXPIRING_HORIZON_DAYS))
+                .stream().collect(Collectors.toMap(SupplierCounts::getId, Function.identity()));
+    }
+
+    /** 엔티티와 건수를 목록 행 DTO로 변환한다. */
+    private static SupplierListItem toListItem(Supplier s, SupplierCounts c) {
         AppUser owner = s.getOwner();
         return new SupplierListItem(s.getId(), s.getCode(), s.getName(), s.getStatus(), s.getContactName(),
-                owner == null ? null : owner.getId(), owner == null ? null : owner.getName());
+                owner == null ? null : owner.getId(), owner == null ? null : owner.getName(),
+                c.getContractCount(), c.getCertCount(), c.getExpiringCount());
     }
 
     /** null을 빈 문자열로 바꾼다. (검색 조건 무시 처리용) */

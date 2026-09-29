@@ -1,5 +1,7 @@
 import { AgGridReact } from 'ag-grid-react'
-import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type RowDoubleClickedEvent } from 'ag-grid-community'
+import {
+  AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type RowClassRules, type RowDoubleClickedEvent,
+} from 'ag-grid-community'
 import { AG_GRID_LOCALE_KR } from '@ag-grid-community/locale'
 import { BRAND } from '../app/theme'
 
@@ -22,12 +24,14 @@ const gridTheme = themeQuartz.withParams({
 /**
  * AG Grid 공통 래퍼.
  * 한글 메뉴, 정렬·크기조절 기본 적용, 페이지당 50행을 설정하고 행 더블클릭 이벤트를 전달한다.
+ * rowClassRules로 조건에 맞는 행에 CSS 클래스를 붙일 수 있다 (예: 이전 이력 행 흐리게).
  */
-export function DataGrid<T extends { id: number }>({ rows, columns, loading, onRowDoubleClick, height = 560 }: {
+export function DataGrid<T extends { id: number }>({ rows, columns, loading, onRowDoubleClick, rowClassRules, height = 560 }: {
   rows: T[] | undefined
   columns: ColDef<T>[]
   loading?: boolean
   onRowDoubleClick?: (row: T) => void
+  rowClassRules?: RowClassRules<T>
   height?: number
 }) {
   return (
@@ -46,6 +50,7 @@ export function DataGrid<T extends { id: number }>({ rows, columns, loading, onR
         overlayNoRowsTemplate="조건에 맞는 데이터가 없습니다."
         onRowDoubleClicked={(e: RowDoubleClickedEvent<T>) => e.data && onRowDoubleClick?.(e.data)}
         rowStyle={onRowDoubleClick ? { cursor: 'pointer' } : undefined}
+        rowClassRules={rowClassRules}
       />
     </div>
   )

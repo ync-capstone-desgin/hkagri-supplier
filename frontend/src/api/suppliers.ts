@@ -6,6 +6,7 @@ function toParams(search: SupplierSearch) {
   return {
     keyword: search.keyword?.trim() || undefined,
     status: search.status || undefined,
+    certType: search.certType || undefined,
   }
 }
 

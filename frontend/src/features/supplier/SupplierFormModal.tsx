@@ -6,6 +6,7 @@ import { toProblem } from '../../api/client'
 import { createSupplier, updateSupplier } from '../../api/suppliers'
 import type { SupplierDetail, SupplierRequest } from '../../api/types'
 import { useCodes } from '../../hooks/useCodes'
+import { useSaveShortcut } from '../../hooks/useSaveShortcut'
 
 /**
  * 사업자번호 입력값을 000-00-00000 형식으로 맞춘다.
@@ -57,17 +58,7 @@ export function SupplierFormModal({ open, supplier, onClose }: {
   }, [open, supplier, form])
 
   // 모달이 열려 있는 동안 Ctrl(⌘)+S를 저장 단축키로 쓴다.
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault()
-        form.submit()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, form])
+  useSaveShortcut(open, () => form.submit())
 
   /** 입력값을 서버에 저장하고, 성공하면 목록·상세 데이터를 새로 고친 뒤 모달을 닫는다. */
   const handleSubmit = async (values: SupplierRequest) => {

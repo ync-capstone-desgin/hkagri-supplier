@@ -35,26 +35,31 @@ public class SupplierController {
 
     private final SupplierService service;
 
-    /** 협력업체 목록을 검색한다. 기본 정렬은 업체명, 기본 50건씩. */
+    /** 협력업체 목록을 검색한다. 인증 종류(certType)로 보유 업체만 걸러낼 수 있다. 기본 정렬은 업체명. */
     @GetMapping
     public PageResponse<SupplierListItem> search(@RequestParam(required = false) String keyword,
                                                  @RequestParam(required = false) SupplierStatus status,
+                                                 @RequestParam(required = false) String certType,
                                                  @RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "50") int size) {
-        return service.search(keyword, status, PageRequest.of(page, size, Sort.by("name")));
+        return service.search(keyword, status, certType, PageRequest.of(page, size, Sort.by("name")));
     }
 
     /** 현재 검색조건의 협력업체 목록을 엑셀 파일로 내려받는다. */
     @GetMapping("/excel")
     public ResponseEntity<byte[]> excel(@RequestParam(required = false) String keyword,
-                                        @RequestParam(required = false) SupplierStatus status) {
+                                        @RequestParam(required = false) SupplierStatus status,
+                                        @RequestParam(required = false) String certType) {
         List<Column<SupplierListItem>> columns = List.of(
                 new Column<>("업체코드", SupplierListItem::code),
                 new Column<>("업체명", SupplierListItem::name),
                 new Column<>("거래상태", s -> s.status().label()),
                 new Column<>("업체 담당자", SupplierListItem::contactName),
-                new Column<>("내부 담당자", SupplierListItem::ownerName));
-        return ExcelExporter.export("협력업체목록", columns, service.searchAll(keyword, status));
+                new Column<>("내부 담당자", SupplierListItem::ownerName),
+                new Column<>("계약수", SupplierListItem::contractCount),
+                new Column<>("인증수", SupplierListItem::certCount),
+                new Column<>("만료·임박(90일)", SupplierListItem::expiringCount));
+        return ExcelExporter.export("협력업체목록", columns, service.searchAll(keyword, status, certType));
     }
 
     /** 협력업체 상세정보를 조회한다. */

@@ -29,6 +29,7 @@ public class CodeController {
     public Map<String, List<Code>> codes() {
         Map<String, List<Code>> codes = new LinkedHashMap<>();
         codes.put("supplierStatus", of(SupplierStatus.values()));
+        codes.put("renewalStatus", of(RenewalStatus.values()));
         codes.put("role", of(Role.values()));
         return codes;
     }

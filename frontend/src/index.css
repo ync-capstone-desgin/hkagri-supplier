@@ -15,3 +15,8 @@ html, body, #root {
 .num {
   font-variant-numeric: tabular-nums;
 }
+
+/* 갱신되어 이전 이력이 된 계약·인증 행은 흐리게 보여준다. */
+.row-inactive {
+  color: #9ca3af;
+}

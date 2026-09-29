@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { App, Button, Flex, Input, Select, Typography } from 'antd'
+import { App, Button, Flex, Input, Select, Tooltip, Typography } from 'antd'
 import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
@@ -11,6 +11,7 @@ import { DataGrid } from '../../components/DataGrid'
 import { SearchField, SearchPanel } from '../../components/SearchPanel'
 import { SupplierStatusTag } from '../../components/SupplierStatusTag'
 import { useCodes } from '../../hooks/useCodes'
+import { useCertTypeOptions } from '../../hooks/useOptions'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { SupplierFormModal } from './SupplierFormModal'
 
@@ -24,6 +25,7 @@ export function SupplierListPage() {
   const { message } = App.useApp()
   const { canEdit } = useAuth()
   const { options } = useCodes()
+  const certTypeOptions = useCertTypeOptions()
   const [draft, setDraft] = usePersistedState<SupplierSearch>('supplier.search.draft', {})
   const [search, setSearch] = usePersistedState<SupplierSearch>('supplier.search', {})
   const [formOpen, setFormOpen] = useState(false)
@@ -34,7 +36,10 @@ export function SupplierListPage() {
     queryFn: () => searchSuppliers(search),
   })
 
-  /** 그리드 컬럼 정의. 업체명은 클릭하면 바로 상세로 가도록 링크 모양으로 보여준다. */
+  /**
+   * 그리드 컬럼 정의. 업체명은 클릭하면 바로 상세로 가도록 링크 모양으로 보여준다.
+   * 만료·임박 건수가 있으면 빨간 숫자로 강조해 먼저 눈에 띄게 한다.
+   */
   const columns = useMemo<ColDef<SupplierListItem>[]>(
     () => [
       { field: 'code', headerName: '업체코드', width: 120, cellClass: 'num' },
@@ -54,7 +59,24 @@ export function SupplierListPage() {
         cellRenderer: (p: { data: SupplierListItem }) => <SupplierStatusTag status={p.data.status} />,
       },
       { field: 'contactName', headerName: '업체 담당자', width: 140 },
-      { field: 'ownerName', headerName: '내부 담당자', width: 140 },
+      { field: 'ownerName', headerName: '내부 담당자', width: 130 },
+      { field: 'contractCount', headerName: '계약', width: 90, cellClass: 'num ag-right-aligned-cell', type: 'rightAligned' },
+      { field: 'certCount', headerName: '인증', width: 90, cellClass: 'num ag-right-aligned-cell', type: 'rightAligned' },
+      {
+        field: 'expiringCount',
+        headerName: '만료·임박',
+        headerTooltip: '이미 만료됐거나 90일 안에 만료되는 계약·인증 수',
+        width: 110,
+        type: 'rightAligned',
+        cellRenderer: (p: { value: number }) =>
+          p.value > 0 ? (
+            <Tooltip title="만료됐거나 90일 안에 만료">
+              <Typography.Text type="danger" strong className="num">{p.value}</Typography.Text>
+            </Tooltip>
+          ) : (
+            <Typography.Text type="secondary" className="num">0</Typography.Text>
+          ),
+      },
     ],
     [navigate],
   )
@@ -100,6 +122,16 @@ export function SupplierListPage() {
             options={options('supplierStatus')}
             value={draft.status}
             onChange={(status) => setDraft({ ...draft, status })}
+          />
+        </SearchField>
+        <SearchField label="보유 인증">
+          <Select
+            allowClear
+            style={{ width: 200 }}
+            placeholder="전체"
+            options={certTypeOptions}
+            value={draft.certType}
+            onChange={(certType) => setDraft({ ...draft, certType })}
           />
         </SearchField>
       </SearchPanel>
