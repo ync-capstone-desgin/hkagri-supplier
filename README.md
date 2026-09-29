@@ -8,17 +8,25 @@
 |---|---|
 | 백엔드 | Java 21, Spring Boot 4.1, Spring Data JPA, Spring Security, Flyway |
 | 데이터베이스 | PostgreSQL 16 (Docker Compose) |
-| 프론트엔드 | React + TypeScript + Ant Design (진행 예정) |
+| 프론트엔드 | React 19 + TypeScript + Vite, Ant Design 6, AG Grid Community, TanStack Query |
 
 ## 실행 방법
 
-사전 준비: Docker Desktop, Java 21
+사전 준비: Docker Desktop, Java 21, Node.js 20 이상
 
 ```bash
 cp .env.example .env
 docker compose up -d
 cd backend && ./gradlew bootRun
 ```
+
+다른 터미널에서 화면을 실행한다.
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+- 화면: http://localhost:5173 (API 요청은 Vite 프록시로 8080에 전달)
 
 - API 문서: http://localhost:8080/swagger-ui.html
 - 기본 프로파일은 `dev`이며, DB가 비어 있으면 가상 샘플 데이터가 자동으로 들어간다.
@@ -39,7 +47,7 @@ cd backend && ./gradlew bootRun
 
 | 단계 | 기능 | 요구사항 | 상태 |
 |---|---|---|---|
-| 1 | 로그인·역할, 협력업체 등록·조회·수정·검색·엑셀 | FR-001~003, FR-013 | 백엔드 완료 |
+| 1 | 로그인·역할, 협력업체 등록·조회·수정·검색·엑셀 | FR-001~003, FR-013 | 완료 (API + 화면) |
 | 2 | 계약·인증 관리 | FR-004~006, FR-012 | 예정 |
 | 3 | 만료 판정·만료 목록·대시보드 | FR-007~009 | 예정 |
 | 4 | 알림 대상 생성·발송·이력 | FR-010, FR-011 | 예정 |
