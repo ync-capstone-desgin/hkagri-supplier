@@ -23,8 +23,8 @@ export const MENU: MenuEntry[] = [
   { path: '/contracts', label: '계약 관리', icon: <FileTextOutlined /> },
   { path: '/certifications', label: '인증 관리', icon: <AuditOutlined /> },
   { path: '/expiries', label: '만료 예정', icon: <AlertOutlined /> },
-  { path: '/notifications', label: '알림함', icon: <BellOutlined />, planned: true },
-  { path: '/settings', label: '기준정보', icon: <SettingOutlined />, planned: true },
+  { path: '/notifications', label: '알림함', icon: <BellOutlined /> },
+  { path: '/settings', label: '알림 설정', icon: <SettingOutlined /> },
 ]
 
 /** 경로에 맞는 메뉴 항목을 찾는다. 상세 경로(/suppliers/3)는 상위 메뉴(/suppliers)로 본다. */

@@ -2,13 +2,11 @@ package com.hankooknongsan.supplier;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 협력업체 통합관리 PoC 백엔드 애플리케이션 시작점.
- * 만료 점검·알림 발송 같은 정기 작업을 위해 스케줄링을 활성화한다.
+ * 정기 작업(만료 점검·알림 발송) 설정은 {@link com.hankooknongsan.supplier.common.SchedulingConfig}에 있다.
  */
-@EnableScheduling
 @SpringBootApplication
 public class SupplierPocApplication {
 

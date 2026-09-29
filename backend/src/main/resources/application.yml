@@ -35,7 +35,13 @@ app:
   zone: Asia/Seoul
   # 만료 예정으로 보는 최대 기간(일). 오늘부터 이 기간 안에 만료되면 "만료예정"
   expiry-horizon-days: 90
+  # 알림 메일 발신 주소와, 메일 본문에 넣을 화면 주소
   mail-from: noreply@supplier-poc.local
+  web-url: ${WEB_URL:http://localhost:5173}
+  # 만료 점검 작업 실행 시각 (매일 08:00, Asia/Seoul)
   scan-cron: "0 0 8 * * *"
+  # 발송 대기열(아웃박스) 확인 주기(ms)
   relay-delay-ms: 10000
+  # 정기 작업 사용 여부 (테스트에서는 끈다)
+  scheduling-enabled: true
   seed-password: ${SEED_PASSWORD:demo1234!}

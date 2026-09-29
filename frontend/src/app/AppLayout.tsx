@@ -3,6 +3,7 @@ import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, useNavigate } from 'react-router'
 import { useAuth } from './AuthContext'
 import { ClockIndicator } from './ClockIndicator'
+import { NotificationBell } from './NotificationBell'
 import { findMenu, MENU } from './menu'
 import { useTabs } from './TabsContext'
 import { BRAND } from './theme'
@@ -39,6 +40,7 @@ export function AppLayout() {
         </Tag>
         <div style={{ flex: 1 }} />
         <ClockIndicator />
+        <NotificationBell />
         <Dropdown
           menu={{
             items: [{ key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout }],

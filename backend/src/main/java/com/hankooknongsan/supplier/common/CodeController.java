@@ -7,6 +7,9 @@ import java.util.Map;
 
 import com.hankooknongsan.supplier.auth.Role;
 import com.hankooknongsan.supplier.expiry.ExpiryPeriod;
+import com.hankooknongsan.supplier.notification.ActionStatus;
+import com.hankooknongsan.supplier.notification.Channel;
+import com.hankooknongsan.supplier.notification.DeliveryStatus;
 import com.hankooknongsan.supplier.supplier.SupplierStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,6 +37,9 @@ public class CodeController {
         codes.put("expiryStatus", of(ExpiryStatus.values()));
         codes.put("expiryPeriod", of(ExpiryPeriod.values()));
         codes.put("targetType", of(TargetType.values()));
+        codes.put("actionStatus", of(ActionStatus.values()));
+        codes.put("channel", of(Channel.values()));
+        codes.put("deliveryStatus", of(DeliveryStatus.values()));
         codes.put("role", of(Role.values()));
         return codes;
     }

@@ -19,4 +19,9 @@ public enum RenewalStatus implements Labeled {
     public String label() {
         return label;
     }
+
+    /** 더 이상 알림을 보낼 필요가 없는 상태(갱신완료·갱신안함)인지 여부 */
+    public boolean closed() {
+        return this == DONE || this == NOT_RENEWING;
+    }
 }

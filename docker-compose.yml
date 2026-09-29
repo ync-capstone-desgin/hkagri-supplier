@@ -17,5 +17,13 @@ services:
       interval: 5s
       retries: 10
 
+  # 개발용 메일 서버: 실제로 보내지 않고 받은 메일을 웹(http://localhost:8025)에서 보여준다.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: supplier-poc-mail
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   db-data:

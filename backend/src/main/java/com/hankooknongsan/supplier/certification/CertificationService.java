@@ -16,6 +16,9 @@ import com.hankooknongsan.supplier.common.RenewalStatus;
 import com.hankooknongsan.supplier.supplier.Supplier;
 import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
+import com.hankooknongsan.supplier.common.RenewalClosedEvent;
+import com.hankooknongsan.supplier.common.TargetType;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -34,6 +37,7 @@ public class CertificationService {
     private final SupplierService supplierService;
     private final AppUserRepository users;
     private final ExpiryPolicy policy;
+    private final ApplicationEventPublisher events;
 
     /** 인증 종류 목록을 표시 순서대로 조회한다. */
     public List<CertTypeItem> certTypes() {
@@ -74,11 +78,14 @@ public class CertificationService {
         return new Saved(toItem(x), warnings);
     }
 
-    /** 갱신 처리상태(미착수·갱신진행·갱신완료·갱신안함)를 바꾼다. */
+    /** 갱신 처리상태(미착수·갱신진행·갱신완료·갱신안함)를 바꾼다. 갱신완료·갱신안함이면 관련 알림을 닫도록 이벤트를 보낸다. */
     @Transactional
     public CertificationItem changeRenewalStatus(Long id, RenewalStatus status) {
         Certification x = find(id);
         x.changeRenewalStatus(status);
+        if (status.closed()) {
+            events.publishEvent(new RenewalClosedEvent(TargetType.CERTIFICATION, id));
+        }
         certifications.flush();
         return toItem(x);
     }
@@ -95,6 +102,7 @@ public class CertificationService {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 인증입니다.");
         }
         old.markRenewed();
+        events.publishEvent(new RenewalClosedEvent(TargetType.CERTIFICATION, old.getId()));
         certifications.flush();
         Certification renewed = new Certification(supplierService.find(req.supplierId()));
         List<String> warnings = apply(renewed, req, null);

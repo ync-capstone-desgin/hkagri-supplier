@@ -15,6 +15,9 @@ import com.hankooknongsan.supplier.contract.ContractDtos.Saved;
 import com.hankooknongsan.supplier.supplier.Supplier;
 import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
+import com.hankooknongsan.supplier.common.RenewalClosedEvent;
+import com.hankooknongsan.supplier.common.TargetType;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,6 +35,7 @@ public class ContractService {
     private final SupplierService supplierService;
     private final AppUserRepository users;
     private final ExpiryPolicy policy;
+    private final ApplicationEventPublisher events;
 
     /** 조건에 맞는 계약 목록을 조회한다. */
     public PageResponse<ContractItem> search(Long supplierId, String keyword, Long ownerId,
@@ -63,11 +67,14 @@ public class ContractService {
         return new Saved(toItem(c), warnings);
     }
 
-    /** 갱신 처리상태(미착수·갱신진행·갱신완료·갱신안함)를 바꾼다. */
+    /** 갱신 처리상태(미착수·갱신진행·갱신완료·갱신안함)를 바꾼다. 갱신완료·갱신안함이면 관련 알림을 닫도록 이벤트를 보낸다. */
     @Transactional
     public ContractItem changeRenewalStatus(Long id, RenewalStatus status) {
         Contract c = find(id);
         c.changeRenewalStatus(status);
+        if (status.closed()) {
+            events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, id));
+        }
         contracts.flush();
         return toItem(c);
     }
@@ -84,6 +91,7 @@ public class ContractService {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 계약입니다.");
         }
         old.markRenewed();
+        events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, old.getId()));
         contracts.flush();
         Contract renewed = new Contract(supplierService.find(req.supplierId()));
         List<String> warnings = apply(renewed, req, null);

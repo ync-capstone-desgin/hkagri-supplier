@@ -283,3 +283,76 @@ export interface ClockInfo {
   demoClock: boolean
   horizonDays: number
 }
+
+/** 알림 업무 처리상태 */
+export type ActionStatus = 'UNREAD' | 'READ' | 'IN_PROGRESS' | 'DONE'
+
+/** 알림 발송 채널 */
+export type Channel = 'IN_APP' | 'EMAIL'
+
+/** 채널별 발송 상태 */
+export type DeliveryStatus = 'PENDING' | 'SENT' | 'FAILED'
+
+/** 채널 하나의 발송 결과 */
+export interface DeliveryItem {
+  channel: Channel
+  status: DeliveryStatus
+  retryCount: number
+  lastError: string | null
+  sentAt: string | null
+}
+
+/** 알림함의 알림 하나 */
+export interface NotificationItem {
+  id: number
+  targetType: TargetType
+  targetId: number
+  supplierId: number
+  supplierName: string
+  /** 적용된 알림 기준 (만료 N일 전) */
+  ruleDays: number
+  expiryDate: string
+  /** 오늘 기준 남은 일수 */
+  daysLeft: number | null
+  title: string
+  message: string
+  actionStatus: ActionStatus
+  actionAt: string | null
+  createdAt: string
+  deliveries: DeliveryItem[]
+}
+
+/** 알림 기준 */
+export interface NotificationRule {
+  id: number
+  targetType: TargetType
+  /** 만료 며칠 전 (큰 순) */
+  days: number[]
+  channels: Channel[]
+  enabled: boolean
+  updatedBy: string | null
+  updatedAt: string | null
+}
+
+/** 관리자 발송 이력의 한 행 */
+export interface DeliveryLogItem {
+  id: number
+  notificationId: number
+  recipientName: string
+  recipientEmail: string | null
+  title: string
+  channel: Channel
+  status: DeliveryStatus
+  retryCount: number
+  lastError: string | null
+  createdAt: string
+  sentAt: string | null
+  nextAttemptAt: string
+}
+
+/** 시연용 [지금 점검] 결과 */
+export interface ScanRunResult {
+  scan: { today: string; targets: number; created: number; skipped: number; excluded: number }
+  /** 바로 발송 처리한 건수 */
+  delivered: number
+}
