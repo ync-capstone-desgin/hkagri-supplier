@@ -54,6 +54,7 @@ cd frontend && npm install && npm run dev
 | 2 | 계약·인증 등록·수정·갱신(이력 연결)·처리상태, 업체별 조회, 문서 링크 | FR-004~006, FR-012 | 완료 (API + 화면) |
 | 3 | 만료 판정(D-day)·만료 예정 목록·대시보드·시연용 기준일 변경 | FR-007~009 | 완료 (API + 화면) |
 | 4 | 만료 점검·알림 생성(중복 방지)·아웃박스 발송(화면·이메일, 재시도)·알림함·알림 기준 설정 | FR-010, FR-011 | 완료 (API + 화면) |
+| 5 | 만료 캘린더: 월 달력에 만료일 표시, 날짜별 목록에서 처리상태 변경·갱신 등록 | FR-008 확장 (벤치마킹) | 완료 (API + 화면) |
 
 ## 사용 설명서
 
@@ -75,12 +76,12 @@ cd frontend && npm install && npm run dev
 cd backend && ./gradlew test
 ```
 
-Testcontainers로 실제 PostgreSQL을 띄워 실행하므로 Docker가 켜져 있어야 한다. (총 34건)
+Testcontainers로 실제 PostgreSQL을 띄워 실행하므로 Docker가 켜져 있어야 한다. (총 36건)
 
 | 테스트 | 확인 내용 |
 |---|---|
 | SupplierApiTest | VT-001 정상 등록, VT-002 필수값 누락, 역할별 권한 |
 | ContractApiTest | VT-003 종료일 < 시작일, VT-007 업체별 조회, 갱신 이력, 중복 경고 |
 | ExpiryPolicyTest | VT-004 오늘 만료, VT-005 7·30·90일 경계 |
-| ExpiryApiTest | VT-008 만료 목록 필터, VT-009 대시보드 = 목록 건수 |
+| ExpiryApiTest | VT-008 만료 목록 필터, VT-009 대시보드 = 목록 건수, 만료 캘린더 기간 조회·기간 제한 |
 | NotificationScanTest | VT-006 중복 알림 방지, 가장 작은 기준일 적용, 제외 대상, 발송 실패 재시도, 갱신 시 자동 완료 |

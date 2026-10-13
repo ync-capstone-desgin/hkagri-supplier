@@ -1,6 +1,9 @@
 package com.hankooknongsan.supplier.expiry;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,20 +29,26 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * 만료 예정 조회·대시보드 통합 테스트 (VT-005, VT-008, VT-009).
+ * 만료 예정 조회·만료 캘린더·대시보드 통합 테스트 (VT-005, VT-008, VT-009).
  * 기준일을 2030-01-15로 옮기고, 테스트 전용 담당자를 만들어 다른 테스트 데이터와 섞이지 않게 담당자로 걸러 본다.
  */
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestcontainersConfig.class)
+@WithMockUser(username = "manager1", roles = "MANAGER")
 class ExpiryApiTest {
 
     static final LocalDate TODAY = LocalDate.of(2030, 1, 15);
 
+    @Autowired MockMvc mvc;
     @Autowired AppClock clock;
     @Autowired ExpiryService expiryService;
     @Autowired DashboardService dashboardService;
@@ -125,5 +134,25 @@ class ExpiryApiTest {
         // 테스트 담당자 몫: 만료 1 + 90일 이내 7 = 8건
         assertThat(summary.mine()).isEqualTo(8);
         assertThat(summary.urgent()).hasSizeLessThanOrEqualTo(10);
+    }
+
+    /** 만료 캘린더: 기간 양 끝 날짜를 포함하고, 이미 지난 날짜와 인증도 함께 날짜순으로 나온다. 무기한·만료일 없음은 제외한다. */
+    @Test
+    void 캘린더는_기간_안의_만료일만_날짜순으로_보여준다() {
+        List<ExpiryItem> items = expiryService.findBetween(TODAY.minusDays(1), TODAY.plusDays(8), null, ownerId, null);
+        assertThat(items).extracting(ExpiryItem::daysLeft).containsExactly(-1, 0, 3, 7, 8);
+        assertThat(items).extracting(ExpiryItem::targetType).contains(TargetType.CERTIFICATION);
+    }
+
+    /** 만료 캘린더: 종료일이 시작일보다 빠르거나 62일 이상을 한 번에 요청하면 400으로 막는다. */
+    @Test
+    void 캘린더_조회_기간이_잘못되면_막는다() throws Exception {
+        mvc.perform(get("/api/expiries/calendar").param("from", "2030-02-01").param("to", "2030-01-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("to"));
+        mvc.perform(get("/api/expiries/calendar").param("from", "2030-01-01").param("to", "2030-03-15"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/expiries/calendar").param("from", "2029-12-28").param("to", "2030-02-07"))
+                .andExpect(status().isOk());
     }
 }

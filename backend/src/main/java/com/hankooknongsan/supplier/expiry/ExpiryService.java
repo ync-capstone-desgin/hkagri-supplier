@@ -72,6 +72,29 @@ public class ExpiryService {
     }
 
     /**
+     * 만료일이 기간 [from, until] 안에 있는 유효 계약·인증을 날짜순으로 찾는다. (만료 캘린더용)
+     * 이미 지난 날짜도 포함하므로, 갱신하지 않고 만료된 건도 그날 칸에 남아 보인다.
+     *
+     * @param from          시작일 (포함)
+     * @param until         종료일 (포함)
+     * @param targetType    대상 종류 (null이면 계약·인증 모두)
+     * @param ownerId       내부 담당자 (null이면 전체)
+     * @param renewalStatus 갱신 처리상태 (null이면 전체)
+     */
+    public List<ExpiryItem> findBetween(LocalDate from, LocalDate until, TargetType targetType, Long ownerId,
+                                        RenewalStatus renewalStatus) {
+        List<ExpiryItem> result = new ArrayList<>();
+        if (targetType == null || targetType == TargetType.CONTRACT) {
+            contracts.findEnding(from, until, ownerId, renewalStatus).forEach(c -> result.add(toItem(c)));
+        }
+        if (targetType == null || targetType == TargetType.CERTIFICATION) {
+            certifications.findExpiring(from, until, ownerId, renewalStatus).forEach(x -> result.add(toItem(x)));
+        }
+        result.sort(Comparator.comparing(ExpiryItem::expiryDate).thenComparing(ExpiryItem::supplierName));
+        return result;
+    }
+
+    /**
      * 조치가 필요한 항목 전체(이미 만료 + 만료예정 기간 이내)를 급한 순으로 찾는다. (대시보드용)
      */
     public List<ExpiryItem> findActionable(Long ownerId) {
