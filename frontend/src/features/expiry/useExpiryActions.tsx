@@ -9,7 +9,7 @@ import { CertificationFormModal } from '../certification/CertificationFormModal'
 import { ContractFormModal } from '../contract/ContractFormModal'
 
 /** 처리상태가 바뀌면 새로 불러와야 하는 화면 데이터 */
-const AFFECTED_QUERIES = ['expiries', 'expiryCalendar', 'dashboard', 'contracts', 'certifications']
+const AFFECTED_QUERIES = ['expiries', 'expiryCalendar', 'renewalBoard', 'dashboard', 'contracts', 'certifications']
 
 /**
  * 만료 항목(계약·인증 공통)에 대한 작업 묶음.

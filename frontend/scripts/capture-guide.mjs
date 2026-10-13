@@ -141,6 +141,11 @@ try {
   await manager.locator('.ant-picker-cell-in-view .expiry-chip').first().click()
   await shot(manager, '17-expiry-calendar', { wait: 800 })
 
+  console.log('5-2) 갱신 현황판')
+  await openMenu(manager, '갱신 현황판', { grid: false })
+  await manager.waitForSelector('.board-card')
+  await shot(manager, '18-renewal-board')
+
   console.log('6) 알림함 · 알림 미리보기')
   await openMenu(manager, '알림함', { grid: false })
   await manager.waitForSelector('text=업체 보기')

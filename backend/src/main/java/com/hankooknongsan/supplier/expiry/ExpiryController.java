@@ -60,6 +60,16 @@ public class ExpiryController {
         return service.findBetween(from, to, targetType, ownerId, renewalStatus);
     }
 
+    /**
+     * 갱신 현황판용 카드 목록을 조회한다.
+     * 조치 대상(만료 + 만료예정 기간 이내)과 최근 갱신 완료 건을 급한 순으로 돌려주며, 칸 구분은 갱신 처리상태로 한다.
+     */
+    @GetMapping("/board")
+    public List<ExpiryItem> board(@RequestParam(required = false) TargetType targetType,
+                                  @RequestParam(required = false) Long ownerId) {
+        return service.findBoard(targetType, ownerId);
+    }
+
     /** 현재 조건의 만료 예정 목록을 엑셀 파일로 내려받는다. */
     @GetMapping("/excel")
     public ResponseEntity<byte[]> excel(@RequestParam(defaultValue = "D30") ExpiryPeriod period,

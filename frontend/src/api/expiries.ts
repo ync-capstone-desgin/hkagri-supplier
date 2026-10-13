@@ -37,3 +37,10 @@ export async function findExpiryCalendar(search: ExpiryCalendarSearch): Promise<
     params: { from: search.from, to: search.to, targetType: search.targetType || undefined, ownerId: search.ownerId },
   })).data
 }
+
+/** 갱신 현황판 카드를 조회한다. 조치 대상(만료 + 90일 이내)과 최근 30일 안에 갱신 완료된 건이 급한 순으로 온다. */
+export async function findRenewalBoard(search: Pick<ExpirySearch, 'targetType' | 'ownerId'>): Promise<ExpiryItem[]> {
+  return (await api.get('/expiries/board', {
+    params: { targetType: search.targetType || undefined, ownerId: search.ownerId },
+  })).data
+}
