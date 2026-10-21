@@ -1,0 +1,6 @@
+# 빈 이슈를 막고 템플릿 중 하나를 고르게 한다.
+blank_issues_enabled: false
+contact_links:
+  - name: 협업 가이드 (처음이라면 먼저 읽기)
+    url: https://github.com/ync-capstone-desgin/hkagri-supplier/blob/develop/CONTRIBUTING.md
+    about: 이슈 작성부터 PR 머지까지 따라 하기

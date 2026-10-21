@@ -1,0 +1,38 @@
+name: 🐛 버그
+description: 잘못 동작하는 것을 알릴 때
+title: "[버그] "
+labels: ["버그"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 순서
+      description: 누가 따라 해도 같은 문제가 나오도록 순서대로 적어 주세요.
+      placeholder: |
+        1. manager1로 로그인
+        2. 오른쪽 위 이름 → 로그아웃
+        3. 화면이 대시보드에 그대로 남아 있음
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대한 결과
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 결과 (오류 메시지, 스크린샷)
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: 어디에서
+      options:
+        - 내 PC (localhost)
+        - 체험 서버 (EC2)
+        - 둘 다
+    validations:
+      required: true

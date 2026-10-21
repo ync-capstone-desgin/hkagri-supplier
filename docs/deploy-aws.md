@@ -2,7 +2,7 @@
 
 - 작성자: JinsuBae2
 - 최종 수정일: 2026-10-21
-- 대상: 기업 담당자가 URL로 접속해 프로토타입을 써 볼 수 있게 서버 한 대에 올린다.
+- 대상: 기업 담당자가 URL로 접속해 시스템을 써 볼 수 있게 서버 한 대에 올린다.
 - 방식: **AWS 웹 콘솔에서만** 진행한다. 내 PC에 따로 설치할 것은 없다. 명령은 AWS 페이지 안의 브라우저 터미널(EC2 Instance Connect)에 붙여 넣는다.
 
 ## 0. 전체 구성
@@ -36,6 +36,16 @@ AWS 콘솔(https://console.aws.amazon.com) 로그인 → 오른쪽 위 리전을
 
 ## 2. 인스턴스(서버) 만들기
 
+### 2-0. 먼저: 접속용 IAM 역할 만들기 (1분)
+
+브라우저 터미널이 안 될 때 Session Manager로 접속할 수 있게 권한을 미리 만들어 둔다.
+(학교망 등에서 SSH 22번이 막혀도 Session Manager는 HTTPS로 접속한다)
+
+검색창에 `IAM` → 왼쪽 **역할** → **역할 생성** → 신뢰할 수 있는 엔터티 **AWS 서비스**, 사용 사례 **EC2** → 다음 →
+권한 정책 `AmazonSSMManagedInstanceCore` 체크 → 다음 → 역할 이름 `supplier-demo-ssm` → **역할 생성**
+
+### 2-1. 인스턴스 시작
+
 검색창에 `EC2` → **EC2** → 왼쪽 메뉴 **인스턴스** → 오른쪽 위 **인스턴스 시작**
 
 | 화면 항목 | 선택·입력 값 |
@@ -43,15 +53,18 @@ AWS 콘솔(https://console.aws.amazon.com) 로그인 → 오른쪽 위 리전을
 | 이름 및 태그 → 이름 | `supplier-demo` |
 | 애플리케이션 및 OS 이미지 | **Ubuntu** → **Ubuntu Server 24.04 LTS** (64비트 x86) |
 | 인스턴스 유형 | **t3.small** (메모리 2GB. t3.micro는 메모리가 부족해 멈출 수 있음) |
-| 키 페어(로그인) | **새 키 페어 생성** → 이름 `supplier-demo` → 생성 (`.pem` 파일이 내려받아짐. 이번 방식에선 안 쓰지만 비상용으로 보관) |
-| 네트워크 설정 | **SSH 트래픽 허용** 체크 → 위치: **위치 무관 0.0.0.0/0**<br>**인터넷에서 HTTPS 트래픽 허용** 체크<br>**인터넷에서 HTTP 트래픽 허용** 체크 |
+| 키 페어(로그인) | **새 키 페어 생성** → 이름 `supplier-demo` → 생성 (`.pem` 파일이 내려받아짐. 비상용으로 보관). 이미 있으면 기존 `supplier-demo` 선택 |
+| 네트워크 설정 | (다시 만드는 경우: **기존 보안 그룹 선택** → `launch-wizard-1`)<br>**SSH 트래픽 허용** 체크 → 위치: **위치 무관 0.0.0.0/0**<br>**인터넷에서 HTTPS 트래픽 허용** 체크<br>**인터넷에서 HTTP 트래픽 허용** 체크 |
 | 스토리지 구성 | **20** GiB, gp3 |
 
 > SSH를 "내 IP"로 제한하면 브라우저 터미널(EC2 Instance Connect)이 접속하지 못한다. AWS 서비스가 대신 접속하기 때문이다. 키·임시 키로만 들어갈 수 있으므로 체험 기간에는 "위치 무관"으로 둔다.
 
-### 2-1. 서버 준비 자동화 (사용자 데이터)
+### 2-2. 고급 세부 정보 (IAM 역할, 서버 준비 자동화)
 
-같은 화면 맨 아래 **고급 세부 정보**를 펼친다 → 맨 아래 **사용자 데이터** 칸에 아래를 그대로 붙여 넣는다.
+같은 화면 맨 아래 **고급 세부 정보**를 펼친다.
+
+- **IAM 인스턴스 프로파일**: `supplier-demo-ssm` 선택
+- 맨 아래 **사용자 데이터** 칸에 아래를 그대로 붙여 넣는다. **빠뜨리면 Docker가 설치되지 않는다.**
 서버가 처음 켜질 때 스왑 메모리 설정과 Docker 설치를 자동으로 한다.
 
 ```bash
@@ -68,7 +81,7 @@ usermod -aG docker ubuntu
 
 ## 3. 고정 IP 붙이기 (탄력적 IP)
 
-서버를 껐다 켜도 주소가 바뀌지 않게 한다.
+서버를 껐다 켜도 주소가 바뀌지 않게 한다. (인스턴스를 다시 만든 경우: 할당은 건너뛰고 기존 주소를 새 인스턴스에 **연결**만 한다)
 
 1. 왼쪽 메뉴 **네트워크 및 보안 → 탄력적 IP** → **탄력적 IP 주소 할당** → 그대로 **할당**
 2. 방금 만든 주소 선택 → **작업 → 탄력적 IP 주소 연결**
@@ -82,7 +95,9 @@ usermod -aG docker ubuntu
 
 새 탭에 검은 터미널 화면이 열린다. 아래 명령들은 여기에 붙여 넣는다. (붙여넣기: Ctrl+Shift+V 또는 마우스 오른쪽 클릭)
 
-먼저 2-1의 Docker 설치가 끝났는지 확인한다. 인스턴스를 만든 지 3~5분 지나야 끝난다.
+> **"인스턴스에 연결하지 못했습니다"가 나오면**: 같은 **연결** 화면의 **Session Manager** 탭 → **연결**. 터미널이 열리면 먼저 `sudo su - ubuntu`를 실행한다. (2-0의 IAM 역할이 붙어 있어야 하고, 인스턴스 시작 후 3~5분 걸린다)
+
+상태 검사가 통과되고 3~5분 더 지나야 2-2의 Docker 설치가 끝난다. 설치가 끝났는지 확인한다.
 
 ```bash
 docker --version
@@ -93,43 +108,47 @@ docker --version
 
 ## 5. 코드 받기
 
-저장소가 비공개(private)라 GitHub 토큰이 필요하다.
-
-1. GitHub 웹 → 오른쪽 위 프로필 → **Settings** → 왼쪽 맨 아래 **Developer settings** → **Personal access tokens → Fine-grained tokens** → **Generate new token**
-   - Token name: `supplier-demo-server`, Expiration: 30일
-   - Resource owner: `ync-capstone-desgin`
-   - Repository access: **Only select repositories** → `prototype-JinsuBae2`
-   - Permissions → Repository permissions → **Contents: Read-only**
-   - **Generate token** → 나온 토큰을 복사 (다시 볼 수 없음)
-2. 브라우저 터미널에서 내려받는다. `Username`에는 GitHub 아이디, `Password`에는 **토큰**을 붙여 넣는다. (입력해도 화면에 안 보이는 것이 정상)
+저장소가 공개(public)이므로 토큰 없이 바로 받는다. 서버에는 항상 배포 브랜치인 `main`을 받는다.
 
 ```bash
-git clone -b feat/supplier-workflow-tools https://github.com/ync-capstone-desgin/prototype-JinsuBae2.git
-cd prototype-JinsuBae2
+git clone -b main https://github.com/ync-capstone-desgin/hkagri-supplier.git
+cd hkagri-supplier
 ```
 
-> 브랜치가 `main`에 합쳐졌다면 `-b feat/supplier-workflow-tools`를 빼고 받는다.
+> 저장소를 다시 비공개로 돌렸다면 `Username`·`Password`를 묻는다. 이때 Password에는 GitHub 비밀번호가 아니라 **토큰**을 넣는다.
+> (GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → 이 저장소만, Contents: Read-only)
 
 ## 6. 서버 설정 파일 만들기
 
-```bash
-cp deploy/.env.prod.example .env.prod
-openssl rand -base64 24
-```
-
-마지막 명령이 출력한 임의 문자열을 복사해 둔다(DB 비밀번호로 쓴다). 설정 파일을 연다.
+아래를 **통째로** 붙여 넣는다. 서버의 공인 IP로 접속 주소를 만들고, DB 비밀번호와 체험 계정 비밀번호를 임의로 생성한다.
 
 ```bash
-nano .env.prod
+cd ~/hkagri-supplier
+IP=$(curl -s https://checkip.amazonaws.com)
+cat > .env.prod <<EOF
+# 접속 주소 (공인 IP 기반 무료 도메인)
+SITE_ADDRESS=${IP//./-}.sslip.io
+# DB 접속 정보 (외부에 공개되지 않음)
+DB_NAME=supplier
+DB_USER=supplier
+DB_PASSWORD=$(openssl rand -hex 24)
+# 체험 계정(admin·manager1·manager2·viewer) 공통 비밀번호
+SEED_PASSWORD=$(openssl rand -base64 9 | tr -d '/+=')
+EOF
+chmod 600 .env.prod
+cat .env.prod
 ```
 
-| 항목 | 값 |
-|---|---|
-| `SITE_ADDRESS` | 고정 IP의 점을 하이픈으로 바꾸고 `.sslip.io`를 붙인다. `3.35.10.20` → `3-35-10-20.sslip.io` |
-| `DB_PASSWORD` | 위에서 복사한 임의 문자열 |
-| `SEED_PASSWORD` | 담당자에게 알려줄 체험 계정 비밀번호 (README의 `demo1234!`와 다르게) |
+출력에서 두 가지를 확인한다.
 
-방향키로 움직여 고치고, **Ctrl+O → Enter**로 저장, **Ctrl+X**로 나간다.
+- `SITE_ADDRESS`가 탄력적 IP와 같은지 (`3.35.10.20` → `3-35-10-20.sslip.io`). 다르면 3장의 탄력적 IP 연결 후 다시 실행한다.
+- `SEED_PASSWORD`를 메모한다. 담당자에게 알려줄 로그인 비밀번호다.
+
+기억하기 쉬운 비밀번호를 쓰려면 (**7장 실행 전에만** 적용됨 — DB가 처음 만들어질 때 들어간다):
+
+```bash
+sed -i 's/^SEED_PASSWORD=.*/SEED_PASSWORD=원하는비밀번호/' .env.prod && cat .env.prod
+```
 
 > 도메인이 있으면 도메인의 A 레코드를 고정 IP로 연결하고 `SITE_ADDRESS`에 도메인을 쓴다.
 
@@ -160,11 +179,11 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend
 
 ## 9. 운영
 
-4장처럼 브라우저 터미널을 열고 `cd prototype-JinsuBae2`로 이동한 뒤 실행한다.
+4장처럼 브라우저 터미널을 열고 `cd hkagri-supplier`로 이동한 뒤 실행한다.
 
 | 하고 싶은 일 | 명령 |
 |---|---|
-| 새 코드 반영 | `git pull && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build` (git pull 때 아이디·토큰 다시 입력) |
+| 새 코드 반영 | `git pull && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build` |
 | 로그 보기 | `docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend` |
 | 샘플 데이터 처음 상태로 | `docker compose -f docker-compose.prod.yml --env-file .env.prod down -v` 후 7장 실행 명령 (**담당자가 입력한 데이터도 모두 지워짐**) |
 
@@ -176,14 +195,14 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend
 1. **인스턴스** → `supplier-demo` → **인스턴스 상태 → 인스턴스 종료(삭제)**
 2. **탄력적 IP** → 주소 선택 → **작업 → 탄력적 IP 주소 연결 해제** → 다시 **작업 → 탄력적 IP 주소 릴리스**
    (쓰지 않는 탄력적 IP에도 요금이 붙는다)
-3. GitHub 토큰 삭제: Fine-grained tokens에서 `supplier-demo-server` → **Delete**
 
 ## 10. 문제 해결
 
 | 증상 | 확인할 것 |
 |---|---|
-| 브라우저 터미널 "연결 실패" | 보안 그룹의 SSH(22) 위치가 "위치 무관 0.0.0.0/0"인지. 인스턴스 → **보안** 탭 → 보안 그룹 → 인바운드 규칙 편집 |
-| `docker: command not found` | 인스턴스 생성 직후면 몇 분 기다린다. 계속 안 되면 2-1 사용자 데이터를 빠뜨린 것 → `curl -fsSL https://get.docker.com \| sudo sh && sudo usermod -aG docker ubuntu` 실행 후 터미널 재접속 |
+| 브라우저 터미널 "연결 실패" | 보안 그룹의 SSH(22) 위치가 "위치 무관 0.0.0.0/0"인지. 그래도 안 되면 4장의 Session Manager로 접속 |
+| Session Manager 탭에서 연결 버튼이 비활성 | 인스턴스 → **작업 → 보안 → IAM 역할 수정**으로 `supplier-demo-ssm`을 붙이고 3~5분 기다린다 |
+| `docker: command not found` | 인스턴스 생성 직후면 몇 분 기다린다. 계속 안 되면 2-2 사용자 데이터를 빠뜨린 것 → `curl -fsSL https://get.docker.com \| sudo sh && sudo usermod -aG docker ubuntu` 실행 후 터미널 재접속 |
 | 사이트가 안 열림 | 보안 그룹에 80·443이 열려 있는지, `docker compose -f docker-compose.prod.yml --env-file .env.prod ps`에서 `web`이 실행 중인지 |
 | 인증서 오류 (HTTPS 경고) | `SITE_ADDRESS`가 고정 IP와 맞는지, `... logs web`에서 인증서 오류 확인. sslip.io 발급이 계속 실패하면 도메인을 사서 연결한다 |
 | 로그인 후 바로 튕김, 502 오류 | 백엔드가 아직 기동 중이거나 실패. `... logs backend` 확인 |
