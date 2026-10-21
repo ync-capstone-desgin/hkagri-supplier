@@ -32,9 +32,6 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
     Page<Supplier> search(@Param("keyword") String keyword, @Param("status") SupplierStatus status,
                           @Param("certType") String certType, Pageable pageable);
 
-    /** 같은 사업자번호로 등록된 업체를 등록순으로 찾는다. (중복 경고용) */
-    List<Supplier> findByBusinessNumberOrderByIdAsc(String businessNumber);
-
     /** 업체별 유효 계약·인증 건수와, 기준일(horizon) 이전에 만료되는(이미 만료 포함) 건수 */
     interface SupplierCounts {
 

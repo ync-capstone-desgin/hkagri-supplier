@@ -10,8 +10,6 @@ import com.hankooknongsan.supplier.auth.AppUserRepository;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
-import com.hankooknongsan.supplier.supplier.SupplierDtos.BusinessNumberCheck;
-import com.hankooknongsan.supplier.supplier.SupplierDtos.DuplicateSupplier;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierDetail;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierListItem;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierRequest;
@@ -86,35 +84,11 @@ public class SupplierService {
         return suppliers.findById(id).orElseThrow(() -> BusinessException.notFound("협력업체"));
     }
 
-    /**
-     * 사업자번호를 확인한다: 검증번호가 맞는지, 같은 번호로 등록된 다른 업체가 있는지.
-     * 화면이 입력 중에 바로 알려주는 용도이며, 중복은 경고일 뿐 저장을 막지 않는다.
-     *
-     * @param number   확인할 사업자번호 (000-00-00000)
-     * @param exceptId 수정 중인 업체 ID (중복 목록에서 제외, 등록이면 null)
-     */
-    public BusinessNumberCheck checkBusinessNumber(String number, Long exceptId) {
-        List<DuplicateSupplier> duplicates = suppliers.findByBusinessNumberOrderByIdAsc(number).stream()
-                .filter(x -> !x.getId().equals(exceptId))
-                .map(x -> new DuplicateSupplier(x.getId(), x.getCode(), x.getName(), x.getStatus()))
-                .toList();
-        return new BusinessNumberCheck(BusinessNumber.isValid(number), duplicates);
-    }
-
-    /**
-     * 요청 값을 엔티티에 반영한다. 담당자 ID가 잘못되면 입력 오류, 빈 문자열은 null로 저장한다.
-     * 사업자번호는 새로 입력하거나 바꾼 경우에만 검증번호를 확인한다.
-     * (이미 저장된 번호를 그대로 두고 다른 칸만 고칠 때는 막지 않는다)
-     */
+    /** 요청 값을 엔티티에 반영한다. 담당자 ID가 잘못되면 입력 오류, 빈 문자열은 null로 저장한다. */
     private void apply(Supplier s, SupplierRequest req) {
-        String businessNumber = blankToNull(req.businessNumber());
-        if (businessNumber != null && !businessNumber.equals(s.getBusinessNumber())
-                && !BusinessNumber.isValid(businessNumber)) {
-            throw BusinessException.invalid("businessNumber", "올바른 사업자번호가 아닙니다. 숫자를 다시 확인해 주세요.");
-        }
         AppUser owner = req.ownerId() == null ? null
                 : users.findById(req.ownerId()).orElseThrow(() -> BusinessException.invalid("ownerId", "담당자를 찾을 수 없습니다."));
-        s.update(req.name().trim(), businessNumber, req.status(), blankToNull(req.contactName()),
+        s.update(req.name().trim(), blankToNull(req.businessNumber()), req.status(), blankToNull(req.contactName()),
                 blankToNull(req.contactPhone()), blankToNull(req.contactEmail()), owner, blankToNull(req.memo()));
     }
 

@@ -15,7 +15,6 @@ import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import com.hankooknongsan.supplier.contract.Contract;
 import com.hankooknongsan.supplier.contract.ContractRepository;
-import com.hankooknongsan.supplier.supplier.BusinessNumber;
 import com.hankooknongsan.supplier.supplier.Supplier;
 import com.hankooknongsan.supplier.supplier.SupplierRepository;
 import com.hankooknongsan.supplier.supplier.SupplierStatus;
@@ -88,7 +87,7 @@ public class DevDataSeeder implements ApplicationRunner {
             SupplierStatus status = i == 17 || i == 18 ? SupplierStatus.SUSPENDED
                     : i == 19 ? SupplierStatus.TERMINATED : SupplierStatus.ACTIVE;
             Supplier s = new Supplier(names[i], status);
-            s.update(names[i], BusinessNumber.withCheckDigit("%03d%02d%04d".formatted(100 + i, 10 + i, 1000 + i * 37)), status,
+            s.update(names[i], "%03d-%02d-%05d".formatted(100 + i, 10 + i, 10000 + i * 37), status,
                     "업체담당" + (i + 1), "010-0000-%04d".formatted(i + 1),
                     "contact%02d@example.com".formatted(i + 1), staff.get(1 + i % 2), null);
             suppliers.save(s);
