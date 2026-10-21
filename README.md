@@ -58,6 +58,10 @@ cd frontend && npm install && npm run dev
 | 6 | 갱신 현황판: 처리상태별 칸에 카드를 끌어 놓아 상태 변경, 완료 칸에 놓으면 갱신 등록 | FR-006 확장 (벤치마킹) | 완료 (API + 화면) |
 | 7 | 사업자번호 검증: 검증번호 확인(저장 차단)·중복 등록 경고 | FR-001 확장 (벤치마킹) | 완료 (API + 화면) |
 
+## 서버 배포 (담당자 체험용)
+
+AWS EC2 한 대에 Docker Compose로 올려 URL로 접속하게 한다. 절차는 [docs/deploy-aws.md](docs/deploy-aws.md)를 따른다.
+
 ## 사용 설명서
 
 메뉴별 화면과 사용법은 스크린샷과 함께 [docs/user-guide.md](docs/user-guide.md)에 정리했다.
