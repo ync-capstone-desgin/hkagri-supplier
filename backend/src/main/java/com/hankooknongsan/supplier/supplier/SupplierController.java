@@ -5,6 +5,7 @@ import java.util.List;
 import com.hankooknongsan.supplier.common.ExcelExporter;
 import com.hankooknongsan.supplier.common.ExcelExporter.Column;
 import com.hankooknongsan.supplier.common.PageResponse;
+import com.hankooknongsan.supplier.supplier.SupplierDtos.BusinessNumberCheck;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierDetail;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierListItem;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierRequest;
@@ -60,6 +61,13 @@ public class SupplierController {
                 new Column<>("인증수", SupplierListItem::certCount),
                 new Column<>("만료·임박(90일)", SupplierListItem::expiringCount));
         return ExcelExporter.export("협력업체목록", columns, service.searchAll(keyword, status, certType));
+    }
+
+    /** 사업자번호의 검증번호와 중복 등록 여부를 확인한다. 등록·수정 화면이 입력 중에 호출한다. */
+    @GetMapping("/business-number-check")
+    public BusinessNumberCheck checkBusinessNumber(@RequestParam String number,
+                                                   @RequestParam(required = false) Long exceptId) {
+        return service.checkBusinessNumber(number, exceptId);
     }
 
     /** 협력업체 상세정보를 조회한다. */

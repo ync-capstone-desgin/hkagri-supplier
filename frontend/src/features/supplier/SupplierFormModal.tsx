@@ -3,10 +3,11 @@ import { App, Col, Form, Input, Modal, Row, Select } from 'antd'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchUsers } from '../../api/auth'
 import { toProblem } from '../../api/client'
-import { createSupplier, updateSupplier } from '../../api/suppliers'
+import { checkBusinessNumber, createSupplier, updateSupplier } from '../../api/suppliers'
 import type { SupplierDetail, SupplierRequest } from '../../api/types'
 import { useCodes } from '../../hooks/useCodes'
 import { useSaveShortcut } from '../../hooks/useSaveShortcut'
+import { isValidBusinessNumber } from './businessNumber'
 
 /**
  * 사업자번호 입력값을 000-00-00000 형식으로 맞춘다.
@@ -60,6 +61,33 @@ export function SupplierFormModal({ open, supplier, onClose }: {
   // 모달이 열려 있는 동안 Ctrl(⌘)+S를 저장 단축키로 쓴다.
   useSaveShortcut(open, () => form.submit())
 
+  /**
+   * 사업자번호 검증번호 확인 규칙. 10자리를 다 입력했을 때만 검사한다.
+   * 수정 화면에서 예전에 저장된 번호를 그대로 두면 검사하지 않는다 (서버 규칙과 같음).
+   */
+  const checkDigitRule = {
+    validator: async (_: unknown, value?: string) => {
+      if (!value || !/^\d{3}-\d{2}-\d{5}$/.test(value) || value === supplier?.businessNumber) return
+      if (!isValidBusinessNumber(value)) throw new Error('올바른 사업자번호가 아닙니다. 숫자를 다시 확인해 주세요.')
+    },
+  }
+
+  /**
+   * 같은 사업자번호로 이미 등록된 업체가 있으면 노란 경고로 알려준다. (warningOnly: 저장은 막지 않음)
+   * 지점·본점처럼 같은 번호를 쓰는 경우가 있을 수 있어 막지는 않는다.
+   */
+  const duplicateRule = {
+    warningOnly: true,
+    validator: async (_: unknown, value?: string) => {
+      if (!value || !isValidBusinessNumber(value)) return
+      const result = await checkBusinessNumber(value, supplier?.id)
+      if (result.duplicates.length > 0) {
+        const names = result.duplicates.map((d) => `${d.name}(${d.code})`).join(', ')
+        throw new Error(`이미 등록된 번호: ${names}`)
+      }
+    },
+  }
+
   /** 입력값을 서버에 저장하고, 성공하면 목록·상세 데이터를 새로 고친 뒤 모달을 닫는다. */
   const handleSubmit = async (values: SupplierRequest) => {
     setSaving(true)
@@ -110,7 +138,9 @@ export function SupplierFormModal({ open, supplier, onClose }: {
               name="businessNumber"
               label="사업자번호"
               normalize={formatBusinessNumber}
-              rules={[{ pattern: /^\d{3}-\d{2}-\d{5}$/, message: '사업자번호 10자리를 입력해 주세요.' }]}
+              rules={[{ pattern: /^\d{3}-\d{2}-\d{5}$/, message: '사업자번호 10자리를 입력해 주세요.' }, checkDigitRule, duplicateRule]}
+              validateDebounce={300}
+              hasFeedback
             >
               <Input placeholder="숫자만 입력" inputMode="numeric" className="num" />
             </Form.Item>

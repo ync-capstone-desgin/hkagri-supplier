@@ -1,6 +1,7 @@
 package com.hankooknongsan.supplier.supplier;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -40,5 +41,18 @@ public final class SupplierDtos {
                                  String ownerName, String memo, long contractCount, long certCount,
                                  long expiringCount, LocalDateTime createdAt, String createdBy,
                                  LocalDateTime updatedAt, String updatedBy) {
+    }
+
+    /**
+     * 사업자번호 확인 결과.
+     *
+     * @param valid      검증번호가 맞는지
+     * @param duplicates 같은 사업자번호로 이미 등록된 업체 (수정 중인 자기 자신은 제외)
+     */
+    public record BusinessNumberCheck(boolean valid, List<DuplicateSupplier> duplicates) {
+    }
+
+    /** 사업자번호가 같은 기존 업체 요약 */
+    public record DuplicateSupplier(Long id, String code, String name, SupplierStatus status) {
     }
 }

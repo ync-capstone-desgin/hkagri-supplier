@@ -37,3 +37,14 @@ export async function updateSupplier(id: number, req: SupplierRequest): Promise<
 export async function downloadSupplierExcel(search: SupplierSearch): Promise<void> {
   await downloadFile('/suppliers/excel', toParams(search))
 }
+
+/** 사업자번호 확인 결과: 검증번호가 맞는지와, 같은 번호로 이미 등록된 업체 */
+export interface BusinessNumberCheck {
+  valid: boolean
+  duplicates: { id: number; code: string; name: string; status: SupplierDetail['status'] }[]
+}
+
+/** 사업자번호를 확인한다. 수정 중이면 자기 자신(exceptId)은 중복에서 뺀다. */
+export async function checkBusinessNumber(number: string, exceptId?: number): Promise<BusinessNumberCheck> {
+  return (await api.get('/suppliers/business-number-check', { params: { number, exceptId } })).data
+}
