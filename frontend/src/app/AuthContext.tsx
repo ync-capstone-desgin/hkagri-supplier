@@ -53,11 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.setQueryData(['me'], me)
   }
 
-  /** 로그아웃하고, 다른 사용자가 이전 데이터를 보지 않도록 캐시를 모두 비운다. */
+  /**
+   * 로그아웃하고, 다른 사용자가 이전 데이터를 보지 않도록 캐시를 비운다.
+   * 로그인 사용자(me)를 먼저 null로 바꿔 화면에 알린 뒤 나머지 캐시만 지운다.
+   * (clear()로 me까지 지우면 화면이 변경을 알지 못해 새로고침 전까지 로그인 상태로 남는다)
+   */
   const logout = async () => {
     await apiLogout()
-    queryClient.clear()
     queryClient.setQueryData(['me'], null)
+    queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'me' })
   }
 
   const me = data ?? null
