@@ -32,7 +32,7 @@ export function MyPage() {
     if (profile) profileForm.setFieldsValue({ name: profile.name, email: profile.email, notifyEmail: profile.notifyEmail })
   }, [profile, profileForm])
 
-  /** 내 정보를 저장한다. 헤더의 이름 표시도 함께 갱신한다. */
+  /** 내 정보를 저장한다. 헤더의 이름 표시도 함께 갱신한다. 서버의 입력 오류는 해당 칸 아래에 표시한다. */
   const saveProfile = async (values: ProfileUpdateRequest) => {
     try {
       await updateMyProfile(values)
@@ -42,18 +42,28 @@ export function MyPage() {
       ])
       message.success('내 정보를 저장했습니다.')
     } catch (e) {
-      message.error(toProblem(e).detail)
+      const problem = toProblem(e)
+      if (problem.errors?.length) {
+        profileForm.setFields(problem.errors.map((fe) => ({ name: fe.field as keyof ProfileUpdateRequest, errors: [fe.message] })))
+      } else {
+        message.error(problem.detail)
+      }
     }
   }
 
-  /** 현재 비밀번호를 확인한 뒤 새 비밀번호로 바꾼다. */
+  /** 현재 비밀번호를 확인한 뒤 새 비밀번호로 바꾼다. 서버의 입력 오류는 해당 칸 아래에 표시한다. */
   const savePassword = async (values: PasswordFormValues) => {
     try {
       await changeMyPassword({ currentPassword: values.currentPassword, newPassword: values.newPassword })
       passwordForm.resetFields()
       message.success('비밀번호를 바꿨습니다.')
     } catch (e) {
-      message.error(toProblem(e).detail)
+      const problem = toProblem(e)
+      if (problem.errors?.length) {
+        passwordForm.setFields(problem.errors.map((fe) => ({ name: fe.field as keyof PasswordFormValues, errors: [fe.message] })))
+      } else {
+        message.error(problem.detail)
+      }
     }
   }
 
@@ -70,11 +80,11 @@ export function MyPage() {
 
         <Form form={profileForm} layout="vertical" onFinish={saveProfile}>
           <Form.Item name="name" label="이름" rules={[{ required: true, message: '이름을 입력해 주세요.' }]}>
-            <Input />
+            <Input maxLength={50} />
           </Form.Item>
           <Form.Item name="email" label="이메일"
             rules={[{ required: true, message: '이메일을 입력해 주세요.' }, { type: 'email', message: '이메일 형식이 올바르지 않습니다.' }]}>
-            <Input />
+            <Input maxLength={100} />
           </Form.Item>
           <Form.Item name="notifyEmail" label="알림 메일 받기" valuePropName="checked">
             <Switch />
@@ -89,8 +99,8 @@ export function MyPage() {
             <Input.Password autoComplete="current-password" />
           </Form.Item>
           <Form.Item name="newPassword" label="새 비밀번호"
-            rules={[{ required: true, message: '새 비밀번호를 입력해 주세요.' }, { min: 4, message: '4자 이상 입력해 주세요.' }]}>
-            <Input.Password autoComplete="new-password" />
+            rules={[{ required: true, message: '새 비밀번호를 입력해 주세요.' }, { min: 8, max: 64, message: '8~64자로 입력해 주세요.' }]}>
+            <Input.Password autoComplete="new-password" maxLength={64} />
           </Form.Item>
           <Form.Item name="confirmPassword" label="새 비밀번호 확인" dependencies={['newPassword']}
             rules={[

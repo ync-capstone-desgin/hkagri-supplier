@@ -44,10 +44,10 @@ class MyPageApiTest {
         user("mypage-ok", Role.MANAGER);
 
         mvc.perform(put("/api/me/password").contentType(MediaType.APPLICATION_JSON).content("""
-                        {"currentPassword":"원래비번1234","newPassword":"새비번5678"}"""))
+                        {"currentPassword":"원래비번1234","newPassword":"새비밀번호5678"}"""))
                 .andExpect(status().isOk());
 
-        assertThat(encoder.matches("새비번5678", users.findByUsername("mypage-ok").orElseThrow().getPassword())).isTrue();
+        assertThat(encoder.matches("새비밀번호5678", users.findByUsername("mypage-ok").orElseThrow().getPassword())).isTrue();
     }
 
     /** 현재 비밀번호가 틀리면 바뀌지 않고 400과 칸 오류를 돌려준다. */
@@ -57,7 +57,7 @@ class MyPageApiTest {
         user("mypage-wrong", Role.MANAGER);
 
         mvc.perform(put("/api/me/password").contentType(MediaType.APPLICATION_JSON).content("""
-                        {"currentPassword":"틀린비번","newPassword":"새비번5678"}"""))
+                        {"currentPassword":"틀린비번","newPassword":"새비밀번호5678"}"""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[*].field").value(hasItem("currentPassword")));
 
@@ -88,5 +88,32 @@ class MyPageApiTest {
                 .andExpect(jsonPath("$.name").value("새이름"))
                 .andExpect(jsonPath("$.email").value("new@test.local"))
                 .andExpect(jsonPath("$.notifyEmail").value(false));
+    }
+
+    /** 짧은 비밀번호(8자 미만)는 바뀌지 않고 칸 오류를 돌려준다. (리뷰 재현 사례) */
+    @Test
+    @WithMockUser(username = "mypage-shortpw", roles = "MANAGER")
+    void 짧은_비밀번호는_바뀌지_않는다() throws Exception {
+        user("mypage-shortpw", Role.MANAGER);
+
+        mvc.perform(put("/api/me/password").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"currentPassword":"원래비번1234","newPassword":"1"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[*].field").value(hasItem("newPassword")));
+
+        assertThat(encoder.matches("원래비번1234", users.findByUsername("mypage-shortpw").orElseThrow().getPassword())).isTrue();
+    }
+
+    /** 다른 사람이 이미 쓰는 이메일(대소문자만 다름)로는 바꿀 수 없다. (리뷰 재현 사례) */
+    @Test
+    @WithMockUser(username = "mypage-dupemail", roles = "MANAGER")
+    void 중복된_이메일로는_바꿀_수_없다() throws Exception {
+        user("mypage-other", Role.MANAGER);
+        user("mypage-dupemail", Role.MANAGER);
+
+        mvc.perform(put("/api/me/profile").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"name":"중복테스트","email":"MYPAGE-OTHER@TEST.LOCAL","notifyEmail":true}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[*].field").value(hasItem("email")));
     }
 }

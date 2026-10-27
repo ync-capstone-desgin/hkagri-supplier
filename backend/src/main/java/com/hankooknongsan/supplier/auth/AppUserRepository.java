@@ -17,6 +17,9 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     /** 이메일은 대소문자를 구분하지 않고 중복을 확인한다. */
     boolean existsByEmailIgnoreCase(String email);
 
+    /** 본인을 제외하고 이메일 중복을 확인한다. (마이페이지에서 내 정보 수정용) */
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
+
     /** 실제 이용 가능한 계정만 담당자 선택 목록에 표시한다. */
     List<AppUser> findByStatusOrderById(UserStatus status);
 
