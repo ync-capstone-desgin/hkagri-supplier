@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { App } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
@@ -24,6 +24,12 @@ export function useNotificationStream(enabled: boolean) {
   const { notification } = App.useApp()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  // 라우터는 화면을 옮길 때마다 navigate를 새 함수로 준다.
+  // effect 의존성에 넣으면 그때마다 연결이 끊겼다 다시 붙으므로 ref에 최신 값만 담아 둔다.
+  const navigateRef = useRef(navigate)
+  useEffect(() => {
+    navigateRef.current = navigate
+  }, [navigate])
 
   useEffect(() => {
     if (!enabled) return
@@ -44,7 +50,7 @@ export function useNotificationStream(enabled: boolean) {
         description: items.length === 1 ? items[0].message : `${items[0].title} 외 ${items.length - 1}건 · 눌러서 알림함 열기`,
         placement: 'topRight',
         duration: 8,
-        onClick: () => navigate('/notifications'),
+        onClick: () => navigateRef.current('/notifications'),
         style: { cursor: 'pointer' },
       })
     }
@@ -62,5 +68,5 @@ export function useNotificationStream(enabled: boolean) {
       source.removeEventListener('notification', onNotification as EventListener)
       source.close()
     }
-  }, [enabled, notification, queryClient, navigate])
+  }, [enabled, notification, queryClient])
 }
