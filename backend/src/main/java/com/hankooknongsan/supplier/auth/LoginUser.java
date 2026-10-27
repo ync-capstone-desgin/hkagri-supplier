@@ -12,12 +12,12 @@ import org.springframework.security.core.userdetails.UserDetails;
  * 세션에 저장되는 로그인 사용자 정보.
  * 엔티티를 세션에 넣지 않고 인증·권한 판단에 필요한 값만 담는다.
  */
-public record LoginUser(Long id, String username, String password, String name, Role role)
+public record LoginUser(Long id, String username, String password, String name, Role role, UserStatus status)
         implements UserDetails, Serializable {
 
     /** 사용자 엔티티에서 로그인 사용자 정보를 만든다. */
     static LoginUser of(AppUser u) {
-        return new LoginUser(u.getId(), u.getUsername(), u.getPassword(), u.getName(), u.getRole());
+        return new LoginUser(u.getId(), u.getUsername(), u.getPassword(), u.getName(), u.getRole(), u.getStatus());
     }
 
     /** 역할을 스프링 시큐리티 권한(ROLE_ADMIN 등)으로 변환해 반환한다. */

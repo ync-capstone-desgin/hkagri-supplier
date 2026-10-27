@@ -38,8 +38,22 @@ public class AppUser extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    /** 가입 신청 사유 (선택 입력) */
+    private String signupReason;
+
     /** 만료 알림메일 수신 여부 (FR-028). 꺼도 화면 알림(IN_APP)은 그대로 온다. */
     private boolean notifyEmail;
+
+    /** 공개 가입 신청은 승인 대기·최소 권한으로 만들며 역할을 입력받지 않는다. */
+    public static AppUser pending(String username, String password, String name, String email, String reason) {
+        AppUser user = new AppUser(username, password, name, email, Role.VIEWER);
+        user.status = UserStatus.PENDING;
+        user.signupReason = reason;
+        return user;
+    }
 
     /** 새 사용자를 만든다. 비밀번호는 암호화된 값을 넘겨야 한다. 알림메일은 기본으로 받는다. */
     public AppUser(String username, String password, String name, String email, Role role) {

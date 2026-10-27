@@ -61,7 +61,8 @@ class NotificationScanTest {
     void setUp() {
         today = LocalDate.of(2040, 1, 1).plusYears(seq++);
         clock.setToday(today);
-        owner = users.save(new AppUser("noti-" + System.nanoTime(), "{noop}x", "알림담당", "owner@test.local", Role.MANAGER));
+        String username = "noti-" + System.nanoTime();
+        owner = users.save(new AppUser(username, "{noop}x", "알림담당", username + "@test.local", Role.MANAGER));
         active = supplier("알림테스트업체", SupplierStatus.ACTIVE);
     }
 

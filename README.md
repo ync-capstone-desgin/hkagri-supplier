@@ -66,6 +66,7 @@ cd frontend && npm install && npm run dev
 - 개발용 메일함(Mailpit): http://localhost:8025 — 알림 메일은 실제로 나가지 않고 여기에 쌓인다
 - 기본 프로파일은 `dev`이며, DB가 비어 있으면 가상 샘플 데이터가 자동으로 들어간다.
 - DB 초기화: `docker compose down -v` 후 다시 실행
+- 올린 첨부파일은 `backend/data/files`에 저장된다 (Git에 올라가지 않음). 지우려면 이 폴더를 삭제한다.
 - 시연용 기준일 변경: admin으로 로그인 후 상단 "기준일" 태그를 눌러 날짜를 옮긴다 (dev 프로파일 전용, 서버 재시작 시 실제 날짜로 복귀)
 
 ### 시연 계정
@@ -80,6 +81,13 @@ cd frontend && npm install && npm run dev
 | viewer | 박조회 | VIEWER | 조회만 |
 
 ## 구현 현황
+
+### 회원가입 신청
+
+로그인 화면의 **회원가입**에서 이름·아이디·메일·비밀번호·비밀번호 확인과 선택 사항인 가입 사유를 입력한다.
+신청은 `PENDING`(승인 대기), `VIEWER`(조회자)로 저장되며 자동 로그인되지 않는다.
+관리자 승인 기능은 이슈 #9에서 구현한다. 기존 계정은 `ACTIVE`로 유지된다.
+API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고한다.
 
 프로토타입 단계(v0.1-demo)까지 완료한 기능이다. 이후 기능은 Issues에서 관리한다.
 
@@ -107,7 +115,7 @@ cd frontend && npm install && npm run dev
 cd backend && ./gradlew test
 ```
 
-Testcontainers로 실제 PostgreSQL을 띄워 실행하므로 Docker가 켜져 있어야 한다. (총 38건)
+Testcontainers로 실제 PostgreSQL을 띄워 실행하므로 Docker가 켜져 있어야 한다. (총 57건)
 PR을 올리면 GitHub Actions가 같은 테스트와 화면 빌드를 자동으로 실행한다.
 
 | 테스트 | 확인 내용 |
@@ -117,3 +125,6 @@ PR을 올리면 GitHub Actions가 같은 테스트와 화면 빌드를 자동으
 | ExpiryPolicyTest | VT-004 오늘 만료, VT-005 7·30·90일 경계 |
 | ExpiryApiTest | VT-008 만료 목록 필터, VT-009 대시보드 = 목록 건수, 만료 캘린더 기간 조회·기간 제한, 갱신 현황판 대상 |
 | NotificationScanTest | VT-006 중복 알림 방지, 가장 작은 기준일 적용, 제외 대상, 발송 실패 재시도, 갱신 시 자동 완료 |
+| FileApiTest | 첨부파일 같은 이름·내용으로 내려받기, HWP 허용, 형식·서명·크기(20MB) 거절, 조회자 권한, 삭제 후 숨김과 삭제 이력 |
+| FileServiceTest | 업로드 실패·롤백 시 남는 파일 정리, 동시 삭제 시 한 명만 성공하고 처음 삭제 기록 유지 |
+| LocalDiskFileStorageTest | 디스크 저장·읽기·지우기, 저장 폴더 밖 경로 거절, 덮어쓰기 방지, 쓰다 실패한 반쪽 파일 정리 |
