@@ -11,8 +11,14 @@ import org.springframework.core.io.Resource;
  */
 public interface FileStorage {
 
-    /** 저장 키 위치에 파일 내용을 저장한다. 같은 키가 이미 있으면 덮어쓰지 않고 실패한다. */
+    /**
+     * 저장 키 위치에 파일 내용을 저장한다. 같은 키가 이미 있으면 덮어쓰지 않고 실패한다.
+     * 쓰는 도중 실패하면 이번에 만든 불완전한 파일은 남기지 않는다.
+     */
     void save(String key, InputStream content);
+
+    /** 저장 키 위치의 파일을 지운다. 없으면 아무것도 하지 않는다. (업로드가 취소됐을 때 정리용) */
+    void delete(String key);
 
     /** 저장 키 위치의 파일 내용을 읽을 수 있는 리소스로 돌려준다. 없으면 예외를 던진다. */
     Resource load(String key);
