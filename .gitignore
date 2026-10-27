@@ -9,6 +9,7 @@
 
 # Backend (Gradle)
 backend/.gradle/
+backend/.gradle-user/
 backend/build/
 backend/bin/
 backend/out/
@@ -17,5 +18,6 @@ backend/data/
 
 # Frontend (Node)
 frontend/node_modules/
+frontend/.npm-cache/
 frontend/dist/
 .env.prod
