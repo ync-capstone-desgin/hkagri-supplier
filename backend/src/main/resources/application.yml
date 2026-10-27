@@ -23,6 +23,11 @@ spring:
   mvc:
     async:
       request-timeout: -1
+  # 첨부파일 업로드 한도. 기본값(1MB)으로는 일반 PDF도 막히므로 파일 크기 제한(NFR-006)에 맞춘다.
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
 
 server:
   port: 8080
@@ -45,3 +50,8 @@ app:
   # 정기 작업 사용 여부 (테스트에서는 끈다)
   scheduling-enabled: true
   seed-password: ${SEED_PASSWORD:demo1234!}
+  # 첨부파일 저장소: local(서버 디스크). 저장 위치 결정(D-4) 후 다른 방식을 추가한다.
+  file:
+    storage: ${FILE_STORAGE:local}
+    # 서버 디스크에 저장할 폴더. 운영에서는 Docker 볼륨 경로로 지정한다.
+    dir: ${FILE_DIR:./data/files}

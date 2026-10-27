@@ -12,6 +12,8 @@ backend/.gradle/
 backend/build/
 backend/bin/
 backend/out/
+# 개발 중 올린 첨부파일 (app.file.dir 기본값)
+backend/data/
 
 # Frontend (Node)
 frontend/node_modules/
