@@ -30,7 +30,7 @@
 
 ## DB 변경
 
-`V4__signup.sql`이 `app_user`에 `status`, `signup_reason`을 추가한다. 기존 계정은 ACTIVE로 이관한다. `lower(email)` 유일 인덱스를 추가하므로 기존 운영 DB에 대소문자만 다른 중복 이메일이 있는지 적용 전에 확인해야 한다. 중복이 있다면 담당자와 확인해 정리하고 마이그레이션을 실행한다.
+`V5__signup.sql`이 `app_user`에 `status`, `signup_reason`을 추가한다. 기존 계정은 ACTIVE로 이관한다. `lower(email)` 유일 인덱스를 추가하므로 기존 운영 DB에 대소문자만 다른 중복 이메일이 있는지 적용 전에 확인해야 한다. 중복이 있다면 담당자와 확인해 정리하고 마이그레이션을 실행한다.
 
 ```sql
 select lower(email), count(*) from app_user
