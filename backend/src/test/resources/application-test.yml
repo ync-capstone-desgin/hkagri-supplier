@@ -1,6 +1,3 @@
 # 테스트에서는 정기 작업(만료 점검·발송기)이 멋대로 돌지 않게 끄고, 테스트 코드에서 직접 호출한다.
 app:
   scheduling-enabled: false
-  # 테스트에서 올린 파일은 빌드 폴더에 두어 개발용 저장 폴더(backend/data)와 섞이지 않게 한다.
-  file:
-    dir: build/test-files

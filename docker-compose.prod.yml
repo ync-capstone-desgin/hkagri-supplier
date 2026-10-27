@@ -36,12 +36,6 @@ services:
       MAIL_HOST: ${MAIL_HOST:-mailpit}
       MAIL_PORT: ${MAIL_PORT:-1025}
       WEB_URL: https://${SITE_ADDRESS}
-      # 첨부파일은 컨테이너 밖 볼륨(file-data)에 저장해, 새 코드 반영으로 컨테이너가 바뀌어도 남게 한다.
-      FILE_DIR: /app/data/files
-      FILE_MAX_SIZE: ${FILE_MAX_SIZE:-20MB}
-      FILE_MAX_REQUEST_SIZE: ${FILE_MAX_REQUEST_SIZE:-21MB}
-    volumes:
-      - file-data:/app/data/files
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,6 +58,5 @@ services:
 
 volumes:
   db-data:
-  file-data:
   caddy-data:
   caddy-config:

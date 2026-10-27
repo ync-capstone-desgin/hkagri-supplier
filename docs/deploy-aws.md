@@ -13,7 +13,6 @@
              ┌────────▼────────┐  EC2 한 대 (Docker Compose)
              │ web (Caddy)     │  화면 파일 서빙 + HTTPS 자동 발급
              │   └ /api/* ─────┼─▶ backend (Spring Boot)
-             │                 │      ├─▶ 첨부파일 (file-data 볼륨)
              │                 │      ├─▶ postgres (DB)
              │                 │      └─▶ mailpit (알림 메일 보관, 외부 비공개)
              └─────────────────┘
@@ -186,13 +185,10 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend
 |---|---|
 | 새 코드 반영 | `git pull && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build` |
 | 로그 보기 | `docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend` |
-| 샘플 데이터 처음 상태로 | `docker compose -f docker-compose.prod.yml --env-file .env.prod down -v` 후 7장 실행 명령 (**담당자가 입력한 데이터와 올린 첨부파일도 모두 지워짐**) |
-| 첨부파일 용량 보기 | `docker compose -f docker-compose.prod.yml --env-file .env.prod exec backend du -sh /app/data/files` |
+| 샘플 데이터 처음 상태로 | `docker compose -f docker-compose.prod.yml --env-file .env.prod down -v` 후 7장 실행 명령 (**담당자가 입력한 데이터도 모두 지워짐**) |
 
 - 서버를 잠깐 멈추려면 콘솔에서 인스턴스 선택 → **인스턴스 상태 → 인스턴스 중지**. 다시 **인스턴스 시작**하면 앱도 자동으로 다시 켜진다(고정 IP라 주소 그대로).
 - 서버를 재시작하면 관리자가 옮겨 둔 "시연 기준일"은 실제 날짜로 돌아간다.
-- 첨부파일은 `file-data` 볼륨에 저장된다. 새 코드 반영(`up -d --build`)으로는 지워지지 않고, `down -v`를 하면 DB와 함께 지워진다.
-- 첨부파일 크기 한도(기본 20MB)는 `.env.prod`에 `FILE_MAX_SIZE=50MB`, `FILE_MAX_REQUEST_SIZE=51MB`처럼 적고 새 코드 반영 명령을 다시 실행하면 바뀐다. (요청 전체 한도는 파일 한도보다 1MB쯤 크게)
 
 ### 체험이 끝나면 (요금 방지)
 
