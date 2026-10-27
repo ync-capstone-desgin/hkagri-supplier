@@ -22,6 +22,7 @@ import { ContractListPage } from './features/contract/ContractListPage'
 import { SupplierDetailPage } from './features/supplier/SupplierDetailPage'
 import { SupplierListPage } from './features/supplier/SupplierListPage'
 import { LoginPage } from './pages/LoginPage'
+import { SignupPage } from './pages/SignupPage'
 import './index.css'
 
 dayjs.locale('ko')
@@ -49,6 +50,7 @@ createRoot(document.getElementById('root')!).render(
             <AuthProvider>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
                 <Route
                   element={
                     <RequireAuth>

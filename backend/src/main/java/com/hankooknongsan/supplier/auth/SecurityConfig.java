@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -46,6 +47,7 @@ public class SecurityConfig {
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()))
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup").permitAll()
                         .requestMatchers("/api/auth/login", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/settings/**").hasRole("ADMIN")
@@ -73,6 +75,17 @@ public class SecurityConfig {
     AuthenticationManager authenticationManager(LoginUserService userService, PasswordEncoder encoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userService);
         provider.setPasswordEncoder(encoder);
+        // 비밀번호가 맞는 경우에만 계정 상태를 안내하고, 세션 생성 전에 차단한다.
+        provider.setPostAuthenticationChecks(user -> {
+            UserStatus status = ((LoginUser) user).status();
+            if (status != UserStatus.ACTIVE) {
+                throw new DisabledException(switch (status) {
+                    case PENDING -> "승인 대기 중입니다. 관리자 승인 후 로그인해 주세요.";
+                    case REJECTED -> "가입 신청이 거절되었습니다. 관리자에게 문의해 주세요.";
+                    default -> "비활성화된 계정입니다. 관리자에게 문의해 주세요.";
+                });
+            }
+        });
         return new ProviderManager(provider);
     }
 }
