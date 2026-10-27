@@ -22,6 +22,17 @@ public final class FileDtos {
         }
     }
 
+    /** 삭제 이력의 한 행. 언제 누가 올렸고 언제 누가 지웠는지 보여준다. */
+    public record DeletedFile(Long id, String originalName, long size, LocalDateTime createdAt, String createdBy,
+                              LocalDateTime deletedAt, String deletedBy) {
+
+        /** 엔티티를 응답 형식으로 바꾼다. */
+        static DeletedFile of(StoredFile f) {
+            return new DeletedFile(f.getId(), f.getOriginalName(), f.getSize(), f.getCreatedAt(), f.getCreatedBy(),
+                    f.getDeletedAt(), f.getDeletedBy());
+        }
+    }
+
     /** 내려받을 파일의 정보와 내용 */
     public record Download(FileInfo info, Resource content) {
     }

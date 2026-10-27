@@ -8,10 +8,13 @@ import java.util.UUID;
 
 import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
+import com.hankooknongsan.supplier.common.PageResponse;
+import com.hankooknongsan.supplier.file.FileDtos.DeletedFile;
 import com.hankooknongsan.supplier.file.FileDtos.Download;
 import com.hankooknongsan.supplier.file.FileDtos.FileInfo;
 import com.hankooknongsan.supplier.file.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -54,6 +57,20 @@ public class FileService {
         return FileInfo.of(saved);
     }
 
+    /**
+     * 파일을 삭제한다. 기록과 저장소의 내용은 남겨 두고 삭제한 사람·시각만 기록한다 (NFR-007).
+     * 삭제한 파일은 조회·내려받기에서 없는 파일(404)로 보인다. 이미 삭제했거나 없으면 404.
+     */
+    @Transactional
+    public void delete(Long id, String deletedBy) {
+        find(id).markDeleted(deletedBy, clock.now());
+    }
+
+    /** 삭제한 파일 목록(삭제 이력)을 최근에 지운 순으로 조회한다. (관리자용) */
+    public PageResponse<DeletedFile> deletedHistory(Pageable pageable) {
+        return PageResponse.of(files.findByDeletedAtIsNotNullOrderByDeletedAtDesc(pageable), DeletedFile::of);
+    }
+
     /** 파일 정보를 조회한다. 없으면 404. */
     public FileInfo get(Long id) {
         return FileInfo.of(find(id));
@@ -65,9 +82,9 @@ public class FileService {
         return new Download(FileInfo.of(f), storage.load(f.getStorageKey()));
     }
 
-    /** ID로 첨부파일을 찾는다. 없으면 404. */
+    /** ID로 삭제하지 않은 첨부파일을 찾는다. 없거나 삭제했으면 404. */
     private StoredFile find(Long id) {
-        return files.findById(id).orElseThrow(() -> BusinessException.notFound("파일"));
+        return files.findByIdAndDeletedAtIsNull(id).orElseThrow(() -> BusinessException.notFound("파일"));
     }
 
     /**

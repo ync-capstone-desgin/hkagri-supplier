@@ -1,5 +1,7 @@
 package com.hankooknongsan.supplier.file;
 
+import java.time.LocalDateTime;
+
 import com.hankooknongsan.supplier.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,11 +36,30 @@ public class StoredFile extends BaseEntity {
     /** 저장소 안의 위치. 원래 이름 대신 서버가 만든 고유 키를 쓴다. */
     private String storageKey;
 
+    /** 삭제한 시각. 삭제하지 않았으면 null */
+    private LocalDateTime deletedAt;
+    /** 삭제한 사람 아이디 */
+    private String deletedBy;
+
     /** 저장소에 넣은 파일의 정보로 새 첨부파일 기록을 만든다. */
     public StoredFile(String originalName, String contentType, long size, String storageKey) {
         this.originalName = originalName;
         this.contentType = contentType;
         this.size = size;
         this.storageKey = storageKey;
+    }
+
+    /** 삭제한 파일인지 확인한다. */
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    /**
+     * 파일을 삭제 상태로 바꾼다. 기록과 저장소의 내용은 지우지 않고 누가 언제 지웠는지 남긴다 (NFR-007).
+     * 잘못 지웠을 때 관리자가 되살릴 수 있게 하기 위해서다.
+     */
+    public void markDeleted(String by, LocalDateTime at) {
+        this.deletedBy = by;
+        this.deletedAt = at;
     }
 }
