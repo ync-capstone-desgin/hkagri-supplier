@@ -23,6 +23,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
  * 보안 설정: 세션 기반 로그인 + 역할 3종 권한.
  * <ul>
  *   <li>조회(GET): 로그인한 사용자 모두</li>
+ *   <li>내 정보·비밀번호(/api/me/**): 로그인한 사용자 모두 (역할 무관, 자기 자신만 다룸)</li>
  *   <li>등록·수정: ADMIN, MANAGER</li>
  *   <li>기준정보 변경·시연 도구(/api/admin): ADMIN</li>
  * </ul>
@@ -52,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/settings/**").hasRole("ADMIN")
                         .requestMatchers("/api/notifications/**").authenticated()
+                        .requestMatchers("/api/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
                         .requestMatchers("/api/**").hasAnyRole("ADMIN", "MANAGER")
                         .anyRequest().permitAll());

@@ -180,6 +180,24 @@ class NotificationScanTest {
         });
     }
 
+    /** FR-028: 알림메일을 꺼두면 이메일 발송건은 안 만들어지고, 화면(IN_APP) 발송건은 그대로 만들어진다. */
+    @Test
+    void 알림메일을_꺼두면_이메일_발송건이_생기지_않는다() {
+        AppUser noMail = users.save(new AppUser("noti-nomail-" + System.nanoTime(), "{noop}x", "메일끈담당",
+                "nomail@test.local", Role.MANAGER));
+        noMail.updateProfile(noMail.getName(), noMail.getEmail(), false);
+        noMail = users.save(noMail);
+        Contract c = contract(active, 5, noMail);
+        scanService.scan(today);
+
+        tx.executeWithoutResult(s -> {
+            Notification n = notifications.findAll().stream()
+                    .filter(x -> x.getTargetId().equals(c.getId()) && x.getTargetType() == TargetType.CONTRACT)
+                    .findFirst().orElseThrow();
+            assertThat(n.getDeliveries()).extracting(NotificationDelivery::getChannel).containsExactly(Channel.IN_APP);
+        });
+    }
+
     /** 계약을 갱신하면 기존 계약의 알림이 자동으로 완료 처리된다. */
     @Test
     void 갱신하면_기존_알림이_완료된다() {

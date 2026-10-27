@@ -130,7 +130,10 @@ public class NotificationScanService {
         Notification n = new Notification(t.type(), t.id(), ruleDays, t.expiryDate(), recipient, t.supplier(),
                 title, message, clock.now());
         for (Channel channel : channels) {
-            if (channel == Channel.EMAIL && (recipient.getEmail() == null || recipient.getEmail().isBlank())) {
+            // 알림메일을 꺼둔 사용자(FR-028)이거나 이메일 주소가 없으면 이메일 발송건 자체를 만들지 않는다.
+            // 화면(IN_APP) 발송건은 이 조건에 걸리지 않으므로 그대로 만들어진다.
+            if (channel == Channel.EMAIL
+                    && (!recipient.isNotifyEmail() || recipient.getEmail() == null || recipient.getEmail().isBlank())) {
                 continue;
             }
             n.addDelivery(channel, clock.now());

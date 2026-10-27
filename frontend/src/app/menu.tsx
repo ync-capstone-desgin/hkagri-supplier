@@ -33,3 +33,11 @@ export const MENU: MenuEntry[] = [
 export function findMenu(pathname: string): MenuEntry | undefined {
   return MENU.find((m) => pathname === m.path || pathname.startsWith(m.path + '/'))
 }
+
+/**
+ * 좌측 메뉴(MENU)엔 없지만 상단 탭 제목은 필요한 화면.
+ * 예: 마이페이지는 이름 드롭다운으로만 들어가므로 사이드바엔 안 보인다.
+ */
+export const EXTRA_TABS: Record<string, string> = {
+  '/mypage': '마이페이지',
+}

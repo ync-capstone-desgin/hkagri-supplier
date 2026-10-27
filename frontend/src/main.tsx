@@ -16,6 +16,7 @@ import { DashboardPage } from './features/dashboard/DashboardPage'
 import { ExpiryCalendarPage } from './features/expiry/ExpiryCalendarPage'
 import { ExpiryListPage } from './features/expiry/ExpiryListPage'
 import { RenewalBoardPage } from './features/expiry/RenewalBoardPage'
+import { MyPage } from './features/mypage/MyPage'
 import { NotificationInboxPage } from './features/notification/NotificationInboxPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { ContractListPage } from './features/contract/ContractListPage'
@@ -71,6 +72,7 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/renewal-board" element={<RenewalBoardPage />} />
                   <Route path="/notifications" element={<NotificationInboxPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/mypage" element={<MyPage />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>
               </Routes>
