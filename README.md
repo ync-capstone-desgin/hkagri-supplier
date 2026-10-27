@@ -86,7 +86,8 @@ cd frontend && npm install && npm run dev
 
 로그인 화면의 **회원가입**에서 이름·아이디·메일·비밀번호·비밀번호 확인과 선택 사항인 가입 사유를 입력한다.
 신청은 `PENDING`(승인 대기), `VIEWER`(조회자)로 저장되며 자동 로그인되지 않는다.
-관리자 승인 기능은 이슈 #9에서 구현한다. 기존 계정은 `ACTIVE`로 유지된다.
+관리자는 **사용자 관리**에서 가입 승인·거절, 역할 변경과 비활성화·다시 사용을 처리한다. 기존 계정은 `ACTIVE`로 유지된다.
+관리 화면의 API·권한 규칙은 [docs/user-management.md](docs/user-management.md)를 참고한다.
 API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고한다.
 
 프로토타입 단계(v0.1-demo)까지 완료한 기능이다. 이후 기능은 Issues에서 관리한다.

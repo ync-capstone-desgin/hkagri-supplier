@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import {
-  AlertOutlined, AuditOutlined, BellOutlined, CalendarOutlined, DashboardOutlined, FileTextOutlined, ProjectOutlined, SettingOutlined, ShopOutlined,
+  AlertOutlined, AuditOutlined, BellOutlined, CalendarOutlined, DashboardOutlined, FileTextOutlined, ProjectOutlined, SettingOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons'
 
 /** 좌측 메뉴 항목 하나 */
@@ -11,6 +11,8 @@ export interface MenuEntry {
   icon: ReactNode
   /** 아직 개발 전인 메뉴. 전체 구성을 보여주기 위해 비활성 상태로 표시한다. */
   planned?: boolean
+  /** 관리자에게만 표시하는 메뉴. 서버에서도 별도로 권한을 검사한다. */
+  adminOnly?: boolean
 }
 
 /**
@@ -18,6 +20,7 @@ export interface MenuEntry {
  * 기능이 개발되면 planned 표시를 지운다.
  */
 export const MENU: MenuEntry[] = [
+  { path: '/users', label: '사용자 관리', icon: <TeamOutlined />, adminOnly: true },
   { path: '/dashboard', label: '대시보드', icon: <DashboardOutlined /> },
   { path: '/suppliers', label: '협력업체', icon: <ShopOutlined /> },
   { path: '/contracts', label: '계약 관리', icon: <FileTextOutlined /> },
