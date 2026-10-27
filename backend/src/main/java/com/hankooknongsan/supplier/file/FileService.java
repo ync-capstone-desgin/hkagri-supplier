@@ -12,7 +12,6 @@ import com.hankooknongsan.supplier.file.FileDtos.Download;
 import com.hankooknongsan.supplier.file.FileDtos.FileInfo;
 import com.hankooknongsan.supplier.file.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -32,20 +31,20 @@ public class FileService {
 
     private final StoredFileRepository files;
     private final FileStorage storage;
+    private final FilePolicy policy;
     private final AppClock clock;
 
     /**
      * 파일을 올린다.
+     * 크기·형식 규칙({@link FilePolicy})을 먼저 확인하고, 형식은 브라우저가 알려준 값 대신 확인한 형식으로 기록한다.
      * 파일 정보를 DB에 먼저 기록한 뒤 저장소에 내용을 쓴다. 저장소에 쓰다 실패하면 DB 기록도 함께 취소된다.
-     * 빈 파일이면 400.
      */
     @Transactional
     public FileInfo upload(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw BusinessException.invalid("file", "올릴 파일을 선택해 주세요.");
-        }
-        StoredFile saved = files.save(new StoredFile(cleanName(file.getOriginalFilename()), contentTypeOf(file),
-                file.getSize(), newStorageKey(clock.today())));
+        String name = cleanName(file == null ? null : file.getOriginalFilename());
+        FileType type = policy.check(file, name);
+        StoredFile saved = files.save(new StoredFile(name, type.contentType(), file.getSize(),
+                newStorageKey(clock.today())));
         try (InputStream in = file.getInputStream()) {
             storage.save(saved.getStorageKey(), in);
         } catch (IOException e) {
@@ -95,11 +94,5 @@ public class FileService {
         String ext = StringUtils.getFilenameExtension(name);
         String suffix = ext == null || ext.length() > 20 ? "" : "." + ext;
         return name.substring(0, MAX_NAME_LENGTH - suffix.length()) + suffix;
-    }
-
-    /** 브라우저가 알려준 파일 형식을 쓰고, 없으면 일반 바이너리로 기록한다. */
-    private static String contentTypeOf(MultipartFile file) {
-        String type = file.getContentType();
-        return StringUtils.hasText(type) ? type : MediaType.APPLICATION_OCTET_STREAM_VALUE;
     }
 }
