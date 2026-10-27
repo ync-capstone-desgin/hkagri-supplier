@@ -1,5 +1,5 @@
 import { Avatar, Dropdown, Layout, Menu, Tabs, Tag, Typography } from 'antd'
-import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
+import { IdcardOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, useNavigate } from 'react-router'
 import { useAuth } from './AuthContext'
 import { ClockIndicator } from './ClockIndicator'
@@ -43,7 +43,11 @@ export function AppLayout() {
         <NotificationBell />
         <Dropdown
           menu={{
-            items: [{ key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout }],
+            items: [
+              { key: 'mypage', icon: <IdcardOutlined />, label: '마이페이지', onClick: () => navigate('/mypage') },
+              { type: 'divider' },
+              { key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout },
+            ],
           }}
         >
           <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -38,12 +38,28 @@ public class AppUser extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    /** 새 사용자를 만든다. 비밀번호는 암호화된 값을 넘겨야 한다. */
+    /** 만료 알림메일 수신 여부 (FR-028). 꺼도 화면 알림(IN_APP)은 그대로 온다. */
+    private boolean notifyEmail;
+
+    /** 새 사용자를 만든다. 비밀번호는 암호화된 값을 넘겨야 한다. 알림메일은 기본으로 받는다. */
     public AppUser(String username, String password, String name, String email, Role role) {
         this.username = username;
         this.password = password;
         this.name = name;
         this.email = email;
         this.role = role;
+        this.notifyEmail = true;
+    }
+
+    /** 이름·이메일·알림메일 수신 여부를 한 번에 수정한다. 이메일을 바꾸면 다음 알림부터 새 주소로 간다. */
+    public void updateProfile(String name, String email, boolean notifyEmail) {
+        this.name = name;
+        this.email = email;
+        this.notifyEmail = notifyEmail;
+    }
+
+    /** 비밀번호를 바꾼다. 암호화된 값을 넘겨야 한다. */
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 }
