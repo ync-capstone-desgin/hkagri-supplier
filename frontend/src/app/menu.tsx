@@ -20,7 +20,6 @@ export interface MenuEntry {
  * 기능이 개발되면 planned 표시를 지운다.
  */
 export const MENU: MenuEntry[] = [
-  { path: '/users', label: '사용자 관리', icon: <TeamOutlined />, adminOnly: true },
   { path: '/dashboard', label: '대시보드', icon: <DashboardOutlined /> },
   { path: '/suppliers', label: '협력업체', icon: <ShopOutlined /> },
   { path: '/contracts', label: '계약 관리', icon: <FileTextOutlined /> },
@@ -30,6 +29,7 @@ export const MENU: MenuEntry[] = [
   { path: '/renewal-board', label: '갱신 현황판', icon: <ProjectOutlined /> },
   { path: '/notifications', label: '알림함', icon: <BellOutlined /> },
   { path: '/settings', label: '알림 설정', icon: <SettingOutlined /> },
+  { path: '/users', label: '사용자 관리', icon: <TeamOutlined />, adminOnly: true },
 ]
 
 /** 경로에 맞는 메뉴 항목을 찾는다. 상세 경로(/suppliers/3)는 상위 메뉴(/suppliers)로 본다. */

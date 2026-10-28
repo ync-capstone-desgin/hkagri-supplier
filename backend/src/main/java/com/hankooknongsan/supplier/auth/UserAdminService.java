@@ -46,6 +46,7 @@ public class UserAdminService {
             case DEACTIVATE -> { requireStatus(target, UserStatus.ACTIVE); status = UserStatus.INACTIVE; }
             case REACTIVATE -> { requireStatus(target, UserStatus.INACTIVE); status = UserStatus.ACTIVE; }
         }
+        // 현재는 자기 변경 금지로도 보호되지만, 향후 정책이 바뀌어도 마지막 관리자를 보존한다.
         if (target.getRole() == Role.ADMIN && target.getStatus() == UserStatus.ACTIVE
                 && (role != Role.ADMIN || status != UserStatus.ACTIVE) && admins.size() <= 1) {
             throw BusinessException.invalid("role", "사용 가능한 관리자는 최소 한 명이어야 합니다.");

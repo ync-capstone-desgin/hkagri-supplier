@@ -23,8 +23,8 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     /** 실제 이용 가능한 계정만 담당자 선택 목록에 표시한다. */
     List<AppUser> findByStatusOrderById(UserStatus status);
 
-    /** 특정 역할의 사용자 목록을 찾는다. (예: 담당자가 없는 알림을 관리자에게 보낼 때) */
-    List<AppUser> findByRole(Role role);
+    /** 역할과 계정 상태로 수신자를 찾아 비활성 관리자에게 알림이 생성되지 않게 한다. */
+    List<AppUser> findByRoleAndStatus(Role role, UserStatus status);
 
     /** 관리자 변경을 같은 순서로 잠가 동시 요청으로 관리자가 모두 사라지는 것을 막는다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
