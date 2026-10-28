@@ -9,6 +9,10 @@ import com.hankooknongsan.supplier.TestcontainersConfig;
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
 import com.hankooknongsan.supplier.auth.Role;
+import com.hankooknongsan.supplier.auth.UserAdminController.Action;
+import com.hankooknongsan.supplier.auth.UserAdminController.ChangeRequest;
+import com.hankooknongsan.supplier.auth.UserAdminService;
+import com.hankooknongsan.supplier.auth.UserStatus;
 import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import com.hankooknongsan.supplier.common.TargetType;
@@ -46,6 +50,7 @@ class NotificationScanTest {
     @Autowired NotificationRepository notifications;
     @Autowired NotificationDeliveryRepository deliveries;
     @Autowired AppUserRepository users;
+    @Autowired UserAdminService userAdminService;
     @Autowired SupplierRepository suppliers;
     @Autowired ContractRepository contracts;
     @Autowired ContractService contractService;
@@ -155,6 +160,31 @@ class NotificationScanTest {
                 .filter(n -> n.getTargetId().equals(c.getId()) && n.getTargetType() == TargetType.CONTRACT)
                 .map(n -> n.getRecipient().getId()).toList();
         assertThat(recipients).contains(admin.getId()).doesNotContain(owner.getId());
+    }
+
+    /** 담당자를 비활성화해도 계약 연결은 유지하고 활성 관리자에게만 알림을 만든다. */
+    @Test
+    void 비활성_담당자와_담당자_없는_계약은_활성_관리자에게만_알린다() {
+        AppUser admin = users.save(new AppUser("active-admin-" + System.nanoTime(), "{noop}x", "활성 관리자", null, Role.ADMIN));
+        AppUser inactiveAdmin = users.save(new AppUser("inactive-admin-" + System.nanoTime(), "{noop}x", "비활성 관리자", null, Role.ADMIN));
+        Contract assigned = contract(active, 5, owner);
+        Contract unassigned = contract(active, 5, null);
+        userAdminService.change(admin.getId(), owner.getId(), new ChangeRequest(Action.DEACTIVATE, null));
+        userAdminService.change(admin.getId(), inactiveAdmin.getId(), new ChangeRequest(Action.DEACTIVATE, null));
+        List<Long> activeAdminIds = users.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE).stream()
+                .map(AppUser::getId).toList();
+
+        scanService.scan(today);
+
+        assertThat(contracts.findById(assigned.getId()).orElseThrow().getOwner().getId()).isEqualTo(owner.getId());
+        for (Contract c : List.of(assigned, unassigned)) {
+            List<Long> recipients = notifications.findAll().stream()
+                    .filter(n -> n.getTargetType() == TargetType.CONTRACT && n.getTargetId().equals(c.getId()))
+                    .map(n -> n.getRecipient().getId()).toList();
+            assertThat(recipients).containsExactlyInAnyOrderElementsOf(activeAdminIds)
+                    .doesNotContain(owner.getId(), inactiveAdmin.getId());
+        }
+        assertThat(scanService.scan(today).created()).isZero();
     }
 
     /** 화면 알림은 발송완료, 이메일은 메일 서버 오류로 재시도 대기가 되고 사유가 기록된다. 업무 데이터(알림)는 남는다. */

@@ -3,10 +3,17 @@ import { fetchUsers } from '../api/auth'
 import { fetchCertTypes } from '../api/certifications'
 import { searchSuppliers } from '../api/suppliers'
 
-/** 담당자 선택상자 옵션. 조회자(VIEWER)는 담당자가 될 수 없으므로 뺀다. */
-export function useOwnerOptions(enabled = true) {
+/** 활성 담당자 선택 목록. 기존 비활성·조회자 담당자는 이름만 표시하고 재선택은 막는다. */
+export function useOwnerOptions(enabled = true, current?: { ownerId: number | null; ownerName: string | null }) {
   const { data } = useQuery({ queryKey: ['users'], queryFn: fetchUsers, enabled, staleTime: 5 * 60_000 })
-  return (data ?? []).filter((u) => u.role !== 'VIEWER').map((u) => ({ value: u.id, label: u.name }))
+  const options: { value: number; label: string; disabled?: boolean }[] = (data ?? [])
+    .filter((u) => u.role !== 'VIEWER').map((u) => ({ value: u.id, label: u.name }))
+  if (current?.ownerId != null && !options.some((o) => o.value === current.ownerId)) {
+    const activeUser = data?.find((u) => u.id === current.ownerId)
+    const suffix = data ? (activeUser ? ' (조회자)' : ' (비활성)') : ''
+    options.push({ value: current.ownerId, label: `${current.ownerName ?? '기존 담당자'}${suffix}`, disabled: true })
+  }
+  return options
 }
 
 /** 인증 종류 선택상자 옵션 */

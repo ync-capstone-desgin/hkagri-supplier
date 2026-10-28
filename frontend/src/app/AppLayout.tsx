@@ -1,4 +1,6 @@
-import { Avatar, Dropdown, Layout, Menu, Tabs, Tag, Typography } from 'antd'
+import { Avatar, Badge, Dropdown, Layout, Menu, Tabs, Tag, Typography } from 'antd'
+import { useQuery } from '@tanstack/react-query'
+import { fetchAdminUsers } from '../api/userAdmin'
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, useNavigate } from 'react-router'
 import { useAuth } from './AuthContext'
@@ -21,6 +23,9 @@ export function AppLayout() {
   const { label } = useCodes()
   const { tabs, activePath, closeTab } = useTabs()
   const activeMenu = findMenu(activePath)
+  const { data: adminUsers } = useQuery({
+    queryKey: ['admin-users'], queryFn: fetchAdminUsers, enabled: me?.role === 'ADMIN', staleTime: 10_000, refetchInterval: 30_000,
+  })
 
   /** 로그아웃 후 로그인 화면으로 이동한다. */
   const handleLogout = async () => {
@@ -62,13 +67,14 @@ export function AppLayout() {
             selectedKeys={activeMenu ? [activeMenu.path] : []}
             style={{ borderInlineEnd: 'none', paddingTop: 8 }}
             onClick={({ key }) => navigate(key)}
-            items={MENU.map((m) => ({
+            items={MENU.filter((m) => !m.adminOnly || me?.role === 'ADMIN').map((m) => ({
               key: m.path,
               icon: m.icon,
               disabled: m.planned,
               label: (
                 <span>
                   {m.label}
+                  {m.path === '/users' && <Badge count={adminUsers?.pendingCount ?? 0} style={{ marginInlineStart: 6 }} />}
                   {m.planned && (
                     <Tag variant="filled" style={{ marginInlineStart: 6, fontSize: 11 }}>
                       예정
@@ -87,7 +93,7 @@ export function AppLayout() {
             activeKey={activePath}
             onChange={(key) => navigate(key)}
             onEdit={(key, action) => action === 'remove' && closeTab(String(key))}
-            items={tabs.map((t) => ({ key: t.path, label: t.title, closable: true }))}
+            items={tabs.filter((t) => !findMenu(t.path)?.adminOnly || me?.role === 'ADMIN').map((t) => ({ key: t.path, label: t.title, closable: true }))}
             tabBarStyle={{ margin: 0, padding: '6px 12px 0', background: '#fff' }}
           />
           <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
