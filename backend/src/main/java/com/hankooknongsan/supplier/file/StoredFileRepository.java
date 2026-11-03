@@ -1,6 +1,7 @@
 package com.hankooknongsan.supplier.file;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -41,4 +42,30 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
 
     /** 삭제한 파일을 최근에 지운 순으로 조회한다. (삭제 이력) */
     Page<StoredFile> findByDeletedAtIsNotNullOrderByDeletedAtDesc(Pageable pageable);
+
+    /** 계약 하나에 연결된 첨부(삭제 제외)를 최신 순으로 찾는다. */
+    List<StoredFile> findByContractIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long contractId);
+
+    /** 인증 하나에 연결된 첨부(삭제 제외)를 최신 순으로 찾는다. */
+    List<StoredFile> findByCertificationIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long certificationId);
+
+    /** 목록 화면에서 첨부 아이콘을 한 번에 표시하기 위해, 여러 계약의 첨부 개수를 한 번에 센다. */
+    @Query("""
+            select f.contract.id as id, count(f) as count from StoredFile f
+            where f.deletedAt is null and f.contract.id in :ids
+            group by f.contract.id""")
+    List<IdCount> countByContractIds(@Param("ids") List<Long> ids);
+
+    /** 목록 화면에서 첨부 아이콘을 한 번에 표시하기 위해, 여러 인증의 첨부 개수를 한 번에 센다. */
+    @Query("""
+            select f.certification.id as id, count(f) as count from StoredFile f
+            where f.deletedAt is null and f.certification.id in :ids
+            group by f.certification.id""")
+    List<IdCount> countByCertificationIds(@Param("ids") List<Long> ids);
+
+    /** id별 개수 한 행 (위 두 집계 쿼리의 결과 형식). */
+    interface IdCount {
+        Long getId();
+        long getCount();
+    }
 }

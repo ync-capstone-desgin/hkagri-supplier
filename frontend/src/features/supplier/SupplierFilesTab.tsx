@@ -33,10 +33,19 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
     ...(certs.data?.content ?? []).map((c) => ({ value: `certification:${c.id}`, label: `인증 · ${c.certTypeName} · ${c.certificateNumber}${c.active ? '' : ' (이전 이력)'}` })),
   ]
 
-  /** 변경 후 첫 페이지로 돌아가 모든 업체 자료 페이지를 새로 조회한다. */
-  const refresh = async () => {
+  /**
+   * 변경 후 첫 페이지로 돌아가 모든 업체 자료 페이지를 새로 조회한다.
+   * 계약·인증에 연결된 자료라면, 그 계약·인증 수정 창의 첨부 목록과 목록 화면의 첨부 개수도 함께 새로 고친다.
+   */
+  const refresh = async (contractId?: number | null, certificationId?: number | null) => {
     setPage(0)
-    await queryClient.invalidateQueries({ queryKey: ['supplier-files', supplierId] })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['supplier-files', supplierId] }),
+      queryClient.invalidateQueries({ queryKey: ['contract-file-counts'] }),
+      queryClient.invalidateQueries({ queryKey: ['certification-file-counts'] }),
+      ...(contractId ? [queryClient.invalidateQueries({ queryKey: ['contract-files', contractId] })] : []),
+      ...(certificationId ? [queryClient.invalidateQueries({ queryKey: ['certification-files', certificationId] })] : []),
+    ])
   }
 
   /** 수동 새로고침에서는 연결 대상 조회 실패도 재시도한다. 조회자는 자료만 조회한다. */
@@ -52,7 +61,7 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
         try {
           await deleteStoredFile(row.file.id)
           message.success('자료를 삭제했습니다.')
-          await refresh()
+          await refresh(row.contractId, row.certificationId)
         } catch (error) {
           message.error(toProblem(error).detail)
           throw error
@@ -81,7 +90,7 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
             try {
               const saved = await uploadSupplierFile(supplierId, file as File, target)
               onSuccess?.(saved)
-              await refresh()
+              await refresh(saved.contractId, saved.certificationId)
             } catch (error) {
               const detail = toProblem(error).detail
               onError?.(new Error(detail))

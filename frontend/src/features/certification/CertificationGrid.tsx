@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
 import { App, Button, Flex, Tag, Tooltip, Typography } from 'antd'
 import { EditOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
 import { useNavigate } from 'react-router'
 import { changeCertificationRenewalStatus } from '../../api/certifications'
 import { toProblem } from '../../api/client'
+import { fetchCertificationFileCounts, fetchCertificationFiles } from '../../api/files'
 import type { CertificationItem, RenewalStatus } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
+import { AttachmentIcon } from '../../components/AttachmentIcon'
 import { DataGrid } from '../../components/DataGrid'
 import { DdayBadge } from '../../components/DdayBadge'
 import { RenewalStatusSelect, RenewalStatusTag } from '../../components/RenewalStatusTag'
@@ -30,6 +32,8 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
   const queryClient = useQueryClient()
   const { canEdit } = useAuth()
   const [modal, setModal] = useState<{ mode: CertificationFormMode; certification: CertificationItem }>()
+  const ids = useMemo(() => (rows ?? []).map((r) => r.id), [rows])
+  const counts = useQuery({ queryKey: ['certification-file-counts', ids], queryFn: () => fetchCertificationFileCounts(ids), enabled: ids.length > 0 })
 
   /** 목록에서 갱신 처리상태를 바꾸고 관련 목록을 새로 고친다. */
   const handleStatusChange = async (row: CertificationItem, status: RenewalStatus) => {
@@ -63,6 +67,9 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
               </a>
             </Tooltip>
           )}
+          <span style={{ marginInlineStart: 6 }}>
+            <AttachmentIcon count={counts.data?.[p.data.id] ?? 0} fetchFiles={() => fetchCertificationFiles(p.data.id)} />
+          </span>
         </span>
       ),
     },
@@ -92,7 +99,7 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
         </Flex>
       ),
     } as ColDef<CertificationItem>] : []),
-  ], [showSupplier, canEdit, navigate])
+  ], [showSupplier, canEdit, navigate, counts.data])
 
   return (
     <>
