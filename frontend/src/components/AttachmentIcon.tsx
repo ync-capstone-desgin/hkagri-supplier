@@ -25,7 +25,7 @@ export function AttachmentIcon({ count, fetchFiles }: { count: number; fetchFile
     }
   }
 
-  /** 자료가 1개면 바로 내려받고, 여러 개면 목록을 불러와 팝오버로 보여준다. */
+  /** 자료가 1개면 바로 내려받고, 여러 개면 목록을 불러와 팝오버로 보여준다. 조회 실패는 안내하고 다음 클릭에서 다시 시도한다. */
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (count === 1 && !files) {
@@ -38,6 +38,8 @@ export function AttachmentIcon({ count, fetchFiles }: { count: number; fetchFile
         }
         setFiles(list)
         setOpen(true)
+      } catch (error) {
+        message.error(toProblem(error).detail)
       } finally {
         setLoading(false)
       }
@@ -47,6 +49,9 @@ export function AttachmentIcon({ count, fetchFiles }: { count: number; fetchFile
       setLoading(true)
       try {
         setFiles(await fetchFiles())
+      } catch (error) {
+        message.error(toProblem(error).detail)
+        return
       } finally {
         setLoading(false)
       }

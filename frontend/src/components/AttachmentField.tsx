@@ -31,7 +31,10 @@ export function AttachmentField({ queryKey, supplierId, target, fetchFiles, onCh
   const files = useQuery({ queryKey, queryFn: fetchFiles })
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey }),
+      queryClient.invalidateQueries({ queryKey: ['supplier-files', supplierId] }),
+    ])
     onChanged?.()
   }
 
