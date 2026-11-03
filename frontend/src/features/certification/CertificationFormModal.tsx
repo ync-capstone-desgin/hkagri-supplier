@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select } from 'antd'
+import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Typography } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { createCertification, renewCertification, updateCertification } from '../../api/certifications'
 import { toProblem } from '../../api/client'
+import { fetchCertificationFiles } from '../../api/files'
 import type { CertificationItem, CertificationRequest } from '../../api/types'
+import { AttachmentField } from '../../components/AttachmentField'
 import { fromDayjs, toDayjs } from '../../components/format'
 import { useCertTypeOptions, useOwnerOptions, useSupplierOptions } from '../../hooks/useOptions'
 import { useSaveShortcut } from '../../hooks/useSaveShortcut'
@@ -156,6 +158,17 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
           <Col span={24}>
             <Form.Item name="memo" label="비고">
               <Input.TextArea rows={2} maxLength={1000} showCount />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item label="첨부파일">
+              {mode === 'edit' && certification ? (
+                <AttachmentField queryKey={['certification-files', certification.id]} supplierId={certification.supplierId}
+                  target={`certification:${certification.id}`} fetchFiles={() => fetchCertificationFiles(certification.id)}
+                  onChanged={() => void queryClient.invalidateQueries({ queryKey: ['certification-file-counts'] })} />
+              ) : (
+                <Typography.Text type="secondary">저장한 뒤 다시 열면 첨부할 수 있습니다.</Typography.Text>
+              )}
             </Form.Item>
           </Col>
         </Row>

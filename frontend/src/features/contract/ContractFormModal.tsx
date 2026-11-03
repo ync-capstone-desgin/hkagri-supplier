@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Switch } from 'antd'
+import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Switch, Typography } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import { toProblem } from '../../api/client'
 import { createContract, renewContract, updateContract } from '../../api/contracts'
+import { fetchContractFiles } from '../../api/files'
 import type { ContractItem, ContractRequest } from '../../api/types'
+import { AttachmentField } from '../../components/AttachmentField'
 import { fromDayjs, toDayjs } from '../../components/format'
 import { useOwnerOptions, useSupplierOptions } from '../../hooks/useOptions'
 import { useSaveShortcut } from '../../hooks/useSaveShortcut'
@@ -162,6 +164,17 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
           <Col span={24}>
             <Form.Item name="memo" label="비고">
               <Input.TextArea rows={2} maxLength={1000} showCount />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item label="첨부파일">
+              {mode === 'edit' && contract ? (
+                <AttachmentField queryKey={['contract-files', contract.id]} supplierId={contract.supplierId}
+                  target={`contract:${contract.id}`} fetchFiles={() => fetchContractFiles(contract.id)}
+                  onChanged={() => void queryClient.invalidateQueries({ queryKey: ['contract-file-counts'] })} />
+              ) : (
+                <Typography.Text type="secondary">저장한 뒤 다시 열면 첨부할 수 있습니다.</Typography.Text>
+              )}
             </Form.Item>
           </Col>
         </Row>
