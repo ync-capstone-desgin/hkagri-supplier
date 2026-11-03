@@ -32,7 +32,20 @@ export function isUnauthorized(error: unknown): boolean {
  * 파일명은 서버의 Content-Disposition(filename*=UTF-8'') 값을 따른다.
  */
 export async function downloadFile(url: string, params?: object): Promise<void> {
-  const res = await api.get(url, { params, responseType: 'blob' })
+  const res = await api.get(url, { params, responseType: 'blob' }).catch(async (error: unknown) => {
+    // 파일 요청의 오류 응답도 Blob이므로 기존 오류 안내에서 읽을 수 있게 복원한다.
+    if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
+      try {
+        const problem: unknown = JSON.parse(await error.response.data.text())
+        if (problem && typeof problem === 'object' && 'detail' in problem && typeof problem.detail === 'string') {
+          error.response.data = problem
+        }
+      } catch {
+        // JSON이 아닌 응답은 원래 오류와 HTTP 상태를 그대로 전달한다.
+      }
+    }
+    throw error
+  })
   const disposition: string = res.headers['content-disposition'] ?? ''
   const match = disposition.match(/filename\*=UTF-8''([^;]+)/)
   const fileName = match ? decodeURIComponent(match[1]) : 'download.xlsx'
