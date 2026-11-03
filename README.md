@@ -108,6 +108,7 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 협업 규칙과 따라 하기 (이슈·브랜치·커밋·PR·리뷰) |
 | [docs/user-guide.md](docs/user-guide.md) | 메뉴별 사용 설명서 (스크린샷 포함) |
 | [docs/forms-api.md](docs/forms-api.md) | 양식 자료실 API·첨부·권한·DB 적용 순서 |
+| [docs/supplier-files.md](docs/supplier-files.md) | 업체 자료 탭 사용법, 파일 연결 API·DB, 검증 방법 |
 | [docs/deploy-aws.md](docs/deploy-aws.md) | AWS EC2 배포 가이드 |
 | [capstone-docs](https://github.com/ync-capstone-desgin/capstone-docs) | 기획서, 설계, 미팅 자료 |
 
@@ -117,7 +118,7 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 cd backend && ./gradlew test
 ```
 
-Testcontainers로 실제 PostgreSQL을 띄워 실행하므로 Docker가 켜져 있어야 한다. (총 57건)
+Testcontainers로 실제 PostgreSQL을 띄워 실행하므로 Docker가 켜져 있어야 한다.
 PR을 올리면 GitHub Actions가 같은 테스트와 화면 빌드를 자동으로 실행한다.
 
 | 테스트 | 확인 내용 |
@@ -128,5 +129,6 @@ PR을 올리면 GitHub Actions가 같은 테스트와 화면 빌드를 자동으
 | ExpiryApiTest | VT-008 만료 목록 필터, VT-009 대시보드 = 목록 건수, 만료 캘린더 기간 조회·기간 제한, 갱신 현황판 대상 |
 | NotificationScanTest | VT-006 중복 알림 방지, 가장 작은 기준일 적용, 제외 대상, 발송 실패 재시도, 갱신 시 자동 완료 |
 | FileApiTest | 첨부파일 같은 이름·내용으로 내려받기, HWP 허용, 형식·서명·크기(20MB) 거절, 조회자 권한, 삭제 후 숨김과 삭제 이력 |
+| SupplierFileApiTest | 업체 자료 격리, 계약·인증 연결과 갱신 이력, 원본 다운로드, 삭제 이력, 잘못된 연결·조회자 쓰기 차단 |
 | FileServiceTest | 업로드 실패·롤백 시 남는 파일 정리, 동시 삭제 시 한 명만 성공하고 처음 삭제 기록 유지 |
 | LocalDiskFileStorageTest | 디스크 저장·읽기·지우기, 저장 폴더 밖 경로 거절, 덮어쓰기 방지, 쓰다 실패한 반쪽 파일 정리 |

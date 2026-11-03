@@ -22,6 +22,20 @@ public final class FileDtos {
         }
     }
 
+    /** 업체 자료 목록의 한 행. 일반 자료는 계약·인증 정보가 null이다. */
+    public record SupplierFile(FileInfo file, Long contractId, String contractName,
+                               Long certificationId, String certificationName) {
+        /** 파일 정보와 현재 연결된 계약·인증 이름을 함께 보여준다. */
+        static SupplierFile of(StoredFile f) {
+            var c = f.getContract();
+            var cert = f.getCertification();
+            return new SupplierFile(FileInfo.of(f), c == null ? null : c.getId(),
+                    c == null ? null : c.getContractNumber() + " · " + c.getTitle(),
+                    cert == null ? null : cert.getId(),
+                    cert == null ? null : cert.getCertType().getName() + " · " + cert.getCertificateNumber());
+        }
+    }
+
     /** 삭제 이력의 한 행. 언제 누가 올렸고 언제 누가 지웠는지 보여준다. */
     public record DeletedFile(Long id, String originalName, long size, LocalDateTime createdAt, String createdBy,
                               LocalDateTime deletedAt, String deletedBy) {

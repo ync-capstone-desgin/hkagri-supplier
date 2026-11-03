@@ -76,3 +76,5 @@ erDiagram
 검증 명령: `cd backend && ./gradlew test --tests '*FormApiTest'`.
 
 검증 결과: `FormApiTest` 10개 + 실제 서버 `FormHttpTest` 2개를 포함해 백엔드 전체 80개 통과. HTTP 용량 제한 테스트는 1MB로 줄인 요청 한도를 사용한다.
+
+#29·#30 머지 후 develop `961822c` 통합 검증: V1~V8 적용 및 전체 92개 테스트 통과, 프론트엔드 빌드 통과.
