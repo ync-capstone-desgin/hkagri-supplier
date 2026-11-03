@@ -1,8 +1,10 @@
 import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { useLocation } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchMe, login as apiLogin, logout as apiLogout } from '../api/auth'
 import { api, isUnauthorized } from '../api/client'
 import type { Me } from '../api/types'
+import { toProblem } from '../api/client'
 
 /** 로그인 상태와 로그인·로그아웃 동작을 담는 컨텍스트 값 */
 interface AuthValue {
@@ -24,6 +26,7 @@ const AuthContext = createContext<AuthValue | null>(null)
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
+  const { pathname } = useLocation()
   const { data, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
@@ -33,14 +36,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
     },
-    staleTime: Infinity,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => query.state.data ? 30_000 : false,
   })
+
+  // 다른 관리자가 바꾼 역할은 화면 이동 시에도 갱신한다. 실제 접근 허용은 서버가 매 요청 결정한다.
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: ['me'] })
+  }, [pathname, queryClient])
+
+  // 관리자 권한을 잃으면 이전에 조회한 사용자 개인정보 캐시도 제거한다.
+  useEffect(() => {
+    if (data?.role !== 'ADMIN') queryClient.removeQueries({ queryKey: ['admin-users'] })
+  }, [data?.role, queryClient])
 
   // 사용 중 세션이 만료되어 API가 401을 돌려주면 로그인 상태를 비워 로그인 화면으로 보낸다.
   useEffect(() => {
     const id = api.interceptors.response.use(undefined, (error) => {
       if (isUnauthorized(error) && !String(error.config?.url).startsWith('/auth/')) {
         queryClient.setQueryData(['me'], null)
+      }
+      if (toProblem(error).status === 403 && !String(error.config?.url).startsWith('/auth/')) {
+        void queryClient.invalidateQueries({ queryKey: ['me'] })
       }
       return Promise.reject(error)
     })

@@ -47,6 +47,12 @@ public class AppUser extends BaseEntity {
     /** 만료 알림메일 수신 여부 (FR-028). 꺼도 화면 알림(IN_APP)은 그대로 온다. */
     private boolean notifyEmail;
 
+    /** 관리자 서비스가 검증한 역할·계정 상태만 변경한다. 업무 담당 연결은 유지한다. */
+    void changeAccess(Role role, UserStatus status) {
+        this.role = role;
+        this.status = status;
+    }
+
     /** 공개 가입 신청은 승인 대기·최소 권한으로 만들며 역할을 입력받지 않는다. */
     public static AppUser pending(String username, String password, String name, String email, String reason) {
         AppUser user = new AppUser(username, password, name, email, Role.VIEWER);

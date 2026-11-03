@@ -60,7 +60,7 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
   const [form] = Form.useForm<FormValues>()
   const [saving, setSaving] = useState(false)
   const supplierOptions = useSupplierOptions(open)
-  const ownerOptions = useOwnerOptions(open)
+  const ownerOptions = useOwnerOptions(open, certification)
   const certTypeOptions = useCertTypeOptions()
   useSaveShortcut(open, () => form.submit())
 
