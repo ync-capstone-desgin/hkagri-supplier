@@ -39,6 +39,11 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
     await queryClient.invalidateQueries({ queryKey: ['supplier-files', supplierId] })
   }
 
+  /** 수동 새로고침에서는 연결 대상 조회 실패도 재시도한다. 조회자는 자료만 조회한다. */
+  const reload = async () => {
+    await Promise.all([files.refetch(), ...(canEdit ? [contracts.refetch(), certs.refetch()] : [])])
+  }
+
   /** 파일명과 삭제 범위를 확인받은 뒤 삭제한다. 실패하면 확인 창을 유지한다. */
   const confirmDelete = (row: SupplierFile) => {
     modal.confirm({ title: '자료를 삭제하시겠습니까?', content: `${row.file.originalName} — 연결된 계약·인증에서도 내려받을 수 없게 됩니다.`,
@@ -90,7 +95,8 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
       </>}
       <Flex justify="space-between" align="center">
         <Typography.Text>자료 {files.data?.totalElements ?? 0}개</Typography.Text>
-        <Button icon={<ReloadOutlined />} onClick={() => void files.refetch()} loading={files.isFetching}>새로고침</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => void reload()}
+          loading={files.isFetching || (canEdit && (contracts.isFetching || certs.isFetching))}>새로고침</Button>
       </Flex>
       {files.isError && <Alert type="error" showIcon title={toProblem(files.error).detail} />}
       <Table<SupplierFile> rowKey={(row) => row.file.id} dataSource={files.data?.content} loading={files.isLoading} size="small"
