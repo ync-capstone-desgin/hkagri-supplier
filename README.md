@@ -107,6 +107,7 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 |---|---|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 협업 규칙과 따라 하기 (이슈·브랜치·커밋·PR·리뷰) |
 | [docs/user-guide.md](docs/user-guide.md) | 메뉴별 사용 설명서 (스크린샷 포함) |
+| [docs/forms-api.md](docs/forms-api.md) | 양식 자료실 API·첨부·권한·DB 적용 순서 |
 | [docs/deploy-aws.md](docs/deploy-aws.md) | AWS EC2 배포 가이드 |
 | [capstone-docs](https://github.com/ync-capstone-desgin/capstone-docs) | 기획서, 설계, 미팅 자료 |
 
