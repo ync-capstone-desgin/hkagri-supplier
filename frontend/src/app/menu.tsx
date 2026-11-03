@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import {
-  AlertOutlined, AuditOutlined, BellOutlined, CalendarOutlined, DashboardOutlined, FileTextOutlined, ProjectOutlined, SettingOutlined, ShopOutlined,
+  AlertOutlined, AuditOutlined, BellOutlined, CalendarOutlined, DashboardOutlined, FileTextOutlined, ProjectOutlined, SettingOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons'
 
 /** 좌측 메뉴 항목 하나 */
@@ -11,6 +11,8 @@ export interface MenuEntry {
   icon: ReactNode
   /** 아직 개발 전인 메뉴. 전체 구성을 보여주기 위해 비활성 상태로 표시한다. */
   planned?: boolean
+  /** 관리자에게만 표시하는 메뉴. 서버에서도 별도로 권한을 검사한다. */
+  adminOnly?: boolean
 }
 
 /**
@@ -27,6 +29,7 @@ export const MENU: MenuEntry[] = [
   { path: '/renewal-board', label: '갱신 현황판', icon: <ProjectOutlined /> },
   { path: '/notifications', label: '알림함', icon: <BellOutlined /> },
   { path: '/settings', label: '알림 설정', icon: <SettingOutlined /> },
+  { path: '/users', label: '사용자 관리', icon: <TeamOutlined />, adminOnly: true },
 ]
 
 /** 경로에 맞는 메뉴 항목을 찾는다. 상세 경로(/suppliers/3)는 상위 메뉴(/suppliers)로 본다. */

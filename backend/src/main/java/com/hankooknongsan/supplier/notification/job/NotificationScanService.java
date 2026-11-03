@@ -8,6 +8,7 @@ import java.util.Set;
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
 import com.hankooknongsan.supplier.auth.Role;
+import com.hankooknongsan.supplier.auth.UserStatus;
 import com.hankooknongsan.supplier.certification.CertificationRepository;
 import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.RenewalStatus;
@@ -31,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>거래중이 아닌 업체, 이미 갱신완료·갱신안함 처리된 건은 뺀다.</li>
  *   <li>남은 일수에 해당하는 <b>가장 작은 기준일 하나</b>를 고른다 (D-5면 7일 기준, D-20이면 30일 기준).
  *       서버가 며칠 멈췄다 돌아와도 90·30·7일 알림이 한꺼번에 쏟아지지 않게 하기 위함이다.</li>
- *   <li>담당자(없으면 관리자 전원)에게 알림을 만들고, 채널별 발송 대기 건을 같은 트랜잭션으로 저장한다.</li>
+ *   <li>활성 담당자(없거나 비활성이면 활성 관리자 전원)에게 알림과 채널별 발송 대기 건을 저장한다.</li>
  *   <li>같은 대상·기준·만료일·수신자의 알림이 이미 있으면 건너뛴다 (VT-006).</li>
  * </ol>
  * "만료일 = 오늘 + N"이 아니라 "만료일 ≤ 오늘 + N"으로 찾으므로 점검이 하루 빠져도 다음 실행에서 잡힌다.
@@ -73,7 +74,7 @@ public class NotificationScanService {
     @Transactional
     public ScanResult scan(LocalDate today) {
         int targets = 0, created = 0, skipped = 0, excluded = 0;
-        List<AppUser> admins = users.findByRole(Role.ADMIN);
+        List<AppUser> admins = users.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE);
 
         for (NotificationRule rule : rules.findByEnabledTrue()) {
             List<Integer> days = rule.days();
@@ -89,7 +90,8 @@ public class NotificationScanService {
                 }
                 int daysLeft = (int) ChronoUnit.DAYS.between(today, t.expiryDate());
                 int ruleDays = days.stream().filter(d -> d >= daysLeft).findFirst().orElseThrow();
-                List<AppUser> recipients = t.owner() != null ? List.of(t.owner()) : admins;
+                List<AppUser> recipients = t.owner() != null && t.owner().getStatus() == UserStatus.ACTIVE
+                        ? List.of(t.owner()) : admins;
                 for (AppUser recipient : recipients) {
                     if (notifications.existsByTargetTypeAndTargetIdAndRuleDaysAndExpiryDateAndRecipientId(
                             t.type(), t.id(), ruleDays, t.expiryDate(), recipient.getId())) {

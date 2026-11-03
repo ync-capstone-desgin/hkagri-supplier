@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { App, Col, Form, Input, Modal, Row, Select } from 'antd'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchUsers } from '../../api/auth'
+import { useQueryClient } from '@tanstack/react-query'
 import { toProblem } from '../../api/client'
 import { createSupplier, updateSupplier } from '../../api/suppliers'
 import type { SupplierDetail, SupplierRequest } from '../../api/types'
 import { useCodes } from '../../hooks/useCodes'
+import { useOwnerOptions } from '../../hooks/useOptions'
 import { useSaveShortcut } from '../../hooks/useSaveShortcut'
 
 /**
@@ -34,7 +34,7 @@ export function SupplierFormModal({ open, supplier, onClose }: {
   const { options } = useCodes()
   const [form] = Form.useForm<SupplierRequest>()
   const [saving, setSaving] = useState(false)
-  const { data: users } = useQuery({ queryKey: ['users'], queryFn: fetchUsers, enabled: open })
+  const ownerOptions = useOwnerOptions(open, supplier)
   const isEdit = !!supplier
 
   // 모달을 열 때마다 수정 대상 값(또는 등록 기본값)으로 입력칸을 채운다.
@@ -120,7 +120,7 @@ export function SupplierFormModal({ open, supplier, onClose }: {
               <Select
                 allowClear
                 placeholder="선택"
-                options={users?.filter((u) => u.role !== 'VIEWER').map((u) => ({ value: u.id, label: u.name }))}
+                options={ownerOptions}
               />
             </Form.Item>
           </Col>

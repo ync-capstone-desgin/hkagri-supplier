@@ -23,6 +23,7 @@ import { SupplierDetailPage } from './features/supplier/SupplierDetailPage'
 import { SupplierListPage } from './features/supplier/SupplierListPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
+import { UserManagementPage } from './features/users/UserManagementPage'
 import './index.css'
 
 dayjs.locale('ko')
@@ -71,6 +72,7 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/renewal-board" element={<RenewalBoardPage />} />
                   <Route path="/notifications" element={<NotificationInboxPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/users" element={<UserManagementPage />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>
               </Routes>

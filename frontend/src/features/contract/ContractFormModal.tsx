@@ -63,7 +63,7 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
   const [form] = Form.useForm<FormValues>()
   const [saving, setSaving] = useState(false)
   const supplierOptions = useSupplierOptions(open)
-  const ownerOptions = useOwnerOptions(open)
+  const ownerOptions = useOwnerOptions(open, contract)
   useSaveShortcut(open, () => form.submit())
 
   // 모달을 열 때마다 모드에 맞는 초기값으로 채운다.
