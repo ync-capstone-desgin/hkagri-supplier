@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,6 +16,16 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
 
     /** 삭제하지 않은 파일만 ID로 찾는다. */
     Optional<StoredFile> findByIdAndDeletedAtIsNull(Long id);
+
+    /** 업체 일반 자료와 계약·인증 첨부를 함께 조회한다. 갱신된 건의 파일도 포함하고 삭제된 파일은 제외한다. */
+    @EntityGraph(attributePaths = {"contract", "certification", "certification.certType"})
+    @Query("""
+            select f from StoredFile f
+            left join f.contract c left join f.certification cert
+            where f.deletedAt is null
+              and (f.supplier.id = :supplierId or c.supplier.id = :supplierId or cert.supplier.id = :supplierId)
+            order by f.createdAt desc, f.id desc""")
+    Page<StoredFile> findForSupplier(@Param("supplierId") Long supplierId, Pageable pageable);
 
     /**
      * 아직 삭제하지 않은 파일만 삭제 상태로 바꾸고, 바뀐 행 수(0 또는 1)를 돌려준다.

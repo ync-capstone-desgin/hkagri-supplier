@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Tabs, Tag, Typography, type MenuProps } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { fetchAdminUsers } from '../api/userAdmin'
-import { LogoutOutlined, MenuOutlined, UserOutlined } from '@ant-design/icons'
+import { IdcardOutlined, LogoutOutlined, MenuOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, useNavigate } from 'react-router'
 import { useAuth } from './AuthContext'
 import { ClockIndicator } from './ClockIndicator'
@@ -77,7 +77,11 @@ export function AppLayout() {
         <Dropdown
           trigger={mobile ? ['click'] : ['hover', 'click']}
           menu={{
-            items: [{ key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout }],
+            items: [
+              { key: 'mypage', icon: <IdcardOutlined />, label: '마이페이지', onClick: () => navigate('/mypage') },
+              { type: 'divider' },
+              { key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout },
+            ],
           }}
         >
           <button type="button" className="app-user-menu" aria-label={`사용자 메뉴: ${me?.name} (${label('role', me?.role)})`}>

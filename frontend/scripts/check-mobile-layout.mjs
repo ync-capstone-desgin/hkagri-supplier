@@ -40,6 +40,7 @@ try {
     const path = new URL(route.request().url()).pathname.replace('/api/', '')
     let json = list
     if (path === 'auth/me') json = { id: 1, username: 'demo', name: '모바일검증담당자', role }
+    else if (path === 'me/profile') json = { username: 'demo', name: '모바일검증담당자', role, email: 'demo@example.com', notifyEmail: true, createdAt: '2026-11-03T09:00:00' }
     else if (path === 'auth/logout') return route.fulfill({ status: 204 })
     else if (path === 'codes') json = { role: [{ code: 'ADMIN', label: '관리자' }, { code: 'VIEWER', label: '조회자' }] }
     else if (path === 'users' || path === 'cert-types') json = []
@@ -137,6 +138,11 @@ try {
   await page.keyboard.press('Escape')
   await drawer.waitFor({ state: 'hidden' })
   await page.getByRole('button', { name: /사용자 메뉴:/ }).click()
+  await page.getByRole('menuitem', { name: /마이페이지/ }).tap()
+  await page.waitForURL('**/mypage')
+  await page.getByText('내 정보', { exact: true }).waitFor()
+  await checkWidth()
+  await page.getByRole('button', { name: /사용자 메뉴:/ }).tap()
   await page.getByRole('menuitem', { name: /로그아웃/ }).click()
   await page.waitForURL('**/login')
   // 모바일 에뮬레이션과 분리한 PC 입력 환경에서 기존 호버 메뉴와 작업 탭을 확인한다.
