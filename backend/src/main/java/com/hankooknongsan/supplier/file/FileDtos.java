@@ -16,7 +16,7 @@ public final class FileDtos {
                            LocalDateTime createdAt, String createdBy) {
 
         /** 엔티티를 응답 형식으로 바꾼다. */
-        static FileInfo of(StoredFile f) {
+        public static FileInfo of(StoredFile f) {
             return new FileInfo(f.getId(), f.getOriginalName(), f.getContentType(), f.getSize(),
                     f.getCreatedAt(), f.getCreatedBy());
         }
