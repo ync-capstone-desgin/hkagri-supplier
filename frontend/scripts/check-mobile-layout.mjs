@@ -22,7 +22,10 @@ const list = { content: [], page: 0, size: 20, totalElements: 0 }
 async function checkWidth() {
   const widths = await page.evaluate(() => [document.documentElement, document.querySelector('.app-page')]
     .map((el) => ({ client: el.clientWidth, scroll: el.scrollWidth })))
-  for (const { client, scroll } of widths) assert(scroll <= client + 1, `가로 넘침: ${scroll} > ${client}`)
+  for (const { client, scroll } of widths) {
+    assert(client <= page.viewportSize().width, '레이아웃이 기기 화면 폭보다 큽니다.')
+    assert(scroll <= client + 1, `가로 넘침: ${scroll} > ${client}`)
+  }
 }
 
 /** 애니메이션이 끝난 화면을 정해진 파일에 저장한다. */
@@ -32,7 +35,8 @@ async function capture(name) {
 }
 
 try {
-  await page.route(`${base}/api/**`, async (route) => {
+  /** 모바일과 PC 검증에 같은 가상 API 응답을 제공한다. */
+  const mockApi = async (route) => {
     const path = new URL(route.request().url()).pathname.replace('/api/', '')
     let json = list
     if (path === 'auth/me') json = { id: 1, username: 'demo', name: '모바일검증담당자', role }
@@ -42,14 +46,16 @@ try {
     else if (path === 'admin/users') json = { users: [], pendingCount: 2 }
     else if (path === 'system/clock') json = { today: '2026-11-03', shifted: true, demoClock: true }
     else if (path === 'notifications/unread-count') json = { count: 1 }
-    else if (path === 'notifications/stream') return route.fulfill({ contentType: 'text/event-stream', body: ': test\n\n' })
+    // 이 검사는 화면 이동이 대상이다. 204로 SSE 재접속을 중지해 종료 중 요청이 남지 않게 한다.
+    else if (path === 'notifications/stream') return route.fulfill({ status: 204 })
     else if (path === 'notifications') json = { ...list, content: [{ id: 1, daysLeft: 3, title: '[계약] 가상 업체의 공급 계약 만료 안내' }] }
     else if (path === 'dashboard/summary') json = { today: '2026-11-03', supplierTotal: 10, supplierActive: 9,
       activeContracts: 12, activeCertifications: 8, mine: 3, expired: 2, within7: 1, within30: 3, within90: 5,
       unknown: 1, inProgress: 2, notStarted: 5, urgent: [{ targetType: 'CONTRACT', targetId: 1, supplierId: 1,
         supplierName: '가상 농산', name: '가상 공급 계약', daysLeft: 3, expiryStatus: 'IMMINENT', expiryDate: '2026-11-06', ownerName: '가상 담당자', renewalStatus: 'NONE' }] }
     await route.fulfill({ json })
-  })
+  }
+  await page.route(`${base}/api/**`, mockApi)
   await page.goto(`${base}/dashboard`)
   await page.getByText('거래중 9곳', { exact: true }).waitFor()
   assert.equal(await page.locator('.ant-layout-sider').count(), 0)
@@ -82,8 +88,18 @@ try {
   await page.keyboard.press('Escape')
   await drawer.waitFor({ state: 'hidden' })
   assert(await menuButton.evaluate((el) => el === document.activeElement))
-  await menuButton.click()
-  await drawer.getByRole('menuitem', { name: /협력업체/ }).click()
+  // 낮은 휴대폰 화면에서도 아래쪽 메뉴까지 스크롤하고 바깥 영역을 터치해 닫을 수 있다.
+  await page.setViewportSize({ width: 360, height: 480 })
+  await menuButton.tap()
+  const lastMenu = drawer.getByRole('menuitem', { name: /사용자 관리/ })
+  await lastMenu.scrollIntoViewIfNeeded()
+  const lastMenuBox = await lastMenu.boundingBox()
+  assert(lastMenuBox.y >= 0 && lastMenuBox.y + lastMenuBox.height <= 480)
+  await page.touchscreen.tap(330, 200)
+  await drawer.waitFor({ state: 'hidden' })
+  await page.setViewportSize({ width: 360, height: 800 })
+  await menuButton.tap()
+  await drawer.getByRole('menuitem', { name: /협력업체/ }).tap()
   await page.waitForURL('**/suppliers')
   await drawer.waitFor({ state: 'hidden' })
   await checkWidth()
@@ -123,6 +139,22 @@ try {
   await page.getByRole('button', { name: /사용자 메뉴:/ }).click()
   await page.getByRole('menuitem', { name: /로그아웃/ }).click()
   await page.waitForURL('**/login')
+  // 모바일 에뮬레이션과 분리한 PC 입력 환경에서 기존 호버 메뉴와 작업 탭을 확인한다.
+  role = 'ADMIN'
+  const desktop = await browser.newPage({ viewport: { width: 1280, height: 900 }, isMobile: false, hasTouch: false })
+  desktop.on('pageerror', (error) => errors.push(error.message))
+  await desktop.route(`${base}/api/**`, mockApi)
+  await desktop.goto(`${base}/dashboard`)
+  await desktop.getByText('거래중 9곳', { exact: true }).waitFor()
+  assert.equal(await desktop.getByRole('button', { name: '메뉴 열기', exact: true }).count(), 0)
+  await desktop.getByRole('button', { name: /사용자 메뉴:/ }).hover()
+  await desktop.getByRole('menuitem', { name: /로그아웃/ }).waitFor()
+  await desktop.locator('.ant-layout-sider').getByRole('menuitem', { name: /협력업체/ }).click()
+  await desktop.waitForURL('**/suppliers')
+  await desktop.getByRole('tab', { name: '협력업체', exact: true }).and(desktop.locator('[aria-selected="true"]')).waitFor()
+  await desktop.getByRole('tab', { name: '대시보드', exact: true }).click()
+  await desktop.waitForURL('**/dashboard')
+  await desktop.close()
   assert.deepEqual(errors, [])
   console.log(`PASS (${engine}): 360px 배치·메뉴 이동/닫기/뒤로 가기·역할별 메뉴·알림·로그아웃·1280px PC 배치`)
 } finally {
