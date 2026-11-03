@@ -8,6 +8,7 @@ import com.hankooknongsan.supplier.auth.MyPageDtos.ProfileRequest;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,9 @@ public class MyPageService {
     /**
      * 이름·이메일·알림메일 수신 여부를 수정한다. 이메일을 바꾸면 다음 알림부터 새 주소로 간다.
      * 이메일은 가입(SignupService)과 같이 소문자로 통일해 저장하고, 본인을 제외한 중복을 막는다.
-     * 저장 직후 flush해 동시 저장 충돌(DataIntegrityViolationException)도 같은 자리에서 칸 오류로 바꾼다.
+     * 저장 직후 flush해 동시 저장 충돌도 같은 자리에서 칸 오류로 바꾼다. 트랜잭션이 이미 실패했으므로
+     * 재조회하지 않고, 제약 이름으로만 이메일 충돌 여부를 판단한다(PostgreSQL은 실패한 트랜잭션에서
+     * 다시 조회할 수 없다. 25P02: current transaction is aborted).
      */
     @Transactional
     public MyProfile updateProfile(String username, ProfileRequest req) {
@@ -43,10 +46,20 @@ public class MyPageService {
         try {
             users.saveAndFlush(user);
         } catch (DataIntegrityViolationException e) {
-            checkEmailDuplicate(user.getId(), email);
-            throw e;
+            throw translateEmailConflict(e);
         }
         return MyProfile.of(user);
+    }
+
+    /** 이메일 유니크 제약 위반이면 칸 오류로 바꾸고, 그 외 무결성 오류는 그대로 전달한다. */
+    private RuntimeException translateEmailConflict(DataIntegrityViolationException e) {
+        for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException cve
+                    && "uq_app_user_email_lower".equals(cve.getConstraintName())) {
+                return BusinessException.invalid("email", "이미 사용 중인 메일입니다.");
+            }
+        }
+        return e;
     }
 
     /** 현재 비밀번호가 맞을 때만 새 비밀번호로 바꾼다. 틀리면 400(해당 칸 오류)을 던진다. */

@@ -6,12 +6,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import com.hankooknongsan.supplier.TestcontainersConfig;
+import com.hankooknongsan.supplier.common.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -31,6 +36,7 @@ class MyPageApiTest {
     @Autowired MockMvc mvc;
     @Autowired AppUserRepository users;
     @Autowired PasswordEncoder encoder;
+    @Autowired MyPageService mypage;
 
     /** 비밀번호 "원래비번1234"로 로그인 계정을 만든다. */
     void user(String username, Role role) {
@@ -115,5 +121,32 @@ class MyPageApiTest {
                         {"name":"중복테스트","email":"MYPAGE-OTHER@TEST.LOCAL","notifyEmail":true}"""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[*].field").value(hasItem("email")));
+    }
+
+    /** 두 사용자가 같은 새 이메일로 동시에 바꾸면 한 명만 성공하고, 다른 한 명은 400과 email 칸 오류를 받는다. (리뷰 재현 사례) */
+    @Test
+    void 같은_이메일로_동시에_바꾸면_한_명만_성공한다() throws Exception {
+        user("mypage-race1", Role.MANAGER);
+        user("mypage-race2", Role.MANAGER);
+        var start = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> changeEmailAfter(start, "mypage-race1"));
+            var second = pool.submit(() -> changeEmailAfter(start, "mypage-race2"));
+            start.countDown();
+            assertThat(first.get(15, TimeUnit.SECONDS) + second.get(15, TimeUnit.SECONDS)).isEqualTo(1);
+        }
+    }
+
+    /** 같은 이메일로 수정을 시도하고, 성공하면 1, 칸 오류(email)로 실패하면 0을 돌려준다. */
+    private int changeEmailAfter(CountDownLatch start, String username) throws InterruptedException {
+        start.await();
+        try {
+            mypage.updateProfile(username, new MyPageDtos.ProfileRequest("동시변경", "race-same@test.local", true));
+            return 1;
+        } catch (BusinessException e) {
+            assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(e.getField()).isEqualTo("email");
+            return 0;
+        }
     }
 }
