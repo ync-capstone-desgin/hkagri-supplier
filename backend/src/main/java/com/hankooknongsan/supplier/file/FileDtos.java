@@ -30,9 +30,9 @@ public final class FileDtos {
             var c = f.getContract();
             var cert = f.getCertification();
             return new SupplierFile(FileInfo.of(f), c == null ? null : c.getId(),
-                    c == null ? null : c.getContractNumber() + " · " + c.getTitle(),
+                    c == null ? null : (c.getContractNumber().isEmpty() ? "" : c.getContractNumber() + " · ") + c.getTitle(),
                     cert == null ? null : cert.getId(),
-                    cert == null ? null : cert.getCertType().getName() + " · " + cert.getCertificateNumber());
+                    cert == null ? null : cert.getDisplayName() + " · " + cert.getCertificateNumber());
         }
     }
 

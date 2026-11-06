@@ -108,6 +108,8 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 협업 규칙과 따라 하기 (이슈·브랜치·커밋·PR·리뷰) |
 | [docs/user-guide.md](docs/user-guide.md) | 메뉴별 사용 설명서 (스크린샷 포함) |
 | [docs/forms-api.md](docs/forms-api.md) | 양식 자료실 API·첨부·권한·DB 적용 순서 |
+| [docs/cert-types.md](docs/cert-types.md) | 인증 종류 관리·권한·비활성 선택 규칙·DB |
+| [docs/cert-scope.md](docs/cert-scope.md) | 인증 적용 대상 입력·검색·갱신·만료 안내·API·DB |
 | [docs/supplier-files.md](docs/supplier-files.md) | 업체 자료 탭 사용법, 파일 연결 API·DB, 검증 방법 |
 | [docs/deploy-aws.md](docs/deploy-aws.md) | AWS EC2 배포 가이드 |
 | [capstone-docs](https://github.com/ync-capstone-desgin/capstone-docs) | 기획서, 설계, 미팅 자료 |
@@ -125,6 +127,7 @@ PR을 올리면 GitHub Actions가 같은 테스트와 화면 빌드를 자동으
 |---|---|
 | SupplierApiTest | VT-001 정상 등록, VT-002 필수값 누락, 역할별 권한 |
 | ContractApiTest | VT-003 종료일 < 시작일, VT-007 업체별 조회, 갱신 이력, 중복 경고, 갱신완료 직접 지정·이력 건 상태 변경 차단 |
+| CertificationScopeApiTest | 적용 대상 저장·길이·빈 값, 검색 필터·페이지, 갱신 이력, 조회자 권한, 만료 화면·최대 길이 알림·엑셀 |
 | ExpiryPolicyTest | VT-004 오늘 만료, VT-005 7·30·90일 경계 |
 | ExpiryApiTest | VT-008 만료 목록 필터, VT-009 대시보드 = 목록 건수, 만료 캘린더 기간 조회·기간 제한, 갱신 현황판 대상 |
 | NotificationScanTest | VT-006 중복 알림 방지, 가장 작은 기준일 적용, 제외 대상, 발송 실패 재시도, 갱신 시 자동 완료 |

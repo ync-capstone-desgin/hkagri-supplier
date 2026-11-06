@@ -179,7 +179,7 @@ export interface ContractItem {
 /** 계약 등록·수정·갱신 요청 */
 export interface ContractRequest {
   supplierId: number
-  contractNumber: string
+  contractNumber?: string
   title: string
   startDate: string
   endDate?: string | null
@@ -202,6 +202,7 @@ export interface ContractSearch {
 export interface CertType {
   code: string
   name: string
+  active: boolean
 }
 
 /** 인증 (목록·상세 공통) */
@@ -212,6 +213,7 @@ export interface CertificationItem {
   certTypeCode: string
   certTypeName: string
   certificateNumber: string
+  scope: string | null
   issuedDate: string
   /** null이면 만료일 없음(확인 필요) */
   expiryDate: string | null
@@ -236,6 +238,7 @@ export interface CertificationRequest {
   supplierId: number
   certTypeCode: string
   certificateNumber: string
+  scope?: string | null
   issuedDate: string
   expiryDate?: string | null
   ownerId?: number | null
