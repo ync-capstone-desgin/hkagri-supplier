@@ -20,7 +20,7 @@ interface FormValues extends Omit<CertificationRequest, 'issuedDate' | 'expiryDa
 
 /**
  * 모드에 맞는 입력 초기값을 만든다.
- * 갱신은 업체·인증 종류를 그대로 두고, 인증번호·날짜·파일 위치는 새로 입력하도록 비운다(발급일은 오늘로 제안).
+ * 갱신은 업체·인증 종류·적용 대상을 가져오고, 인증번호·날짜·파일 위치는 새로 입력하도록 비운다(발급일은 오늘로 제안).
  */
 function initialValues(mode: CertificationFormMode, cert?: CertificationItem, supplierId?: number): Partial<FormValues> {
   if (!cert) {
@@ -30,6 +30,7 @@ function initialValues(mode: CertificationFormMode, cert?: CertificationItem, su
     supplierId: cert.supplierId,
     certTypeCode: cert.certTypeCode,
     certificateNumber: cert.certificateNumber,
+    scope: cert.scope ?? undefined,
     issuedDate: toDayjs(cert.issuedDate),
     expiryDate: toDayjs(cert.expiryDate),
     ownerId: cert.ownerId,
@@ -61,7 +62,9 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
   const [saving, setSaving] = useState(false)
   const supplierOptions = useSupplierOptions(open)
   const ownerOptions = useOwnerOptions(open, certification)
-  const certTypeOptions = useCertTypeOptions()
+  const certTypeOptions = useCertTypeOptions({
+    enabled: open, usage: 'input', currentCode: certification?.certTypeCode, keepInactive: mode === 'edit',
+  })
   useSaveShortcut(open, () => form.submit())
 
   // 모달을 열 때마다 모드에 맞는 초기값으로 채운다.
@@ -97,7 +100,8 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
   }
 
   const title = mode === 'create' ? '인증 등록'
-    : mode === 'edit' ? `인증 수정 · ${certification?.certificateNumber}` : `인증 갱신 · ${certification?.certTypeName}`
+    : mode === 'edit' ? `인증 수정 · ${certification?.certificateNumber}`
+      : `인증 갱신 · ${certification?.certTypeName}${certification?.scope ? ` · ${certification.scope}` : ''}`
 
   return (
     <Modal open={open} title={title} okText="저장" cancelText="취소" width={640} confirmLoading={saving}
@@ -115,13 +119,23 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="certTypeCode" label="인증 종류" rules={[{ required: true, message: '인증 종류를 선택해 주세요.' }]}>
-              <Select options={certTypeOptions} placeholder="선택" disabled={mode === 'renew'} />
+            <Form.Item name="certTypeCode" label="인증 종류"
+              extra={mode === 'renew' ? '기존 종류가 비활성이면 사용 중인 종류를 선택해 주세요.' : undefined}
+              rules={[{ required: true, message: '인증 종류를 선택해 주세요.' }, {
+                validator: (_, value: string) => certTypeOptions.some((option) => option.value === value && option.disabled)
+                  ? Promise.reject(new Error('비활성 인증 종류입니다. 사용 중인 종류를 선택해 주세요.')) : Promise.resolve(),
+              }]}>
+              <Select showSearch={{ optionFilterProp: 'label' }} options={certTypeOptions} placeholder="선택" />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item name="certificateNumber" label="인증번호" rules={[{ required: true, message: '인증번호를 입력해 주세요.' }]}>
               <Input maxLength={50} className="num" autoFocus={mode !== 'edit'} />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item name="scope" label="적용 대상 (선택)">
+              <Input placeholder="예: 공장, 잼류, 제품 A" maxLength={200} allowClear />
             </Form.Item>
           </Col>
           <Col span={12}>

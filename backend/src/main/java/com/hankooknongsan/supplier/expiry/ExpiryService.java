@@ -147,7 +147,7 @@ public class ExpiryService {
     private ExpiryItem toItem(Certification x) {
         AppUser owner = x.getOwner();
         return new ExpiryItem(TargetType.CERTIFICATION, x.getId(), x.getSupplier().getId(),
-                x.getSupplier().getName(), x.getSupplier().getStatus(), x.getCertType().getName(),
+                x.getSupplier().getName(), x.getSupplier().getStatus(), x.getDisplayName(),
                 x.getCertificateNumber(), x.getExpiryDate(), policy.daysLeft(x.getExpiryDate()),
                 policy.status(x.getExpiryDate(), false), x.getRenewalStatus(),
                 owner == null ? null : owner.getId(), owner == null ? null : owner.getName());

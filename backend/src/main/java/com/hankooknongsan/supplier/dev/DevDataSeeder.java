@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 시연용 비식별 샘플 데이터 생성기 (dev 프로파일 전용).
- * DB가 비어 있을 때만 실행된다. 업체명·연락처는 모두 가상의 값이다.
+ * 사용자와 업체가 모두 없을 때만 실행된다. 업체명·거래·인증·연락처는 모두 가상의 값이다.
  * 기능이 추가될 때마다 샘플을 이 클래스에 늘려 간다. (현재: 사용자, 협력업체, 계약, 인증)
  */
 @Component
@@ -49,11 +49,11 @@ public class DevDataSeeder implements ApplicationRunner {
     @Value("${app.seed-password}")
     private String seedPassword;
 
-    /** 애플리케이션 시작 시 사용자가 한 명도 없으면 샘플 데이터를 넣는다. */
+    /** 사용자나 업체 자료가 있으면 보존하고, 빈 개발 DB에만 샘플을 넣는다. */
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (users.count() > 0) {
+        if (users.count() > 0 || suppliers.count() > 0) {
             return;
         }
         List<AppUser> staff = seedUsers();
@@ -72,24 +72,54 @@ public class DevDataSeeder implements ApplicationRunner {
                 new AppUser("viewer", pw, "박조회", "viewer@supplier-poc.local", Role.VIEWER)));
     }
 
+    /** 업체 유형과 계약·인증을 함께 정의해 서로 무관한 예시가 연결되지 않도록 한다. */
+    private record SampleSupplier(String name, String industry, String contractTitle,
+                                  String certTypeCode, List<String> scopes) {
+    }
+
+    /** 실제 업체·거래·인증을 복사하지 않은 시연 전용 예시. 업종은 기존 비고에 표시한다. */
+    private static final List<SampleSupplier> SUPPLIER_SAMPLES = List.of(
+            new SampleSupplier("가상-봄딸기농원", "원료 농가 · 딸기", "딸기 원료 공급 계약", "GAP", List.of("딸기")),
+            new SampleSupplier("가상-여름복숭아농원", "원료 농가 · 복숭아", "복숭아 원료 공급 계약", "GAP", List.of("복숭아")),
+            new SampleSupplier("가상-햇살사과농원", "원료 농가 · 사과", "사과 원료 공급 계약", "GAP", List.of("사과")),
+            new SampleSupplier("가상-파란블루베리농원", "원료 농가 · 블루베리", "블루베리 원료 공급 계약", "GAP", List.of("블루베리")),
+            new SampleSupplier("가상-남쪽감귤농원", "원료 농가 · 감귤", "감귤 원료 공급 계약", "GAP", List.of("감귤")),
+            new SampleSupplier("가상-산들매실농원", "원료 농가 · 매실", "매실 원료 공급 계약", "GAP", List.of("매실")),
+            new SampleSupplier("가상-동산배농원", "원료 농가 · 배", "배 원료 공급 계약", "GAP", List.of("배")),
+            new SampleSupplier("가상-들녘포도농원", "원료 농가 · 포도", "포도 원료 공급 계약", "GAP", List.of("포도")),
+            new SampleSupplier("가상-온기과일가공", "식품 가공 · 냉동 과일", "냉동 과일 원료 공급 계약",
+                    "HACCP", List.of("과채가공품 · 제1가공라인", "과채가공품 · 제2가공라인")),
+            new SampleSupplier("가상-담은퓨레", "식품 가공 · 과일 퓨레", "과일 퓨레 원료 공급 계약",
+                    "HACCP", List.of("딸기 퓨레", "복숭아 퓨레")),
+            new SampleSupplier("가상-달콤잼원료", "식품 가공 · 잼 원료", "잼 원료 공급 계약",
+                    "HACCP", List.of("잼류", "과채가공품")),
+            new SampleSupplier("가상-고운디저트원료", "식품 가공 · 디저트 원료", "디저트 원료 공급 계약",
+                    "ISO22000", List.of("디저트 원료 제조시설", "냉동 원료 가공시설")),
+            new SampleSupplier("가상-맑은과즙원료", "식품 가공 · 과즙 농축액", "과즙 농축액 공급 계약",
+                    "FSSC22000", List.of("과즙 원료 제1공장", "과즙 원료 제2공장")),
+            new SampleSupplier("가상-정다운과채가공", "식품 가공 · 혼합 과채 원료", "혼합 과채 원료 공급 계약",
+                    "HACCP", List.of("과채주스 원료", "과채가공품")),
+            new SampleSupplier("가상-든든유리용기", "포장재 · 유리병·뚜껑", "유리병 포장재 공급 계약", null, List.of()),
+            new SampleSupplier("가상-깔끔포장필름", "포장재 · 파우치·필름", "필름 포장재 공급 계약", null, List.of()),
+            new SampleSupplier("가상-반듯종이상자", "포장재 · 골판지 상자", "골판지 포장재 공급 계약", null, List.of()),
+            new SampleSupplier("가상-신선냉장물류", "물류 · 냉장 배송", "냉장 배송 위탁 계약", null, List.of()),
+            new SampleSupplier("가상-서늘냉동창고", "물류 · 냉동 보관", "냉동 보관 위탁 계약", null, List.of()),
+            new SampleSupplier("가상-빠른원료운송", "물류 · 원료 운송", "원료 운송 위탁 계약", null, List.of()));
+
     /**
      * 가상 협력업체 20곳을 만든다.
      * 거래중 17곳, 거래중지 2곳, 거래종료 1곳이며 담당자는 김담당·이담당에게 번갈아 배정한다.
      */
     private List<Supplier> seedSuppliers(List<AppUser> staff) {
-        String[] names = {
-                "가람농산", "나래유통", "다온영농조합", "라온푸드", "마루청과",
-                "바른들녘", "사계절농원", "아름채소", "자연담은", "초록마을영농",
-                "푸른들식품", "하늘목장", "한빛곡물", "해오름농장", "새벽청과",
-                "들꽃유기농", "산들과수원", "강변채소", "누리농산물", "온새미로"};
         List<Supplier> saved = new ArrayList<>();
-        for (int i = 0; i < names.length; i++) {
-            SupplierStatus status = i == 17 || i == 18 ? SupplierStatus.SUSPENDED
+        for (int i = 0; i < SUPPLIER_SAMPLES.size(); i++) {
+            SampleSupplier sample = SUPPLIER_SAMPLES.get(i);
+            SupplierStatus status = i == 4 || i == 15 ? SupplierStatus.SUSPENDED
                     : i == 19 ? SupplierStatus.TERMINATED : SupplierStatus.ACTIVE;
-            Supplier s = new Supplier(names[i], status);
-            s.update(names[i], "%03d-%02d-%05d".formatted(100 + i, 10 + i, 10000 + i * 37), status,
-                    "업체담당" + (i + 1), "010-0000-%04d".formatted(i + 1),
-                    "contact%02d@example.com".formatted(i + 1), staff.get(1 + i % 2), null);
+            Supplier s = new Supplier(sample.name(), status);
+            s.update(sample.name(), null, status, "가상 담당" + (i + 1), "010-0000-%04d".formatted(i + 1),
+                    "contact%02d@example.com".formatted(i + 1), staff.get(1 + i % 2),
+                    "[가상 시연 데이터] 업종: " + sample.industry() + ". 실제 업체·거래 정보가 아닙니다.");
             suppliers.save(s);
             suppliers.flush();
             s.assignCode("SUP-%04d".formatted(s.getId()));
@@ -118,17 +148,17 @@ public class DevDataSeeder implements ApplicationRunner {
      * 한 건은 자동연장 계약, 두 건은 갱신진행 중 상태로 둔다.
      */
     private void seedContracts(List<Supplier> list) {
-        String[] titles = {"농산물 납품 기본계약", "물류 위탁 계약", "포장재 공급 계약", "품질보증 협약", "저온창고 임차 계약"};
         LocalDate today = clock.today();
         for (int i = 0; i < CONTRACT_OFFSETS.length; i++) {
             Supplier s = list.get(i % list.size());
+            SampleSupplier sample = SUPPLIER_SAMPLES.get(i % list.size());
             Integer offset = CONTRACT_OFFSETS[i];
             LocalDate end = offset == null ? null : today.plusDays(offset);
             LocalDate start = end == null ? today.minusDays(400) : end.minusYears(1).plusDays(1);
             Contract c = new Contract(s);
-            c.update(s, "CT-%d-%03d".formatted(start.getYear(), i + 1), titles[i % titles.length], start, end,
-                    i == 12, s.getOwner(), i % 3 == 0 ? "https://docs.example.com/contracts/CT-%03d".formatted(i + 1) : null,
-                    null);
+            c.update(s, i % 3 == 0 ? "" : "DEMO-CT-%03d".formatted(i + 1), sample.contractTitle(), start, end,
+                    i == 12, s.getOwner(), i % 3 == 0 ? "https://docs.example.com/contracts/DEMO-%03d".formatted(i + 1) : null,
+                    "[가상 시연 데이터] " + sample.industry() + " 거래 예시. 계약·문서 주소는 실제 자료가 아닙니다.");
             if (i == 3 || i == 5) {
                 c.changeRenewalStatus(RenewalStatus.IN_PROGRESS);
             }
@@ -136,19 +166,29 @@ public class DevDataSeeder implements ApplicationRunner {
         }
     }
 
-    /** 인증 30건을 만든다. 인증 종류는 기준정보 순서대로 돌아가며 배정한다. */
+    /** 농가·식품 가공 업체에 맞는 인증 30건을 만든다. 같은 업체의 적용 대상 차이와 미입력도 포함한다. */
     private void seedCertifications(List<Supplier> list) {
-        List<CertType> types = certTypes.findAllByOrderBySortOrder();
+        if (!certTypes.existsById("FSSC22000")) {
+            certTypes.save(new CertType("FSSC22000", "FSSC 22000", "fssc22000", certTypes.nextSortOrder()));
+        }
+        List<Integer> eligible = new ArrayList<>();
+        for (int i = 0; i < SUPPLIER_SAMPLES.size(); i++) {
+            if (SUPPLIER_SAMPLES.get(i).certTypeCode() != null) eligible.add(i);
+        }
         LocalDate today = clock.today();
         for (int i = 0; i < CERT_OFFSETS.length; i++) {
-            Supplier s = list.get((i + 5) % list.size());
-            CertType type = types.get(i % types.size());
+            int supplierIndex = eligible.get(i % eligible.size());
+            Supplier s = list.get(supplierIndex);
+            SampleSupplier sample = SUPPLIER_SAMPLES.get(supplierIndex);
+            CertType type = certTypes.findById(sample.certTypeCode()).orElseThrow();
+            String scope = i == CERT_OFFSETS.length - 1 ? null
+                    : sample.scopes().get((i / eligible.size()) % sample.scopes().size());
             Integer offset = CERT_OFFSETS[i];
             LocalDate expiry = offset == null ? null : today.plusDays(offset);
             LocalDate issued = expiry == null ? today.minusDays(300) : expiry.minusYears(3).plusDays(1);
             Certification x = new Certification(s);
-            x.update(s, type, "%s-%06d".formatted(type.getCode(), 100000 + i * 7919 % 900000), issued, expiry,
-                    s.getOwner(), null, null);
+            x.update(s, type, "DEMO-%s-%03d".formatted(type.getCode(), i + 1), scope, issued, expiry,
+                    s.getOwner(), null, "[가상 시연 데이터] 실제 인증번호·인증 보유 사실이 아닌 기능 확인용 예시입니다.");
             if (i == 4) {
                 x.changeRenewalStatus(RenewalStatus.IN_PROGRESS);
             }

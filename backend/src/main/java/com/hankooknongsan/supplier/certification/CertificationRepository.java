@@ -16,7 +16,7 @@ public interface CertificationRepository extends JpaRepository<Certification, Lo
 
     /**
      * 인증을 검색한다.
-     * 검색어는 인증번호·업체명에 부분 일치, 나머지는 일치 조건이며 빈 값·null이면 무시한다.
+     * 검색어는 인증번호·업체명·적용 대상에 부분 일치, 나머지는 일치 조건이며 빈 값·null이면 무시한다.
      * includeInactive가 false면 갱신되어 비활성이 된 이전 인증은 제외한다.
      */
     @EntityGraph(attributePaths = {"supplier", "owner", "certType"})
@@ -24,6 +24,7 @@ public interface CertificationRepository extends JpaRepository<Certification, Lo
             select x from Certification x
             where (:supplierId is null or x.supplier.id = :supplierId)
               and (:keyword = '' or lower(x.certificateNumber) like lower(concat('%', :keyword, '%'))
+                                 or lower(x.scope) like lower(concat('%', :keyword, '%'))
                                  or lower(x.supplier.name) like lower(concat('%', :keyword, '%')))
               and (:certType = '' or x.certType.code = :certType)
               and (:ownerId is null or x.owner.id = :ownerId)

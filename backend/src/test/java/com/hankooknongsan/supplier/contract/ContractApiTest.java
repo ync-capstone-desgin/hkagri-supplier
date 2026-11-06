@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,6 +18,8 @@ import com.hankooknongsan.supplier.supplier.SupplierRepository;
 import com.hankooknongsan.supplier.supplier.SupplierStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -85,6 +88,55 @@ class ContractApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.item.endDate").doesNotExist())
                 .andExpect(jsonPath("$.item.autoRenew").value(false));
+    }
+
+    /** 번호를 생략하거나 비워도 저장·조회할 수 있고, 미입력끼리는 중복 경고하지 않는다. */
+    @ParameterizedTest
+    @ValueSource(strings = {"", "\"contractNumber\":null,", "\"contractNumber\":\"\",", "\"contractNumber\":\"   \","})
+    void 계약번호_미입력은_중복_경고_없이_등록된다(String numberField) throws Exception {
+        String request = """
+                {"supplierId":%d,%s"title":"번호 없는 계약","startDate":"2026-01-01"}"""
+                .formatted(supplierA, numberField);
+        for (int i = 0; i < 2; i++) {
+            mvc.perform(post("/api/contracts").contentType(MediaType.APPLICATION_JSON).content(request))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.item.contractNumber").value(""))
+                    .andExpect(jsonPath("$.warnings", empty()));
+        }
+        mvc.perform(get("/api/contracts").param("supplierId", supplierA.toString()).param("keyword", "번호 없는"))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[*].contractNumber", everyItem(is(""))));
+    }
+
+    /** 기존 번호도 수정 화면에서 지울 수 있다. */
+    @Test
+    void 기존_계약번호를_비워서_수정할_수_있다() throws Exception {
+        long id = idOf(postContract(supplierA, "CT-OLD", "2026-01-01", null));
+        mvc.perform(put("/api/contracts/" + id).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"supplierId":%d,"contractNumber":"","title":"번호 삭제 계약","startDate":"2026-01-01"}"""
+                        .formatted(supplierA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.warnings", empty()));
+        mvc.perform(get("/api/contracts/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contractNumber").value(""));
+    }
+
+    /** 갱신 번호를 입력하지 않아도 새 계약이 생기고 이전 계약의 번호와 이력은 유지된다. */
+    @Test
+    void 계약번호_없이_갱신해도_이전_이력은_유지된다() throws Exception {
+        long oldId = idOf(postContract(supplierA, "CT-OLD", "2025-01-01", "2025-12-31"));
+        mvc.perform(post("/api/contracts/" + oldId + "/renew").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"supplierId":%d,"title":"갱신 계약","startDate":"2026-01-01"}"""
+                        .formatted(supplierA)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.item.contractNumber").value(""))
+                .andExpect(jsonPath("$.item.prevId").value(oldId))
+                .andExpect(jsonPath("$.warnings", empty()));
+        mvc.perform(get("/api/contracts/" + oldId))
+                .andExpect(jsonPath("$.contractNumber").value("CT-OLD"))
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.renewalStatus").value("DONE"));
     }
 
     /** VT-007: 업체별 조회 시 해당 업체의 계약만 보인다. */
