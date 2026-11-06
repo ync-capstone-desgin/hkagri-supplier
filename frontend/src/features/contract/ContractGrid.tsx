@@ -36,7 +36,7 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
     try {
       await changeContractRenewalStatus(row.id, status)
       await Promise.all(['contracts', 'expiries', 'dashboard'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
-      message.success(`${row.contractNumber} 처리상태를 변경했습니다.`)
+      message.success(`${row.contractNumber || row.title} 처리상태를 변경했습니다.`)
     } catch (e) {
       message.error(toProblem(e).detail)
     }

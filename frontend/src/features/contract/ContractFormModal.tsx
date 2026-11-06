@@ -98,7 +98,8 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
     }
   }
 
-  const title = mode === 'create' ? '계약 등록' : mode === 'edit' ? `계약 수정 · ${contract?.contractNumber}` : `계약 갱신 · ${contract?.contractNumber}`
+  const contractLabel = contract?.contractNumber || contract?.title
+  const title = mode === 'create' ? '계약 등록' : mode === 'edit' ? `계약 수정 · ${contractLabel}` : `계약 갱신 · ${contractLabel}`
 
   return (
     <Modal open={open} title={title} okText="저장" cancelText="취소" width={680} confirmLoading={saving}
@@ -116,7 +117,7 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
             </Form.Item>
           </Col>
           <Col span={10}>
-            <Form.Item name="contractNumber" label="계약번호" rules={[{ required: true, message: '계약번호를 입력해 주세요.' }]}>
+            <Form.Item name="contractNumber" label="계약번호 (선택)">
               <Input maxLength={50} className="num" autoFocus={mode !== 'edit'} />
             </Form.Item>
           </Col>
