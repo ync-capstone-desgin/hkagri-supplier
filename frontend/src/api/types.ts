@@ -202,6 +202,7 @@ export interface ContractSearch {
 export interface CertType {
   code: string
   name: string
+  active: boolean
 }
 
 /** 인증 (목록·상세 공통) */

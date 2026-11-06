@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { App, Button, Checkbox, Flex, Input, Select, Typography } from 'antd'
-import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
+import { DownloadOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { downloadCertificationExcel, searchCertifications } from '../../api/certifications'
 import type { CertificationSearch } from '../../api/types'
@@ -11,6 +11,7 @@ import { useCertTypeOptions, useOwnerOptions } from '../../hooks/useOptions'
 import { usePersistedState } from '../../hooks/usePersistedState'
 import { CertificationFormModal } from './CertificationFormModal'
 import { CertificationGrid } from './CertificationGrid'
+import { CertTypeManagementModal } from './CertTypeManagementModal'
 
 /**
  * 인증 관리 화면 (FR-006).
@@ -25,6 +26,7 @@ export function CertificationListPage() {
   const [draft, setDraft] = usePersistedState<CertificationSearch>('certification.search.draft', {})
   const [search, setSearch] = usePersistedState<CertificationSearch>('certification.search', {})
   const [createOpen, setCreateOpen] = useState(false)
+  const [typesOpen, setTypesOpen] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const { data, isFetching } = useQuery({ queryKey: ['certifications', search], queryFn: () => searchCertifications(search) })
 
@@ -77,6 +79,7 @@ export function CertificationListPage() {
           </Typography.Text>
         </Typography.Text>
         <Flex gap={8}>
+          {me?.role === 'ADMIN' && <Button icon={<SettingOutlined />} onClick={() => setTypesOpen(true)}>인증 종류 관리</Button>}
           <Button icon={<DownloadOutlined />} onClick={handleExcel} loading={downloading}>엑셀 다운로드</Button>
           {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>인증 등록</Button>}
         </Flex>
@@ -84,6 +87,7 @@ export function CertificationListPage() {
 
       <CertificationGrid rows={data?.content} loading={isFetching && !data} />
       <CertificationFormModal open={createOpen} mode="create" onClose={() => setCreateOpen(false)} />
+      {me?.role === 'ADMIN' && typesOpen && <CertTypeManagementModal open onClose={() => setTypesOpen(false)} />}
     </>
   )
 }
