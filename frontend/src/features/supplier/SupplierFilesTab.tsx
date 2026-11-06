@@ -30,7 +30,7 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
     queryFn: () => searchCertifications({ supplierId, includeInactive: true }), enabled: canEdit })
   const targetOptions = [
     ...(contracts.data?.content ?? []).map((c) => ({ value: `contract:${c.id}`, label: `계약 · ${c.contractNumber ? `${c.contractNumber} · ` : ''}${c.title}${c.active ? '' : ' (이전 이력)'}` })),
-    ...(certs.data?.content ?? []).map((c) => ({ value: `certification:${c.id}`, label: `인증 · ${c.certTypeName} · ${c.certificateNumber}${c.active ? '' : ' (이전 이력)'}` })),
+    ...(certs.data?.content ?? []).map((c) => ({ value: `certification:${c.id}`, label: `인증 · ${c.certTypeName}${c.scope ? ` · ${c.scope}` : ''} · ${c.certificateNumber}${c.active ? '' : ' (이전 이력)'}` })),
   ]
 
   /** 변경 후 첫 페이지로 돌아가 모든 업체 자료 페이지를 새로 조회한다. */

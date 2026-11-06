@@ -32,7 +32,7 @@ public final class FileDtos {
             return new SupplierFile(FileInfo.of(f), c == null ? null : c.getId(),
                     c == null ? null : (c.getContractNumber().isEmpty() ? "" : c.getContractNumber() + " · ") + c.getTitle(),
                     cert == null ? null : cert.getId(),
-                    cert == null ? null : cert.getCertType().getName() + " · " + cert.getCertificateNumber());
+                    cert == null ? null : cert.getDisplayName() + " · " + cert.getCertificateNumber());
         }
     }
 

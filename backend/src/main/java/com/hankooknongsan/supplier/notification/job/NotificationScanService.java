@@ -115,7 +115,7 @@ public class NotificationScanService {
                     .toList();
         }
         return certifications.findExpiring(today, until, null, null).stream()
-                .map(x -> new Target(type, x.getId(), x.getSupplier(), x.getCertType().getName(),
+                .map(x -> new Target(type, x.getId(), x.getSupplier(), x.getDisplayName(),
                         x.getCertificateNumber(), x.getExpiryDate(), x.getRenewalStatus(), x.getOwner()))
                 .toList();
     }

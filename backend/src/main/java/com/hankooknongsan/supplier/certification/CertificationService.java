@@ -153,7 +153,7 @@ public class CertificationService {
         if (certifications.existsDuplicate(type.getCode(), number, exceptId)) {
             warnings.add(type.getName() + " 인증번호 " + number + "이(가) 이미 등록돼 있습니다. 번호를 확인해 주세요.");
         }
-        x.update(supplier, type, number, req.issuedDate(), req.expiryDate(), owner,
+        x.update(supplier, type, number, blankToNull(req.scope()), req.issuedDate(), req.expiryDate(), owner,
                 blankToNull(req.documentUrl()), blankToNull(req.memo()));
         return warnings;
     }
