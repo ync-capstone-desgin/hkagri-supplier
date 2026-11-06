@@ -16,10 +16,21 @@ export function useOwnerOptions(enabled = true, current?: { ownerId: number | nu
   return options
 }
 
-/** 인증 종류 선택상자 옵션 */
-export function useCertTypeOptions() {
-  const { data } = useQuery({ queryKey: ['cert-types'], queryFn: fetchCertTypes, staleTime: Infinity })
-  return (data ?? []).map((t) => ({ value: t.code, label: t.name }))
+/** 검색에는 전체 종류, 입력에는 사용 중인 종류와 현재 기록의 종류를 표시한다. */
+export function useCertTypeOptions({ enabled = true, usage = 'filter', currentCode, keepInactive = false }: {
+  enabled?: boolean
+  usage?: 'filter' | 'input'
+  currentCode?: string
+  keepInactive?: boolean
+} = {}) {
+  const { data } = useQuery({ queryKey: ['cert-types'], queryFn: fetchCertTypes, enabled, staleTime: 0, refetchOnWindowFocus: true })
+  return (data ?? [])
+    .filter((t) => usage === 'filter' || t.active || t.code === currentCode)
+    .map((t) => ({
+      value: t.code,
+      label: t.name + (t.active ? '' : ' (비활성)'),
+      disabled: usage === 'input' && !t.active && !(keepInactive && t.code === currentCode),
+    }))
 }
 
 /**

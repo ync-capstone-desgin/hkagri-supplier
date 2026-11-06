@@ -32,7 +32,11 @@ public final class CertificationDtos {
     }
 
     /** 인증 종류 선택상자용 */
-    public record CertTypeItem(String code, String name) {
+    public record CertTypeItem(String code, String name, boolean active) {
+        /** 입력 화면이 신규 선택 가능 여부를 판별할 수 있게 한다. */
+        static CertTypeItem of(CertType type) {
+            return new CertTypeItem(type.getCode(), type.getName(), type.isActive());
+        }
     }
 
     /** 인증 목록·상세 응답. daysLeft·expiryStatus는 조회 시점의 오늘 기준으로 계산한 값이다. */

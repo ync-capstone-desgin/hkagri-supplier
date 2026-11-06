@@ -42,7 +42,7 @@ public class CertificationService {
     /** 인증 종류 목록을 표시 순서대로 조회한다. */
     public List<CertTypeItem> certTypes() {
         return certTypes.findAllByOrderBySortOrder().stream()
-                .map(t -> new CertTypeItem(t.getCode(), t.getName()))
+                .map(CertTypeItem::of)
                 .toList();
     }
 
@@ -138,8 +138,12 @@ public class CertificationService {
             throw BusinessException.invalid("expiryDate", "만료일은 발급일보다 빠를 수 없습니다.");
         }
         Supplier supplier = supplierService.find(req.supplierId());
-        CertType type = certTypes.findById(req.certTypeCode())
+        CertType type = certTypes.findForSelection(req.certTypeCode())
                 .orElseThrow(() -> BusinessException.invalid("certTypeCode", "인증 종류를 찾을 수 없습니다."));
+        boolean keepingType = exceptId != null && x.getCertType().getCode().equals(type.getCode());
+        if (!type.isActive() && !keepingType) {
+            throw BusinessException.invalid("certTypeCode", "비활성 인증 종류입니다. 사용 중인 종류를 선택해 주세요.");
+        }
         AppUser owner = req.ownerId() != null
                 ? users.findById(req.ownerId()).orElseThrow(() -> BusinessException.invalid("ownerId", "담당자를 찾을 수 없습니다."))
                 : supplier.getOwner();
