@@ -48,4 +48,22 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    exclude '**/FlywayUpgradeTest.class'
+}
+
+// 기준 브랜치의 SQL로 만든 DB를 현재 SQL로 업그레이드한다. CI가 기준 폴더를 전달한다.
+tasks.register('migrationUpgradeTest', Test) {
+    description = '기존 DB의 Flyway 업그레이드와 적용 이력 보호를 검증한다.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    include '**/FlywayUpgradeTest.class'
+
+    def baselineDir = providers.gradleProperty('flywayBaselineDir').getOrElse('')
+    systemProperty 'flyway.baseline-dir', baselineDir
+    inputs.property('flywayBaselineDir', baselineDir)
+    if (!baselineDir.isBlank()) {
+        inputs.dir(baselineDir).withPropertyName('baselineMigrations').withPathSensitivity(PathSensitivity.RELATIVE)
+    }
 }
