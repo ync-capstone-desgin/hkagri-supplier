@@ -46,6 +46,9 @@ public class Certification extends BaseEntity {
     /** 인증번호 */
     private String certificateNumber;
 
+    /** 인증 적용 대상. 미지정이면 null */
+    private String scope;
+
     /** 발급일 */
     private LocalDate issuedDate;
 
@@ -83,16 +86,22 @@ public class Certification extends BaseEntity {
     }
 
     /** 인증 정보를 한 번에 수정한다. */
-    public void update(Supplier supplier, CertType certType, String certificateNumber, LocalDate issuedDate,
+    public void update(Supplier supplier, CertType certType, String certificateNumber, String scope, LocalDate issuedDate,
                        LocalDate expiryDate, AppUser owner, String documentUrl, String memo) {
         this.supplier = supplier;
         this.certType = certType;
         this.certificateNumber = certificateNumber;
+        this.scope = scope;
         this.issuedDate = issuedDate;
         this.expiryDate = expiryDate;
         this.owner = owner;
         this.documentUrl = documentUrl;
         this.memo = memo;
+    }
+
+    /** 만료 안내·알림·파일 연결에서 적용 대상이 다른 인증을 구분한다. */
+    public String getDisplayName() {
+        return scope == null || scope.isBlank() ? certType.getName() : certType.getName() + " · " + scope;
     }
 
     /** 갱신 처리상태를 바꾼다. */

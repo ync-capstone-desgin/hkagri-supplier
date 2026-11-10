@@ -66,6 +66,7 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
         </span>
       ),
     },
+    { field: 'scope', headerName: '적용 대상', width: 170, tooltipField: 'scope' },
     { field: 'certificateNumber', headerName: '인증번호', width: 150, cellClass: 'num' },
     { field: 'issuedDate', headerName: '발급일', width: 115, cellClass: 'num' },
     { field: 'expiryDate', headerName: '만료일', width: 115, cellClass: 'num', valueFormatter: (p) => p.value ?? '없음' },

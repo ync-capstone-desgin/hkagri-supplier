@@ -147,7 +147,7 @@ public class DevDataSeeder implements ApplicationRunner {
             LocalDate expiry = offset == null ? null : today.plusDays(offset);
             LocalDate issued = expiry == null ? today.minusDays(300) : expiry.minusYears(3).plusDays(1);
             Certification x = new Certification(s);
-            x.update(s, type, "%s-%06d".formatted(type.getCode(), 100000 + i * 7919 % 900000), issued, expiry,
+            x.update(s, type, "%s-%06d".formatted(type.getCode(), 100000 + i * 7919 % 900000), null, issued, expiry,
                     s.getOwner(), null, null);
             if (i == 4) {
                 x.changeRenewalStatus(RenewalStatus.IN_PROGRESS);

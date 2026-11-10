@@ -74,6 +74,7 @@ public class CertificationController {
         List<Column<CertificationItem>> columns = List.of(
                 new Column<>("업체명", CertificationItem::supplierName),
                 new Column<>("인증 종류", CertificationItem::certTypeName),
+                new Column<>("적용 대상", CertificationItem::scope),
                 new Column<>("인증번호", CertificationItem::certificateNumber),
                 new Column<>("발급일", CertificationItem::issuedDate),
                 new Column<>("만료일", x -> x.expiryDate() == null ? "없음" : x.expiryDate()),

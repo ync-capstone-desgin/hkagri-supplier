@@ -46,7 +46,7 @@ export function CertificationListPage() {
     <>
       <SearchPanel onSearch={() => setSearch({ ...draft })} onReset={() => { setDraft({}); setSearch({}) }}>
         <SearchField label="검색어">
-          <Input allowClear style={{ width: 200 }} placeholder="인증번호·업체명" value={draft.keyword}
+          <Input allowClear style={{ width: 200 }} placeholder="인증번호·업체명·적용 대상" value={draft.keyword}
             onChange={(e) => setDraft({ ...draft, keyword: e.target.value })} />
         </SearchField>
         <SearchField label="인증 종류">

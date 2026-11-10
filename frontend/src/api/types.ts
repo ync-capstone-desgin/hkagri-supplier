@@ -213,6 +213,7 @@ export interface CertificationItem {
   certTypeCode: string
   certTypeName: string
   certificateNumber: string
+  scope: string | null
   issuedDate: string
   /** null이면 만료일 없음(확인 필요) */
   expiryDate: string | null
@@ -237,6 +238,7 @@ export interface CertificationRequest {
   supplierId: number
   certTypeCode: string
   certificateNumber: string
+  scope?: string | null
   issuedDate: string
   expiryDate?: string | null
   ownerId?: number | null
