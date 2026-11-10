@@ -61,7 +61,9 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
   const [saving, setSaving] = useState(false)
   const supplierOptions = useSupplierOptions(open)
   const ownerOptions = useOwnerOptions(open, certification)
-  const certTypeOptions = useCertTypeOptions()
+  const certTypeOptions = useCertTypeOptions({
+    enabled: open, usage: 'input', currentCode: certification?.certTypeCode, keepInactive: mode === 'edit',
+  })
   useSaveShortcut(open, () => form.submit())
 
   // 모달을 열 때마다 모드에 맞는 초기값으로 채운다.
@@ -115,8 +117,13 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="certTypeCode" label="인증 종류" rules={[{ required: true, message: '인증 종류를 선택해 주세요.' }]}>
-              <Select options={certTypeOptions} placeholder="선택" disabled={mode === 'renew'} />
+            <Form.Item name="certTypeCode" label="인증 종류"
+              extra={mode === 'renew' ? '기존 종류가 비활성이면 사용 중인 종류를 선택해 주세요.' : undefined}
+              rules={[{ required: true, message: '인증 종류를 선택해 주세요.' }, {
+                validator: (_, value: string) => certTypeOptions.some((option) => option.value === value && option.disabled)
+                  ? Promise.reject(new Error('비활성 인증 종류입니다. 사용 중인 종류를 선택해 주세요.')) : Promise.resolve(),
+              }]}>
+              <Select showSearch={{ optionFilterProp: 'label' }} options={certTypeOptions} placeholder="선택" />
             </Form.Item>
           </Col>
           <Col span={12}>

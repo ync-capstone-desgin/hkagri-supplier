@@ -109,6 +109,7 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 | [docs/user-guide.md](docs/user-guide.md) | 메뉴별 사용 설명서 (스크린샷 포함) |
 | [docs/forms-api.md](docs/forms-api.md) | 양식 자료실 API·첨부·권한·DB 적용 순서 |
 | [docs/forms-ui.md](docs/forms-ui.md) | 하위 폴더 탐색·양식 등록·첨부 다운로드 및 화면 검증 |
+| [docs/cert-types.md](docs/cert-types.md) | 인증 종류 관리·권한·비활성 선택 규칙·DB |
 | [docs/supplier-files.md](docs/supplier-files.md) | 업체 자료 탭 사용법, 파일 연결 API·DB, 검증 방법 |
 | [docs/deploy-aws.md](docs/deploy-aws.md) | AWS EC2 배포 가이드 |
 | [capstone-docs](https://github.com/ync-capstone-desgin/capstone-docs) | 기획서, 설계, 미팅 자료 |
