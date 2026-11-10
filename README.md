@@ -64,8 +64,8 @@ cd frontend && npm install && npm run dev
 - 화면: http://localhost:5173 (API 요청은 Vite 프록시로 8080에 전달)
 - API 문서: http://localhost:8080/swagger-ui.html
 - 개발용 메일함(Mailpit): http://localhost:8025 — 알림 메일은 실제로 나가지 않고 여기에 쌓인다
-- 기본 프로파일은 `dev`이며, DB가 비어 있으면 가상 샘플 데이터가 자동으로 들어간다.
-- DB 초기화: `docker compose down -v` 후 다시 실행
+- 기본 프로파일은 `dev`이며, 사용자와 업체가 모두 없으면 식품 업종의 가상 샘플 데이터가 자동으로 들어간다. 실제 기업 자료는 포함하지 않는다.
+- 새 샘플을 보려면 기존 DB를 지우지 않고 별도 빈 DB에 연결한다. [시연 데이터 안내](docs/demo-data.md)를 참고한다.
 - 올린 첨부파일은 `backend/data/files`에 저장된다 (Git에 올라가지 않음). 지우려면 이 폴더를 삭제한다.
 - 시연용 기준일 변경: admin으로 로그인 후 상단 "기준일" 태그를 눌러 날짜를 옮긴다 (dev 프로파일 전용, 서버 재시작 시 실제 날짜로 복귀)
 
@@ -111,6 +111,7 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 | [docs/forms-ui.md](docs/forms-ui.md) | 하위 폴더 탐색·양식 등록·첨부 다운로드 및 화면 검증 |
 | [docs/cert-types.md](docs/cert-types.md) | 인증 종류 관리·권한·비활성 선택 규칙·DB |
 | [docs/cert-scope.md](docs/cert-scope.md) | 인증 적용 대상 입력·검색·갱신·만료 안내·API·DB |
+| [docs/demo-data.md](docs/demo-data.md) | 가상 시연 데이터 구성과 기존 DB를 보존하는 실행 방법 |
 | [docs/supplier-files.md](docs/supplier-files.md) | 업체 자료 탭 사용법, 파일 연결 API·DB, 검증 방법 |
 | [docs/deploy-aws.md](docs/deploy-aws.md) | AWS EC2 배포 가이드 |
 | [capstone-docs](https://github.com/ync-capstone-desgin/capstone-docs) | 기획서, 설계, 미팅 자료 |
@@ -127,6 +128,7 @@ PR을 올리면 GitHub Actions가 같은 테스트와 화면 빌드를 자동으
 | 테스트 | 확인 내용 |
 |---|---|
 | SupplierApiTest | VT-001 정상 등록, VT-002 필수값 누락, 역할별 권한 |
+| DevDataSeederTest | 새 dev DB의 가상 샘플·업종별 계약/인증·만료 경계·선택 입력·기존 자료 보존 |
 | ContractApiTest | VT-003 종료일 < 시작일, VT-007 업체별 조회, 갱신 이력, 중복 경고, 갱신완료 직접 지정·이력 건 상태 변경 차단 |
 | CertificationScopeApiTest | 적용 대상 저장·길이·빈 값, 검색 필터·페이지, 갱신 이력, 조회자 권한, 만료 화면·최대 길이 알림·엑셀 |
 | ExpiryPolicyTest | VT-004 오늘 만료, VT-005 7·30·90일 경계 |
