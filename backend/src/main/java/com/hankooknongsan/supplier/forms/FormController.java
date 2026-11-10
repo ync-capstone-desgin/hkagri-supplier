@@ -21,9 +21,9 @@ public class FormController {
     /** 제목·분류로 게시글을 검색한다. */
     @GetMapping
     public PageResponse<PostItem> list(@RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String category, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) String category, @RequestParam(required = false) Long folderId, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return service.list(keyword, category, page, size);
+        return service.list(keyword, category, folderId, page, size);
     }
 
     /** 게시글 상세와 첨부 정보를 조회한다. */
