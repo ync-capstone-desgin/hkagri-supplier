@@ -14,8 +14,8 @@ import { useCodes } from '../hooks/useCodes'
 
 const { Header, Sider, Content } = Layout
 
-/** 휴대폰에서 메뉴를 서랍으로 열고, 항목을 선택하면 닫는다. */
-function MobileMenu({ items, selectedPath }: { items: MenuProps['items']; selectedPath?: string }) {
+/** 좁은 창에서 메뉴를 서랍으로 열고, 항목을 선택하면 닫는다. */
+function DrawerMenu({ items, selectedPath }: { items: MenuProps['items']; selectedPath?: string }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   return <>
@@ -40,6 +40,7 @@ export function AppLayout() {
   const { tabs, activePath, closeTab } = useTabs()
   const screens = Grid.useBreakpoint()
   const mobile = screens.md === false
+  const showDrawerMenu = screens.xl === false
   const activeMenu = findMenu(activePath)
   const { data: adminUsers } = useQuery({
     queryKey: ['admin-users'], queryFn: fetchAdminUsers, enabled: me?.role === 'ADMIN', staleTime: 10_000, refetchInterval: 30_000,
@@ -63,7 +64,7 @@ export function AppLayout() {
   return (
     <Layout className="app-layout">
       <Header className="app-header">
-        {mobile && <MobileMenu key={activePath} items={menuItems} selectedPath={activeMenu?.path} />}
+        {showDrawerMenu && <DrawerMenu key={activePath} items={menuItems} selectedPath={activeMenu?.path} />}
         <img className="app-logo" src="/favicon.svg" width={28} height={28} alt="" />
         <Typography.Text className="app-brand" strong style={{ color: BRAND }}>
           협력업체 통합관리
@@ -93,8 +94,7 @@ export function AppLayout() {
         </Dropdown>
       </Header>
       <Layout style={{ minHeight: 0 }}>
-        {/* 768~1199px에서는 기존 아이콘 메뉴, 1200px 이상에서는 전체 메뉴를 표시한다. */}
-        {!mobile && <Sider width={200} breakpoint="xl" collapsedWidth={64} style={{ borderRight: '1px solid #e5e7eb' }}>
+        {!showDrawerMenu && <Sider width={200} style={{ borderRight: '1px solid #e5e7eb' }}>
           <Menu
             mode="inline"
             selectedKeys={activeMenu ? [activeMenu.path] : []}

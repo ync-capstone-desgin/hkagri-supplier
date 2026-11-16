@@ -44,6 +44,10 @@ try {
     else if (path === 'auth/logout') return route.fulfill({ status: 204 })
     else if (path === 'codes') json = { role: [{ code: 'ADMIN', label: '관리자' }, { code: 'VIEWER', label: '조회자' }] }
     else if (path === 'users' || path === 'cert-types') json = []
+    else if (path === 'form-folders/1') {
+      const folder = { id: 1, name: '양식 자료실', parentId: null }
+      json = { folder, path: [folder], children: [] }
+    }
     else if (path === 'admin/users') json = { users: [], pendingCount: 2 }
     else if (path === 'system/clock') json = { today: '2026-11-03', shifted: true, demoClock: true }
     else if (path === 'notifications/unread-count') json = { count: 1 }
@@ -120,10 +124,26 @@ try {
   const tops = await page.locator('.dashboard > .ant-row > .ant-col').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().y))
   assert(tops.every((top) => top === tops[0]))
   await capture('1280-dashboard')
-  for (const width of [767, 768, 1440]) {
+  // 좁은 창에서는 자료실 이름을 읽고 터치할 수 있고, 태블릿 폭부터는 작업 탭도 유지된다.
+  for (const width of [360, 767, 768, 1024, 1199]) {
     await page.setViewportSize({ width, height: 900 })
-    if (width < 768) await menuButton.waitFor()
-    else await page.locator('.ant-layout-sider').waitFor()
+    await menuButton.tap({ timeout: 5000 })
+    const formsLabel = drawer.getByText('양식 자료실', { exact: true })
+    await formsLabel.tap({ trial: true })
+    assert(await formsLabel.evaluate((el) => el.checkVisibility({ opacityProperty: true })), `${width}px 자료실 글자 숨김`)
+    await formsLabel.tap()
+    await page.waitForURL('**/forms')
+    await page.getByRole('heading', { name: '양식 자료실', exact: true }).waitFor()
+    await drawer.waitFor({ state: 'hidden' })
+    assert.equal(await page.getByRole('tab', { name: '대시보드', exact: true }).count(), width >= 768 ? 1 : 0)
+    await page.goBack()
+    await page.waitForURL('**/dashboard')
+    await checkWidth()
+  }
+  for (const width of [1200, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.locator('.ant-layout-sider').getByText('양식 자료실', { exact: true }).waitFor()
+    assert.equal(await menuButton.count(), 0)
     await checkWidth()
   }
   await page.setViewportSize({ width: 360, height: 800 })
@@ -135,6 +155,7 @@ try {
   await menuButton.click()
   await drawer.waitFor()
   assert.equal(await drawer.getByRole('menuitem', { name: /사용자 관리/ }).count(), 0)
+  await drawer.getByText('양식 자료실', { exact: true }).waitFor()
   await page.keyboard.press('Escape')
   await drawer.waitFor({ state: 'hidden' })
   await page.getByRole('button', { name: /사용자 메뉴:/ }).click()
@@ -160,9 +181,14 @@ try {
   await desktop.getByRole('tab', { name: '협력업체', exact: true }).and(desktop.locator('[aria-selected="true"]')).waitFor()
   await desktop.getByRole('tab', { name: '대시보드', exact: true }).click()
   await desktop.waitForURL('**/dashboard')
+  await desktop.setViewportSize({ width: 1024, height: 900 })
+  await desktop.getByRole('button', { name: '메뉴 열기', exact: true }).click()
+  await desktop.getByRole('dialog', { name: '업무 메뉴' }).getByText('양식 자료실', { exact: true }).click()
+  await desktop.waitForURL('**/forms')
+  await desktop.getByRole('heading', { name: '양식 자료실', exact: true }).waitFor()
   await desktop.close()
   assert.deepEqual(errors, [])
-  console.log(`PASS (${engine}): 360px 배치·메뉴 이동/닫기/뒤로 가기·역할별 메뉴·알림·로그아웃·1280px PC 배치`)
+  console.log(`PASS (${engine}): 360~1199px 자료실 메뉴·작업 탭 경계·1200px 이상 좌측 메뉴·알림·로그아웃`)
 } finally {
   await browser.close()
 }
