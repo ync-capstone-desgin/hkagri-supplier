@@ -25,6 +25,7 @@ import { SupplierListPage } from './features/supplier/SupplierListPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { UserManagementPage } from './features/users/UserManagementPage'
+import { FormsPage } from './features/forms/FormsPage'
 import './index.css'
 
 dayjs.locale('ko')
@@ -68,6 +69,8 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
                   <Route path="/contracts" element={<ContractListPage />} />
                   <Route path="/certifications" element={<CertificationListPage />} />
+                  <Route path="/forms" element={<FormsPage />} />
+                  <Route path="/forms/folders/:folderId" element={<FormsPage />} />
                   <Route path="/expiries" element={<ExpiryListPage />} />
                   <Route path="/expiry-calendar" element={<ExpiryCalendarPage />} />
                   <Route path="/renewal-board" element={<RenewalBoardPage />} />

@@ -21,20 +21,39 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
+      # PR은 대상 브랜치, push는 직전 커밋의 SQL을 기준으로 기존 DB를 재현한다.
+      - name: 업그레이드 기준 마이그레이션 준비
+        working-directory: .
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          test -n "$BASE_SHA"
+          mkdir -p "$RUNNER_TEMP/flyway-baseline"
+          git archive "$BASE_SHA" backend/src/main/resources/db/migration |
+            tar -x -C "$RUNNER_TEMP/flyway-baseline"
       # Testcontainers가 GitHub 러너의 Docker로 PostgreSQL을 띄워 테스트한다.
-      - name: 테스트
-        run: chmod +x gradlew && ./gradlew test --no-daemon
+      - name: 테스트 및 기존 DB 업그레이드 검증
+        run: |
+          chmod +x gradlew
+          ./gradlew test migrationUpgradeTest --no-daemon \
+            -PflywayBaselineDir="$RUNNER_TEMP/flyway-baseline/backend/src/main/resources/db/migration"
       - name: 실패한 테스트 보고서 올리기
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-report
-          path: backend/build/reports/tests/test
+          path: |
+            backend/build/reports/tests/test
+            backend/build/reports/tests/migrationUpgradeTest
 
   frontend:
     name: frontend

@@ -16,7 +16,7 @@ public final class FileDtos {
                            LocalDateTime createdAt, String createdBy) {
 
         /** 엔티티를 응답 형식으로 바꾼다. */
-        static FileInfo of(StoredFile f) {
+        public static FileInfo of(StoredFile f) {
             return new FileInfo(f.getId(), f.getOriginalName(), f.getContentType(), f.getSize(),
                     f.getCreatedAt(), f.getCreatedBy());
         }
@@ -30,9 +30,9 @@ public final class FileDtos {
             var c = f.getContract();
             var cert = f.getCertification();
             return new SupplierFile(FileInfo.of(f), c == null ? null : c.getId(),
-                    c == null ? null : c.getContractNumber() + " · " + c.getTitle(),
+                    c == null ? null : (c.getContractNumber().isEmpty() ? "" : c.getContractNumber() + " · ") + c.getTitle(),
                     cert == null ? null : cert.getId(),
-                    cert == null ? null : cert.getCertType().getName() + " · " + cert.getCertificateNumber());
+                    cert == null ? null : cert.getDisplayName() + " · " + cert.getCertificateNumber());
         }
     }
 

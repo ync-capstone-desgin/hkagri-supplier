@@ -81,7 +81,7 @@ class AttachmentApiTest {
     void 인증의_첨부파일_목록을_조회한다() throws Exception {
         Supplier s = suppliers.save(new Supplier("인증 첨부 업체", SupplierStatus.ACTIVE));
         Certification cert = new Certification(s);
-        cert.update(s, certTypes.findById("HACCP").orElseThrow(), "ATT-CERT", LocalDate.now(),
+        cert.update(s, certTypes.findById("HACCP").orElseThrow(), "ATT-CERT", "냉동 과일", LocalDate.now(),
                 LocalDate.now().plusYears(1), null, null, null);
         cert = certifications.save(cert);
 
