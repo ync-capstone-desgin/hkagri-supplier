@@ -9,6 +9,10 @@ import com.hankooknongsan.supplier.TestcontainersConfig;
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
 import com.hankooknongsan.supplier.auth.Role;
+import com.hankooknongsan.supplier.auth.UserAdminController.Action;
+import com.hankooknongsan.supplier.auth.UserAdminController.ChangeRequest;
+import com.hankooknongsan.supplier.auth.UserAdminService;
+import com.hankooknongsan.supplier.auth.UserStatus;
 import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import com.hankooknongsan.supplier.common.TargetType;
@@ -46,6 +50,7 @@ class NotificationScanTest {
     @Autowired NotificationRepository notifications;
     @Autowired NotificationDeliveryRepository deliveries;
     @Autowired AppUserRepository users;
+    @Autowired UserAdminService userAdminService;
     @Autowired SupplierRepository suppliers;
     @Autowired ContractRepository contracts;
     @Autowired ContractService contractService;
@@ -61,7 +66,8 @@ class NotificationScanTest {
     void setUp() {
         today = LocalDate.of(2040, 1, 1).plusYears(seq++);
         clock.setToday(today);
-        owner = users.save(new AppUser("noti-" + System.nanoTime(), "{noop}x", "알림담당", "owner@test.local", Role.MANAGER));
+        String username = "noti-" + System.nanoTime();
+        owner = users.save(new AppUser(username, "{noop}x", "알림담당", username + "@test.local", Role.MANAGER));
         active = supplier("알림테스트업체", SupplierStatus.ACTIVE);
     }
 
@@ -156,6 +162,31 @@ class NotificationScanTest {
         assertThat(recipients).contains(admin.getId()).doesNotContain(owner.getId());
     }
 
+    /** 담당자를 비활성화해도 계약 연결은 유지하고 활성 관리자에게만 알림을 만든다. */
+    @Test
+    void 비활성_담당자와_담당자_없는_계약은_활성_관리자에게만_알린다() {
+        AppUser admin = users.save(new AppUser("active-admin-" + System.nanoTime(), "{noop}x", "활성 관리자", null, Role.ADMIN));
+        AppUser inactiveAdmin = users.save(new AppUser("inactive-admin-" + System.nanoTime(), "{noop}x", "비활성 관리자", null, Role.ADMIN));
+        Contract assigned = contract(active, 5, owner);
+        Contract unassigned = contract(active, 5, null);
+        userAdminService.change(admin.getId(), owner.getId(), new ChangeRequest(Action.DEACTIVATE, null));
+        userAdminService.change(admin.getId(), inactiveAdmin.getId(), new ChangeRequest(Action.DEACTIVATE, null));
+        List<Long> activeAdminIds = users.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE).stream()
+                .map(AppUser::getId).toList();
+
+        scanService.scan(today);
+
+        assertThat(contracts.findById(assigned.getId()).orElseThrow().getOwner().getId()).isEqualTo(owner.getId());
+        for (Contract c : List.of(assigned, unassigned)) {
+            List<Long> recipients = notifications.findAll().stream()
+                    .filter(n -> n.getTargetType() == TargetType.CONTRACT && n.getTargetId().equals(c.getId()))
+                    .map(n -> n.getRecipient().getId()).toList();
+            assertThat(recipients).containsExactlyInAnyOrderElementsOf(activeAdminIds)
+                    .doesNotContain(owner.getId(), inactiveAdmin.getId());
+        }
+        assertThat(scanService.scan(today).created()).isZero();
+    }
+
     /** 화면 알림은 발송완료, 이메일은 메일 서버 오류로 재시도 대기가 되고 사유가 기록된다. 업무 데이터(알림)는 남는다. */
     @Test
     void 이메일_발송에_실패하면_재시도_대기로_기록한다() {
@@ -176,6 +207,24 @@ class NotificationScanTest {
             assertThat(email.getRetryCount()).isEqualTo(1);
             assertThat(email.getLastError()).isNotBlank();
             assertThat(email.getNextAttemptAt()).isAfter(clock.now());
+        });
+    }
+
+    /** FR-028: 알림메일을 꺼두면 이메일 발송건은 안 만들어지고, 화면(IN_APP) 발송건은 그대로 만들어진다. */
+    @Test
+    void 알림메일을_꺼두면_이메일_발송건이_생기지_않는다() {
+        AppUser noMail = users.save(new AppUser("noti-nomail-" + System.nanoTime(), "{noop}x", "메일끈담당",
+                "nomail@test.local", Role.MANAGER));
+        noMail.updateProfile(noMail.getName(), noMail.getEmail(), false);
+        noMail = users.save(noMail);
+        Contract c = contract(active, 5, noMail);
+        scanService.scan(today);
+
+        tx.executeWithoutResult(s -> {
+            Notification n = notifications.findAll().stream()
+                    .filter(x -> x.getTargetId().equals(c.getId()) && x.getTargetType() == TargetType.CONTRACT)
+                    .findFirst().orElseThrow();
+            assertThat(n.getDeliveries()).extracting(NotificationDelivery::getChannel).containsExactly(Channel.IN_APP);
         });
     }
 

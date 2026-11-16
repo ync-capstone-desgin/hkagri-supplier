@@ -16,12 +16,16 @@ import { DashboardPage } from './features/dashboard/DashboardPage'
 import { ExpiryCalendarPage } from './features/expiry/ExpiryCalendarPage'
 import { ExpiryListPage } from './features/expiry/ExpiryListPage'
 import { RenewalBoardPage } from './features/expiry/RenewalBoardPage'
+import { MyPage } from './features/mypage/MyPage'
 import { NotificationInboxPage } from './features/notification/NotificationInboxPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { ContractListPage } from './features/contract/ContractListPage'
 import { SupplierDetailPage } from './features/supplier/SupplierDetailPage'
 import { SupplierListPage } from './features/supplier/SupplierListPage'
 import { LoginPage } from './pages/LoginPage'
+import { SignupPage } from './pages/SignupPage'
+import { UserManagementPage } from './features/users/UserManagementPage'
+import { FormsPage } from './features/forms/FormsPage'
 import './index.css'
 
 dayjs.locale('ko')
@@ -49,6 +53,7 @@ createRoot(document.getElementById('root')!).render(
             <AuthProvider>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
                 <Route
                   element={
                     <RequireAuth>
@@ -64,11 +69,15 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
                   <Route path="/contracts" element={<ContractListPage />} />
                   <Route path="/certifications" element={<CertificationListPage />} />
+                  <Route path="/forms" element={<FormsPage />} />
+                  <Route path="/forms/folders/:folderId" element={<FormsPage />} />
                   <Route path="/expiries" element={<ExpiryListPage />} />
                   <Route path="/expiry-calendar" element={<ExpiryCalendarPage />} />
                   <Route path="/renewal-board" element={<RenewalBoardPage />} />
                   <Route path="/notifications" element={<NotificationInboxPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/mypage" element={<MyPage />} />
+                  <Route path="/users" element={<UserManagementPage />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>
               </Routes>

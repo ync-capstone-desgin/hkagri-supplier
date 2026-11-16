@@ -1,0 +1,27 @@
+name: 🧰 작업
+description: 설정, 문서, 리팩터링, 조사, 결정 등 기능·버그가 아닌 일
+title: "[작업] "
+labels: ["작업"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목적
+      description: 이 작업을 왜 하나요?
+    validations:
+      required: true
+  - type: textarea
+    id: todo
+    attributes:
+      label: 할 일
+      placeholder: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건 / 결정 결과를 남길 곳
+    validations:
+      required: true

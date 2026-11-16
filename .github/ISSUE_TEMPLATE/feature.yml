@@ -1,0 +1,38 @@
+name: ✨ 기능 요청
+description: 새 기능이나 화면을 만들 때
+title: "[기능] "
+labels: ["기능"]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+      description: 왜 필요한가요? 누가 요청했나요? (예: 미팅에서 담당자 요청)
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: 요구사항
+      description: 무엇을 만들어야 하나요? 화면·API·데이터로 나눠 적으면 좋아요.
+      placeholder: |
+        - 화면: 업체 상세에 '자료' 탭 추가
+        - API: 파일 업로드·다운로드·삭제
+        - 데이터: 업체별 첨부파일 테이블
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      description: 어떻게 되면 '끝났다'고 볼 수 있나요? 리뷰어가 이걸 보고 확인합니다.
+      placeholder: |
+        - [ ] 담당자가 업체 상세에서 PDF를 올리고 내려받을 수 있다
+        - [ ] 조회자는 내려받기만 된다
+        - [ ] 테스트 추가
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고 (화면 예시, 링크, 결정 필요 사항)

@@ -130,10 +130,10 @@ public class ContractService {
         AppUser owner = req.ownerId() != null
                 ? users.findById(req.ownerId()).orElseThrow(() -> BusinessException.invalid("ownerId", "담당자를 찾을 수 없습니다."))
                 : supplier.getOwner();
-        String number = req.contractNumber().trim();
+        String number = req.contractNumber() == null ? "" : req.contractNumber().trim();
 
         List<String> warnings = new ArrayList<>();
-        if (contracts.existsDuplicate(supplier.getId(), number, exceptId)) {
+        if (!number.isEmpty() && contracts.existsDuplicate(supplier.getId(), number, exceptId)) {
             warnings.add("같은 업체에 계약번호 " + number + "이(가) 이미 있습니다. 번호를 확인해 주세요.");
         }
         c.update(supplier, number, req.title().trim(), req.startDate(), req.endDate(), Boolean.TRUE.equals(req.autoRenew()), owner,

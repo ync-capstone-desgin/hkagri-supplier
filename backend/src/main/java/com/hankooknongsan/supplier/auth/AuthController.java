@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -72,7 +71,7 @@ public class AuthController {
     /** 전체 사용자 목록을 반환한다. 담당자 선택상자에 쓴다. */
     @GetMapping("/api/users")
     public List<UserOption> users() {
-        return users.findAll(Sort.by("id")).stream()
+        return users.findByStatusOrderById(UserStatus.ACTIVE).stream()
                 .map(u -> new UserOption(u.getId(), u.getName(), u.getRole(), u.getEmail()))
                 .toList();
     }

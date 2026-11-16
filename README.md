@@ -1,6 +1,38 @@
-# 협력업체 통합관리 시연 프로토타입 (JinsuBae2)
+# 한국농산 협력업체 통합관리 시스템 (hkagri-supplier)
 
-한국농산 캡스톤 디자인 과제의 팀원별 시연 프로토타입이다. 설계 근거는 capstone-docs 저장소의 `docs/JinsuBae2/prototype-design.md`를 따른다.
+영남이공대학교 캡스톤디자인 **404팀**이 한국농산(농업회사법인 한국농산합자회사)과 함께 만드는 협력업체 통합관리 웹 시스템이다.
+협력업체의 계약·인증을 한곳에서 관리하고, 만료가 다가오면 담당자에게 미리 알려 갱신 누락을 막는 것이 목표다.
+
+> 이 저장소는 팀원 프로토타입 [prototype-JinsuBae2](https://github.com/ync-capstone-desgin/prototype-JinsuBae2)의 기록을 이어받아 시작했다.
+> 기업 담당자 체험용으로 배포한 버전은 그 저장소의 `v0.1-demo` 태그다.
+
+## 팀
+
+| 이름 | GitHub | 역할 |
+|---|---|---|
+| 배진수 (팀장) | [@JinsuBae2](https://github.com/JinsuBae2) | |
+| 박준영 | [@Luluan8975](https://github.com/Luluan8975) | |
+| 조대성 | [@Rinhaze](https://github.com/Rinhaze) | |
+
+## 함께 개발하기
+
+**처음이라면 [CONTRIBUTING.md](CONTRIBUTING.md)를 먼저 읽는다.** 이슈 작성부터 PR 머지까지 따라 하기 순서와 규칙이 있다.
+
+```
+이슈 작성 → develop에서 브랜치 생성 → 개발·커밋 → 푸시 → PR → 자동 테스트 통과 → 다른 팀원 1명 승인 → 리뷰어가 머지
+```
+
+- 기본 브랜치는 `develop`이다. `main`은 배포용이며 `main`·`develop`에 직접 푸시할 수 없다.
+- 할 일은 [Issues](https://github.com/ync-capstone-desgin/hkagri-supplier/issues), 일정은 [Milestones](https://github.com/ync-capstone-desgin/hkagri-supplier/milestones)에서 본다.
+
+## 일정 (마일스톤)
+
+| 마일스톤 | 기간 | 내용 |
+|---|---|---|
+| M1 요구사항 확정 | ~10/23 | 협업 환경 세팅, 요청 기능 완료 조건·방식 확정 |
+| M2-1 핵심 기능 | 10/26~11/13 | 업체별 자료보관, 문서·양식 게시판, 회원가입·마이페이지, 메일 알림, 브랜딩 |
+| M2-2 확장·반응형 | 11/16~12/4 | 모바일 반응형, 담당자 중간 피드백 반영 |
+| M3 최종 시연 | 12/7~12/18 | 통합 테스트, 실무자 검증, 개선, 결과 보고 |
 
 ## 기술 스택
 
@@ -10,8 +42,10 @@
 | 데이터베이스 | PostgreSQL 16 (Docker Compose) |
 | 알림 | DB 아웃박스 + 정기 발송기, 화면 알림(SSE), 이메일(개발용 Mailpit) |
 | 프론트엔드 | React 19 + TypeScript + Vite, Ant Design 6, AG Grid Community, TanStack Query |
+| 배포 | AWS EC2 + Docker Compose + Caddy(HTTPS 자동 발급) |
+| 협업 | GitHub Issues·PR·Milestones, GitHub Actions(자동 테스트) |
 
-## 실행 방법
+## 내 PC에서 실행하기
 
 사전 준비: Docker Desktop, Java 21, Node.js 20 이상
 
@@ -28,14 +62,14 @@ cd frontend && npm install && npm run dev
 ```
 
 - 화면: http://localhost:5173 (API 요청은 Vite 프록시로 8080에 전달)
-
 - API 문서: http://localhost:8080/swagger-ui.html
 - 개발용 메일함(Mailpit): http://localhost:8025 — 알림 메일은 실제로 나가지 않고 여기에 쌓인다
-- 기본 프로파일은 `dev`이며, DB가 비어 있으면 가상 샘플 데이터가 자동으로 들어간다.
-- DB 초기화: `docker compose down -v` 후 다시 실행
+- 기본 프로파일은 `dev`이며, 사용자와 업체가 모두 없으면 식품 업종의 가상 샘플 데이터가 자동으로 들어간다. 실제 기업 자료는 포함하지 않는다.
+- 새 샘플을 보려면 기존 DB를 지우지 않고 별도 빈 DB에 연결한다. [시연 데이터 안내](docs/demo-data.md)를 참고한다.
+- 올린 첨부파일은 `backend/data/files`에 저장된다 (Git에 올라가지 않음). 지우려면 이 폴더를 삭제한다.
 - 시연용 기준일 변경: admin으로 로그인 후 상단 "기준일" 태그를 눌러 날짜를 옮긴다 (dev 프로파일 전용, 서버 재시작 시 실제 날짜로 복귀)
 
-## 시연 계정
+### 시연 계정
 
 비밀번호는 `.env.example`의 `SEED_PASSWORD` 값이다.
 
@@ -48,32 +82,39 @@ cd frontend && npm install && npm run dev
 
 ## 구현 현황
 
-| 단계 | 기능 | 요구사항 | 상태 |
-|---|---|---|---|
-| 1 | 로그인·역할, 협력업체 등록·조회·수정·검색·엑셀 | FR-001~003, FR-013 | 완료 (API + 화면) |
-| 2 | 계약·인증 등록·수정·갱신(이력 연결)·처리상태, 업체별 조회, 문서 링크 | FR-004~006, FR-012 | 완료 (API + 화면) |
-| 3 | 만료 판정(D-day)·만료 예정 목록·대시보드·시연용 기준일 변경 | FR-007~009 | 완료 (API + 화면) |
-| 4 | 만료 점검·알림 생성(중복 방지)·아웃박스 발송(화면·이메일, 재시도)·알림함·알림 기준 설정 | FR-010, FR-011 | 완료 (API + 화면) |
-| 5 | 만료 캘린더: 월 달력에 만료일 표시, 날짜별 목록에서 처리상태 변경·갱신 등록 | FR-008 확장 (벤치마킹) | 완료 (API + 화면) |
-| 6 | 갱신 현황판: 처리상태별 칸에 카드를 끌어 놓아 상태 변경, 완료 칸에 놓으면 갱신 등록 | FR-006 확장 (벤치마킹) | 완료 (API + 화면) |
+### 회원가입 신청
 
-## 서버 배포 (담당자 체험용)
+로그인 화면의 **회원가입**에서 이름·아이디·메일·비밀번호·비밀번호 확인과 선택 사항인 가입 사유를 입력한다.
+신청은 `PENDING`(승인 대기), `VIEWER`(조회자)로 저장되며 자동 로그인되지 않는다.
+관리자는 **사용자 관리**에서 가입 승인·거절, 역할 변경과 비활성화·다시 사용을 처리한다. 기존 계정은 `ACTIVE`로 유지된다.
+관리 화면의 API·권한 규칙은 [docs/user-management.md](docs/user-management.md)를 참고한다.
+API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고한다.
 
-AWS EC2 한 대에 Docker Compose로 올려 URL로 접속하게 한다. 절차는 [docs/deploy-aws.md](docs/deploy-aws.md)를 따른다.
+프로토타입 단계(v0.1-demo)까지 완료한 기능이다. 이후 기능은 Issues에서 관리한다.
 
-## 사용 설명서
+| 기능 | 요구사항 |
+|---|---|
+| 로그인·역할, 협력업체 등록·조회·수정·검색·엑셀 | FR-001~003, FR-013 |
+| 계약·인증 등록·수정·갱신(이력 연결)·처리상태, 업체별 조회, 문서 링크 | FR-004~006, FR-012 |
+| 만료 판정(D-day)·만료 예정 목록·대시보드·시연용 기준일 변경 | FR-007~009 |
+| 만료 점검·알림 생성(중복 방지)·아웃박스 발송(화면·이메일, 재시도)·알림함·알림 기준 설정 | FR-010, FR-011 |
+| 만료 캘린더: 월 달력에 만료일 표시, 날짜별 목록에서 처리상태 변경·갱신 등록 | FR-008 확장 |
+| 갱신 현황판: 처리상태별 칸에 카드를 끌어 놓아 상태 변경, 완료 칸에 놓으면 갱신 등록 | FR-006 확장 |
 
-메뉴별 화면과 사용법은 스크린샷과 함께 [docs/user-guide.md](docs/user-guide.md)에 정리했다.
+## 문서
 
-## 시연 순서 (약 5분)
-
-1. **manager1**로 로그인 → 대시보드에서 오늘 처리할 일(만료·7일 이내 건수) 확인
-2. 다른 브라우저(또는 시크릿 창)에서 **admin**으로 로그인 → [알림 설정] → [만료 점검 지금 실행]
-3. manager1 화면에 새로고침 없이 "새 만료 알림 N건" 팝업과 🔔 배지가 뜬다 → 알림함에서 확인
-4. Mailpit(http://localhost:8025)에서 담당자에게 간 알림 메일 확인
-5. 알림함 → [업체 보기] → 계약 탭에서 [갱신] 등록 → 해당 알림이 자동으로 "완료"
-6. admin이 상단 기준일을 3개월 뒤로 옮기고 다시 점검 → 새로 임박한 항목의 알림이 생성됨
-7. 같은 날짜로 점검을 한 번 더 실행해도 새 알림 0건 (중복 방지)
+| 문서 | 내용 |
+|---|---|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 협업 규칙과 따라 하기 (이슈·브랜치·커밋·PR·리뷰) |
+| [docs/user-guide.md](docs/user-guide.md) | 메뉴별 사용 설명서 (스크린샷 포함) |
+| [docs/forms-api.md](docs/forms-api.md) | 양식 자료실 API·첨부·권한·DB 적용 순서 |
+| [docs/forms-ui.md](docs/forms-ui.md) | 하위 폴더 탐색·양식 등록·첨부 다운로드 및 화면 검증 |
+| [docs/cert-types.md](docs/cert-types.md) | 인증 종류 관리·권한·비활성 선택 규칙·DB |
+| [docs/cert-scope.md](docs/cert-scope.md) | 인증 적용 대상 입력·검색·갱신·만료 안내·API·DB |
+| [docs/demo-data.md](docs/demo-data.md) | 가상 시연 데이터 구성과 기존 DB를 보존하는 실행 방법 |
+| [docs/supplier-files.md](docs/supplier-files.md) | 업체 자료 탭 사용법, 파일 연결 API·DB, 검증 방법 |
+| [docs/deploy-aws.md](docs/deploy-aws.md) | AWS EC2 배포 가이드 |
+| [capstone-docs](https://github.com/ync-capstone-desgin/capstone-docs) | 기획서, 설계, 미팅 자료 |
 
 ## 테스트
 
@@ -81,12 +122,19 @@ AWS EC2 한 대에 Docker Compose로 올려 URL로 접속하게 한다. 절차�
 cd backend && ./gradlew test
 ```
 
-Testcontainers로 실제 PostgreSQL을 띄워 실행하므로 Docker가 켜져 있어야 한다. (총 38건)
+Testcontainers로 실제 PostgreSQL을 띄워 실행하므로 Docker가 켜져 있어야 한다.
+PR을 올리면 GitHub Actions가 같은 테스트와 화면 빌드를 자동으로 실행한다.
 
 | 테스트 | 확인 내용 |
 |---|---|
 | SupplierApiTest | VT-001 정상 등록, VT-002 필수값 누락, 역할별 권한 |
+| DevDataSeederTest | 새 dev DB의 가상 샘플·업종별 계약/인증·만료 경계·선택 입력·기존 자료 보존 |
 | ContractApiTest | VT-003 종료일 < 시작일, VT-007 업체별 조회, 갱신 이력, 중복 경고, 갱신완료 직접 지정·이력 건 상태 변경 차단 |
+| CertificationScopeApiTest | 적용 대상 저장·길이·빈 값, 검색 필터·페이지, 갱신 이력, 조회자 권한, 만료 화면·최대 길이 알림·엑셀 |
 | ExpiryPolicyTest | VT-004 오늘 만료, VT-005 7·30·90일 경계 |
 | ExpiryApiTest | VT-008 만료 목록 필터, VT-009 대시보드 = 목록 건수, 만료 캘린더 기간 조회·기간 제한, 갱신 현황판 대상 |
 | NotificationScanTest | VT-006 중복 알림 방지, 가장 작은 기준일 적용, 제외 대상, 발송 실패 재시도, 갱신 시 자동 완료 |
+| FileApiTest | 첨부파일 같은 이름·내용으로 내려받기, HWP 허용, 형식·서명·크기(20MB) 거절, 조회자 권한, 삭제 후 숨김과 삭제 이력 |
+| SupplierFileApiTest | 업체 자료 격리, 계약·인증 연결과 갱신 이력, 원본 다운로드, 삭제 이력, 잘못된 연결·조회자 쓰기 차단 |
+| FileServiceTest | 업로드 실패·롤백 시 남는 파일 정리, 동시 삭제 시 한 명만 성공하고 처음 삭제 기록 유지 |
+| LocalDiskFileStorageTest | 디스크 저장·읽기·지우기, 저장 폴더 밖 경로 거절, 덮어쓰기 방지, 쓰다 실패한 반쪽 파일 정리 |

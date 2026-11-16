@@ -38,12 +38,48 @@ public class AppUser extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    /** 새 사용자를 만든다. 비밀번호는 암호화된 값을 넘겨야 한다. */
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    /** 가입 신청 사유 (선택 입력) */
+    private String signupReason;
+
+    /** 만료 알림메일 수신 여부 (FR-028). 꺼도 화면 알림(IN_APP)은 그대로 온다. */
+    private boolean notifyEmail;
+
+    /** 관리자 서비스가 검증한 역할·계정 상태만 변경한다. 업무 담당 연결은 유지한다. */
+    void changeAccess(Role role, UserStatus status) {
+        this.role = role;
+        this.status = status;
+    }
+
+    /** 공개 가입 신청은 승인 대기·최소 권한으로 만들며 역할을 입력받지 않는다. */
+    public static AppUser pending(String username, String password, String name, String email, String reason) {
+        AppUser user = new AppUser(username, password, name, email, Role.VIEWER);
+        user.status = UserStatus.PENDING;
+        user.signupReason = reason;
+        return user;
+    }
+
+    /** 새 사용자를 만든다. 비밀번호는 암호화된 값을 넘겨야 한다. 알림메일은 기본으로 받는다. */
     public AppUser(String username, String password, String name, String email, Role role) {
         this.username = username;
         this.password = password;
         this.name = name;
         this.email = email;
         this.role = role;
+        this.notifyEmail = true;
+    }
+
+    /** 이름·이메일·알림메일 수신 여부를 한 번에 수정한다. 이메일을 바꾸면 다음 알림부터 새 주소로 간다. */
+    public void updateProfile(String name, String email, boolean notifyEmail) {
+        this.name = name;
+        this.email = email;
+        this.notifyEmail = notifyEmail;
+    }
+
+    /** 비밀번호를 바꾼다. 암호화된 값을 넘겨야 한다. */
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 }

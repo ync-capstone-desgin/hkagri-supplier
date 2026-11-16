@@ -22,7 +22,7 @@ public final class ContractDtos {
     /** 계약 등록·수정·갱신 요청. 종료일이 비어 있으면 무기한 계약, 자동연장을 비우면 "아니오"로 본다. */
     public record ContractRequest(
             @NotNull(message = "협력업체를 선택해 주세요.") Long supplierId,
-            @NotBlank(message = "계약번호를 입력해 주세요.") @Size(max = 50) String contractNumber,
+            @Size(max = 50) String contractNumber,
             @NotBlank(message = "계약명을 입력해 주세요.") @Size(max = 200) String title,
             @NotNull(message = "시작일을 입력해 주세요.") LocalDate startDate,
             LocalDate endDate,

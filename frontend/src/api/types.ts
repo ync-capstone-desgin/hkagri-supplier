@@ -34,6 +34,31 @@ export interface UserOption {
   email: string | null
 }
 
+/** 내 정보 (마이페이지) */
+export interface MyProfile {
+  id: number
+  username: string
+  name: string
+  email: string
+  role: Role
+  /** 꺼두면 만료 알림 메일을 받지 않는다 (화면 알림은 그대로 온다) */
+  notifyEmail: boolean
+  createdAt: string
+}
+
+/** 내 정보 수정 요청 */
+export interface ProfileUpdateRequest {
+  name: string
+  email: string
+  notifyEmail: boolean
+}
+
+/** 비밀번호 변경 요청. 현재 비밀번호가 틀리면 저장되지 않는다. */
+export interface PasswordChangeRequest {
+  currentPassword: string
+  newPassword: string
+}
+
 /** 공통 코드 하나 (저장값 + 한글 이름) */
 export interface Code {
   code: string
@@ -154,7 +179,7 @@ export interface ContractItem {
 /** 계약 등록·수정·갱신 요청 */
 export interface ContractRequest {
   supplierId: number
-  contractNumber: string
+  contractNumber?: string
   title: string
   startDate: string
   endDate?: string | null
@@ -177,6 +202,7 @@ export interface ContractSearch {
 export interface CertType {
   code: string
   name: string
+  active: boolean
 }
 
 /** 인증 (목록·상세 공통) */
@@ -187,6 +213,7 @@ export interface CertificationItem {
   certTypeCode: string
   certTypeName: string
   certificateNumber: string
+  scope: string | null
   issuedDate: string
   /** null이면 만료일 없음(확인 필요) */
   expiryDate: string | null
@@ -211,6 +238,7 @@ export interface CertificationRequest {
   supplierId: number
   certTypeCode: string
   certificateNumber: string
+  scope?: string | null
   issuedDate: string
   expiryDate?: string | null
   ownerId?: number | null

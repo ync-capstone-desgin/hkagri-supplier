@@ -7,12 +7,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -22,6 +24,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
  * 보안 설정: 세션 기반 로그인 + 역할 3종 권한.
  * <ul>
  *   <li>조회(GET): 로그인한 사용자 모두</li>
+ *   <li>내 정보·비밀번호(/api/me/**): 로그인한 사용자 모두 (역할 무관, 자기 자신만 다룸)</li>
  *   <li>등록·수정: ADMIN, MANAGER</li>
  *   <li>기준정보 변경·시연 도구(/api/admin): ADMIN</li>
  * </ul>
@@ -35,21 +38,24 @@ public class SecurityConfig {
      * 로그인하지 않은 API 요청은 로그인 화면으로 이동시키지 않고 401을 돌려준다(SPA 방식).
      */
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AppUserRepository users) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
+                .addFilterBefore(new CurrentUserFilter(users), AuthorizationFilter.class)
                 .securityContext(sc -> sc.securityContextRepository(securityContextRepository()))
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .logout(l -> l.logoutUrl("/api/auth/logout")
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()))
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup").permitAll()
                         .requestMatchers("/api/auth/login", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/settings/**").hasRole("ADMIN")
                         .requestMatchers("/api/notifications/**").authenticated()
+                        .requestMatchers("/api/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
                         .requestMatchers("/api/**").hasAnyRole("ADMIN", "MANAGER")
                         .anyRequest().permitAll());
@@ -73,6 +79,17 @@ public class SecurityConfig {
     AuthenticationManager authenticationManager(LoginUserService userService, PasswordEncoder encoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userService);
         provider.setPasswordEncoder(encoder);
+        // 비밀번호가 맞는 경우에만 계정 상태를 안내하고, 세션 생성 전에 차단한다.
+        provider.setPostAuthenticationChecks(user -> {
+            UserStatus status = ((LoginUser) user).status();
+            if (status != UserStatus.ACTIVE) {
+                throw new DisabledException(switch (status) {
+                    case PENDING -> "승인 대기 중입니다. 관리자 승인 후 로그인해 주세요.";
+                    case REJECTED -> "가입 신청이 거절되었습니다. 관리자에게 문의해 주세요.";
+                    default -> "비활성화된 계정입니다. 관리자에게 문의해 주세요.";
+                });
+            }
+        });
         return new ProviderManager(provider);
     }
 }

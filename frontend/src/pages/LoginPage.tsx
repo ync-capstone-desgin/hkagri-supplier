@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
-import { Navigate, useNavigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { useAuth } from '../app/AuthContext'
 import { toProblem } from '../api/client'
 import { BRAND } from '../app/theme'
@@ -64,6 +64,7 @@ export function LoginPage() {
             로그인
           </Button>
         </Form>
+        <div style={{ marginTop: 16, textAlign: 'center' }}><Link to="/signup">회원가입</Link></div>
         <Typography.Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 0, fontSize: 12 }}>
           시연 계정: admin · manager1 · manager2 · viewer (비밀번호는 README 참고)
         </Typography.Paragraph>

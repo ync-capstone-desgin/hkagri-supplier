@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
-import { findMenu } from './menu'
+import { EXTRA_TABS, findMenu } from './menu'
 
 /** 상단 작업 탭 하나 */
 export interface WorkTab {
@@ -30,14 +30,12 @@ export function TabsProvider({ children }: { children: ReactNode }) {
   const activePath = location.pathname
 
   // 주소가 바뀌면 해당 화면의 탭이 없을 때 새로 연다.
+  // 좌측 메뉴(MENU)에 없는 화면(마이페이지 등)은 EXTRA_TABS에서 제목을 찾는다.
   useEffect(() => {
     const menu = findMenu(activePath)
-    if (!menu) return
-    setTabs((prev) =>
-      prev.some((t) => t.path === activePath)
-        ? prev
-        : [...prev, { path: activePath, title: activePath === menu.path ? menu.label : `${menu.label} 상세` }],
-    )
+    const title = menu ? (activePath === menu.path ? menu.label : `${menu.label} 상세`) : EXTRA_TABS[activePath]
+    if (!title) return
+    setTabs((prev) => (prev.some((t) => t.path === activePath) ? prev : [...prev, { path: activePath, title }]))
   }, [activePath])
 
   /** 탭을 닫는다. 보고 있던 탭을 닫으면 바로 옆 탭으로 이동한다. */

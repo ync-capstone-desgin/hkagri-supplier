@@ -24,6 +24,7 @@ public final class CertificationDtos {
             @NotNull(message = "협력업체를 선택해 주세요.") Long supplierId,
             @NotBlank(message = "인증 종류를 선택해 주세요.") String certTypeCode,
             @NotBlank(message = "인증번호를 입력해 주세요.") @Size(max = 50) String certificateNumber,
+            @Size(max = 200, message = "적용 대상은 200자 이내로 입력해 주세요.") String scope,
             @NotNull(message = "발급일을 입력해 주세요.") LocalDate issuedDate,
             LocalDate expiryDate,
             Long ownerId,
@@ -32,12 +33,16 @@ public final class CertificationDtos {
     }
 
     /** 인증 종류 선택상자용 */
-    public record CertTypeItem(String code, String name) {
+    public record CertTypeItem(String code, String name, boolean active) {
+        /** 입력 화면이 신규 선택 가능 여부를 판별할 수 있게 한다. */
+        static CertTypeItem of(CertType type) {
+            return new CertTypeItem(type.getCode(), type.getName(), type.isActive());
+        }
     }
 
     /** 인증 목록·상세 응답. daysLeft·expiryStatus는 조회 시점의 오늘 기준으로 계산한 값이다. */
     public record CertificationItem(Long id, Long supplierId, String supplierName, String certTypeCode,
-                                    String certTypeName, String certificateNumber, LocalDate issuedDate,
+                                    String certTypeName, String certificateNumber, String scope, LocalDate issuedDate,
                                     LocalDate expiryDate, Integer daysLeft, ExpiryStatus expiryStatus,
                                     RenewalStatus renewalStatus, Long ownerId,
                                     String ownerName, boolean active, Long prevId, String documentUrl, String memo,
@@ -48,7 +53,7 @@ public final class CertificationDtos {
         static CertificationItem of(Certification x, ExpiryPolicy policy) {
             AppUser owner = x.getOwner();
             return new CertificationItem(x.getId(), x.getSupplier().getId(), x.getSupplier().getName(),
-                    x.getCertType().getCode(), x.getCertType().getName(), x.getCertificateNumber(),
+                    x.getCertType().getCode(), x.getCertType().getName(), x.getCertificateNumber(), x.getScope(),
                     x.getIssuedDate(), x.getExpiryDate(), policy.daysLeft(x.getExpiryDate()),
                     policy.status(x.getExpiryDate(), false), x.getRenewalStatus(),
                     owner == null ? null : owner.getId(), owner == null ? null : owner.getName(), x.isActive(),
