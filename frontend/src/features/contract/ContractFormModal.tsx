@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Switch } from 'antd'
+import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Switch, Typography } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import { toProblem } from '../../api/client'
 import { createContract, renewContract, updateContract } from '../../api/contracts'
+import { fetchContractFiles } from '../../api/files'
 import type { ContractItem, ContractRequest } from '../../api/types'
+import { AttachmentField } from '../../components/AttachmentField'
 import { fromDayjs, toDayjs } from '../../components/format'
 import { useOwnerOptions, useSupplierOptions } from '../../hooks/useOptions'
 import { useSaveShortcut } from '../../hooks/useSaveShortcut'
@@ -98,7 +100,8 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
     }
   }
 
-  const title = mode === 'create' ? '계약 등록' : mode === 'edit' ? `계약 수정 · ${contract?.contractNumber}` : `계약 갱신 · ${contract?.contractNumber}`
+  const contractLabel = contract?.contractNumber || contract?.title
+  const title = mode === 'create' ? '계약 등록' : mode === 'edit' ? `계약 수정 · ${contractLabel}` : `계약 갱신 · ${contractLabel}`
 
   return (
     <Modal open={open} title={title} okText="저장" cancelText="취소" width={680} confirmLoading={saving}
@@ -116,7 +119,7 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
             </Form.Item>
           </Col>
           <Col span={10}>
-            <Form.Item name="contractNumber" label="계약번호" rules={[{ required: true, message: '계약번호를 입력해 주세요.' }]}>
+            <Form.Item name="contractNumber" label="계약번호 (선택)">
               <Input maxLength={50} className="num" autoFocus={mode !== 'edit'} />
             </Form.Item>
           </Col>
@@ -162,6 +165,17 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
           <Col span={24}>
             <Form.Item name="memo" label="비고">
               <Input.TextArea rows={2} maxLength={1000} showCount />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item label="첨부파일">
+              {mode === 'edit' && contract ? (
+                <AttachmentField queryKey={['contract-files', contract.id]} supplierId={contract.supplierId}
+                  target={`contract:${contract.id}`} fetchFiles={() => fetchContractFiles(contract.id)}
+                  onChanged={() => void queryClient.invalidateQueries({ queryKey: ['contract-file-counts'] })} />
+              ) : (
+                <Typography.Text type="secondary">저장한 뒤 다시 열면 첨부할 수 있습니다.</Typography.Text>
+              )}
             </Form.Item>
           </Col>
         </Row>

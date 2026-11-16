@@ -23,14 +23,16 @@ public class FormService {
     private final StoredFileRepository files;
     private final FileService fileService;
     private final AppClock clock;
+    private final FormFolderService folders;
 
     /** 제목 검색·분류 필터·페이지 크기를 검증하고 목록을 반환한다. */
-    public PageResponse<PostItem> list(String keyword, String category, int page, int size) {
+    public PageResponse<PostItem> list(String keyword, String category, Long folderId, int page, int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw BusinessException.invalid("page", "페이지는 0 이상, 페이지 크기는 1~100이어야 합니다.");
         }
         FormCategory filter = category == null || category.isBlank() ? null : FormCategory.parse(category);
-        return PageResponse.of(posts.search(keyword == null ? "" : keyword.strip(), filter, PageRequest.of(page, size)), PostItem::of);
+        if (folderId != null) folders.find(folderId);
+        return PageResponse.of(posts.search(keyword == null ? "" : keyword.strip(), filter, folderId, PageRequest.of(page, size)), PostItem::of);
     }
 
     /** 살아 있는 게시글과 첨부만 조회한다. */
@@ -44,7 +46,9 @@ public class FormService {
         if (req.removeFileIds() != null && !req.removeFileIds().isEmpty()) {
             throw BusinessException.invalid("removeFileIds", "등록할 때는 기존 첨부를 삭제할 수 없습니다.");
         }
-        var post = posts.save(new FormPost(req.title(), req.description(), FormCategory.parse(req.category())));
+        Long folderId = req.folderId() == null ? FormFolderService.ROOT_ID : req.folderId();
+        folders.locked(folderId);
+        var post = posts.save(new FormPost(req.title(), req.description(), FormCategory.parse(req.category()), folderId));
         upload(post, uploads);
         posts.flush();
         return PostDetail.of(post);
@@ -54,6 +58,9 @@ public class FormService {
     @Transactional
     public PostDetail update(Long id, PostRequest req, List<MultipartFile> uploads, String actor) {
         var post = locked(id);
+        if (req.folderId() != null && !req.folderId().equals(post.getFolderId())) {
+            throw BusinessException.invalid("folderId", "양식을 다른 폴더로 이동하는 기능은 지원하지 않습니다.");
+        }
         var removeIds = req.removeFileIds() == null ? List.<Long>of() : req.removeFileIds();
         var currentIds = post.getFiles().stream().filter(f -> !f.isDeleted()).map(f -> f.getId()).toList();
         if (new HashSet<>(removeIds).size() != removeIds.size() || !currentIds.containsAll(removeIds)) {

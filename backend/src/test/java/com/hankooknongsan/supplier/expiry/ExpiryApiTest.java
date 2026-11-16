@@ -84,9 +84,9 @@ class ExpiryApiTest {
         }
         var gap = certTypes.findById("GAP").orElseThrow();
         Certification noExpiry = new Certification(s);
-        noExpiry.update(s, gap, "NO-EXP", TODAY.minusYears(1), null, owner, null, null);
+        noExpiry.update(s, gap, "NO-EXP", null, TODAY.minusYears(1), null, owner, null, null);
         Certification soon = new Certification(s);
-        soon.update(s, gap, "SOON", TODAY.minusYears(1), TODAY.plusDays(3), owner, null, null);
+        soon.update(s, gap, "SOON", null, TODAY.minusYears(1), TODAY.plusDays(3), owner, null, null);
         certifications.saveAll(List.of(noExpiry, soon));
     }
 

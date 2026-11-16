@@ -24,6 +24,8 @@ public class FormPost extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private FormCategory category;
+    @Column(nullable = false)
+    private Long folderId;
     @Version
     private long version;
     private LocalDateTime deletedAt;
@@ -35,7 +37,8 @@ public class FormPost extends BaseEntity {
     private List<StoredFile> files = new ArrayList<>();
 
     /** 새 게시글의 제목·설명·분류를 설정한다. */
-    FormPost(String title, String description, FormCategory category) {
+    FormPost(String title, String description, FormCategory category, Long folderId) {
+        this.folderId = folderId;
         update(title, description, category);
     }
 

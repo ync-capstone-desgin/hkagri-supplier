@@ -20,6 +20,21 @@ export async function fetchCertTypes(): Promise<CertType[]> {
   return (await api.get('/cert-types')).data
 }
 
+/** 관리자가 인증 종류를 추가한다. 식별자는 서버에서 생성한다. */
+export async function createCertType(name: string): Promise<CertType> {
+  return (await api.post('/admin/cert-types', { name })).data
+}
+
+/** 기존 식별자와 사용 여부를 유지하면서 이름만 수정한다. */
+export async function updateCertType(code: string, name: string): Promise<CertType> {
+  return (await api.put(`/admin/cert-types/${encodeURIComponent(code)}`, { name })).data
+}
+
+/** 이름 변경과 독립적으로 사용 여부만 바꾼다. */
+export async function changeCertTypeActive(code: string, active: boolean): Promise<CertType> {
+  return (await api.patch(`/admin/cert-types/${encodeURIComponent(code)}/active`, { active })).data
+}
+
 /** 인증 목록을 검색한다. 기본 정렬은 만료일이 가까운 순이다. */
 export async function searchCertifications(search: CertificationSearch): Promise<PageResponse<CertificationItem>> {
   return (await api.get('/certifications', { params: toParams(search) })).data

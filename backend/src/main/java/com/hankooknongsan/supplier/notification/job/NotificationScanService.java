@@ -115,7 +115,7 @@ public class NotificationScanService {
                     .toList();
         }
         return certifications.findExpiring(today, until, null, null).stream()
-                .map(x -> new Target(type, x.getId(), x.getSupplier(), x.getCertType().getName(),
+                .map(x -> new Target(type, x.getId(), x.getSupplier(), x.getDisplayName(),
                         x.getCertificateNumber(), x.getExpiryDate(), x.getRenewalStatus(), x.getOwner()))
                 .toList();
     }
@@ -127,8 +127,9 @@ public class NotificationScanService {
     private Notification newNotification(Target t, int ruleDays, int daysLeft, AppUser recipient, Set<Channel> channels) {
         String dday = daysLeft == 0 ? "D-DAY" : "D-" + daysLeft;
         String title = "[%s] %s · %s 만료 예정".formatted(dday, t.supplier().getName(), t.name());
-        String message = "%s %s(%s)이(가) %s에 만료됩니다. (만료 %d일 전 알림) 갱신 진행 상황을 확인해 주세요."
-                .formatted(t.supplier().getName(), t.name(), t.number(), t.expiryDate(), ruleDays);
+        String name = t.number().isEmpty() ? t.name() : "%s(%s)".formatted(t.name(), t.number());
+        String message = "%s %s이(가) %s에 만료됩니다. (만료 %d일 전 알림) 갱신 진행 상황을 확인해 주세요."
+                .formatted(t.supplier().getName(), name, t.expiryDate(), ruleDays);
         Notification n = new Notification(t.type(), t.id(), ruleDays, t.expiryDate(), recipient, t.supplier(),
                 title, message, clock.now());
         for (Channel channel : channels) {

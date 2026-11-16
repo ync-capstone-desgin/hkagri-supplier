@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select } from 'antd'
+import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Typography } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { createCertification, renewCertification, updateCertification } from '../../api/certifications'
 import { toProblem } from '../../api/client'
+import { fetchCertificationFiles } from '../../api/files'
 import type { CertificationItem, CertificationRequest } from '../../api/types'
+import { AttachmentField } from '../../components/AttachmentField'
 import { fromDayjs, toDayjs } from '../../components/format'
 import { useCertTypeOptions, useOwnerOptions, useSupplierOptions } from '../../hooks/useOptions'
 import { useSaveShortcut } from '../../hooks/useSaveShortcut'
@@ -20,7 +22,7 @@ interface FormValues extends Omit<CertificationRequest, 'issuedDate' | 'expiryDa
 
 /**
  * 모드에 맞는 입력 초기값을 만든다.
- * 갱신은 업체·인증 종류를 그대로 두고, 인증번호·날짜·파일 위치는 새로 입력하도록 비운다(발급일은 오늘로 제안).
+ * 갱신은 업체·인증 종류·적용 대상을 가져오고, 인증번호·날짜·파일 위치는 새로 입력하도록 비운다(발급일은 오늘로 제안).
  */
 function initialValues(mode: CertificationFormMode, cert?: CertificationItem, supplierId?: number): Partial<FormValues> {
   if (!cert) {
@@ -30,6 +32,7 @@ function initialValues(mode: CertificationFormMode, cert?: CertificationItem, su
     supplierId: cert.supplierId,
     certTypeCode: cert.certTypeCode,
     certificateNumber: cert.certificateNumber,
+    scope: cert.scope ?? undefined,
     issuedDate: toDayjs(cert.issuedDate),
     expiryDate: toDayjs(cert.expiryDate),
     ownerId: cert.ownerId,
@@ -61,7 +64,9 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
   const [saving, setSaving] = useState(false)
   const supplierOptions = useSupplierOptions(open)
   const ownerOptions = useOwnerOptions(open, certification)
-  const certTypeOptions = useCertTypeOptions()
+  const certTypeOptions = useCertTypeOptions({
+    enabled: open, usage: 'input', currentCode: certification?.certTypeCode, keepInactive: mode === 'edit',
+  })
   useSaveShortcut(open, () => form.submit())
 
   // 모달을 열 때마다 모드에 맞는 초기값으로 채운다.
@@ -97,7 +102,8 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
   }
 
   const title = mode === 'create' ? '인증 등록'
-    : mode === 'edit' ? `인증 수정 · ${certification?.certificateNumber}` : `인증 갱신 · ${certification?.certTypeName}`
+    : mode === 'edit' ? `인증 수정 · ${certification?.certificateNumber}`
+      : `인증 갱신 · ${certification?.certTypeName}${certification?.scope ? ` · ${certification.scope}` : ''}`
 
   return (
     <Modal open={open} title={title} okText="저장" cancelText="취소" width={640} confirmLoading={saving}
@@ -115,13 +121,23 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="certTypeCode" label="인증 종류" rules={[{ required: true, message: '인증 종류를 선택해 주세요.' }]}>
-              <Select options={certTypeOptions} placeholder="선택" disabled={mode === 'renew'} />
+            <Form.Item name="certTypeCode" label="인증 종류"
+              extra={mode === 'renew' ? '기존 종류가 비활성이면 사용 중인 종류를 선택해 주세요.' : undefined}
+              rules={[{ required: true, message: '인증 종류를 선택해 주세요.' }, {
+                validator: (_, value: string) => certTypeOptions.some((option) => option.value === value && option.disabled)
+                  ? Promise.reject(new Error('비활성 인증 종류입니다. 사용 중인 종류를 선택해 주세요.')) : Promise.resolve(),
+              }]}>
+              <Select showSearch={{ optionFilterProp: 'label' }} options={certTypeOptions} placeholder="선택" />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item name="certificateNumber" label="인증번호" rules={[{ required: true, message: '인증번호를 입력해 주세요.' }]}>
               <Input maxLength={50} className="num" autoFocus={mode !== 'edit'} />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item name="scope" label="적용 대상 (선택)">
+              <Input placeholder="예: 공장, 잼류, 제품 A" maxLength={200} allowClear />
             </Form.Item>
           </Col>
           <Col span={12}>
@@ -156,6 +172,17 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
           <Col span={24}>
             <Form.Item name="memo" label="비고">
               <Input.TextArea rows={2} maxLength={1000} showCount />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item label="첨부파일">
+              {mode === 'edit' && certification ? (
+                <AttachmentField queryKey={['certification-files', certification.id]} supplierId={certification.supplierId}
+                  target={`certification:${certification.id}`} fetchFiles={() => fetchCertificationFiles(certification.id)}
+                  onChanged={() => void queryClient.invalidateQueries({ queryKey: ['certification-file-counts'] })} />
+              ) : (
+                <Typography.Text type="secondary">저장한 뒤 다시 열면 첨부할 수 있습니다.</Typography.Text>
+              )}
             </Form.Item>
           </Col>
         </Row>

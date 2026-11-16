@@ -62,7 +62,7 @@ class SupplierFileApiTest {
         contract.update(a, "FILE-CT", "자료 계약", LocalDate.now(), LocalDate.now().plusYears(1), false, null, null, null);
         contract = contracts.save(contract);
         certification = new Certification(a);
-        certification.update(a, certTypes.findById("HACCP").orElseThrow(), "FILE-CERT", LocalDate.now(),
+        certification.update(a, certTypes.findById("HACCP").orElseThrow(), "FILE-CERT", null, LocalDate.now(),
                 LocalDate.now().plusYears(1), null, null, null);
         certification = certifications.save(certification);
     }

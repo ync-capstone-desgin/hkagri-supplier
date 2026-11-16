@@ -1,9 +1,19 @@
 import { api, downloadFile } from './client'
 import type { PageResponse } from './types'
 
+/** 첨부파일 정보. */
+export interface FileInfo {
+  id: number
+  originalName: string
+  contentType: string
+  size: number
+  createdAt: string
+  createdBy: string | null
+}
+
 /** 파일 정보와 연결된 계약·인증. 연결이 없으면 업체 일반 자료다. */
 export interface SupplierFile {
-  file: { id: number; originalName: string; contentType: string; size: number; createdAt: string; createdBy: string | null }
+  file: FileInfo
   contractId: number | null
   contractName: string | null
   certificationId: number | null
@@ -34,4 +44,26 @@ export async function downloadStoredFile(id: number): Promise<void> {
 /** 파일을 삭제한다. 서버에는 삭제자·삭제일시 이력이 남는다. */
 export async function deleteStoredFile(id: number): Promise<void> {
   await api.delete(`/files/${id}`)
+}
+
+/** 계약 한 건에 연결된 첨부파일 목록(최신순)을 조회한다. */
+export async function fetchContractFiles(contractId: number): Promise<FileInfo[]> {
+  return (await api.get(`/contracts/${contractId}/files`)).data
+}
+
+/** 인증 한 건에 연결된 첨부파일 목록(최신순)을 조회한다. */
+export async function fetchCertificationFiles(certificationId: number): Promise<FileInfo[]> {
+  return (await api.get(`/certifications/${certificationId}/files`)).data
+}
+
+/** 목록 화면의 첨부 아이콘 표시용으로, 여러 계약의 첨부 개수를 한 번에 조회한다. 자료가 없는 id는 응답에 없다(0으로 본다). */
+export async function fetchContractFileCounts(ids: number[]): Promise<Record<number, number>> {
+  if (ids.length === 0) return {}
+  return (await api.get('/contracts/files/counts', { params: { ids: ids.join(',') } })).data
+}
+
+/** 목록 화면의 첨부 아이콘 표시용으로, 여러 인증의 첨부 개수를 한 번에 조회한다. */
+export async function fetchCertificationFileCounts(ids: number[]): Promise<Record<number, number>> {
+  if (ids.length === 0) return {}
+  return (await api.get('/certifications/files/counts', { params: { ids: ids.join(',') } })).data
 }

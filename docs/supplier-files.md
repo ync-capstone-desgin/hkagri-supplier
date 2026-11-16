@@ -24,6 +24,10 @@
 | `POST /api/suppliers/{supplierId}/files` | multipart의 `file` 한 개 업로드. `contractId` 또는 `certificationId`를 선택적으로 전달 | ADMIN, MANAGER |
 | `GET /api/files/{id}/download` | 기존 API로 원본 다운로드 | 로그인 사용자 |
 | `DELETE /api/files/{id}` | 기존 API로 삭제·이력 기록 | ADMIN, MANAGER |
+| `GET /api/contracts/{contractId}/files` | 계약 한 건에 연결된 첨부 목록 (최신순, #5) | 로그인 사용자 |
+| `GET /api/certifications/{certificationId}/files` | 인증 한 건에 연결된 첨부 목록 (최신순, #5) | 로그인 사용자 |
+| `GET /api/contracts/files/counts?ids=1,2,3` | 목록 화면 첨부 아이콘용, 여러 계약의 첨부 개수를 한 번에 (#5) | 로그인 사용자 |
+| `GET /api/certifications/files/counts?ids=1,2,3` | 목록 화면 첨부 아이콘용, 여러 인증의 첨부 개수를 한 번에 (#5) | 로그인 사용자 |
 
 목록은 `{content, page, size, totalElements}`이다. `page >= 0`, `1 <= size <= 100`을 허용한다. 한 행과 업로드 성공(201) 응답은 다음 형태다.
 
@@ -49,13 +53,16 @@ erDiagram
     certification ||--o{ stored_file : "인증 자료"
 ```
 
-파일은 세 대상 중 최대 하나에 연결된다(DB CHECK). 기존 `/api/files`의 연결 없는 업로드도 호환된다. 계약·인증 파일은 해당 건의 현재 업체를 통해 조회하므로 업체 ID를 중복 저장하지 않는다. 갱신 후에도 원래 건에 남는다. 계약·인증 등록·수정 창에서 첨부·교체하는 화면은 후속 #5의 범위이며 이 API를 재사용할 수 있다.
+파일은 세 대상 중 최대 하나에 연결된다(DB CHECK). 기존 `/api/files`의 연결 없는 업로드도 호환된다. 계약·인증 파일은 해당 건의 현재 업체를 통해 조회하므로 업체 ID를 중복 저장하지 않는다. 갱신 후에도 원래 건에 남는다.
+
+**#5(계약·인증 건에 파일 첨부)에서 추가된 부분**: 계약·인증 등록·수정 창(저장된 건, 즉 수정 모드에서만)에 첨부파일 섹션을 넣고, 업로드는 이 문서의 `POST /api/suppliers/{supplierId}/files`를 `contractId`/`certificationId`와 함께 그대로 재사용한다. 목록 화면(계약 관리·인증 관리)에는 📎 아이콘을 추가해 자료가 1개면 바로 내려받고 여러 개면 작은 목록창(팝오버)을 보여준다. 이를 위해 계약·인증 하나의 첨부 목록 조회, 여러 건의 첨부 개수 일괄 조회 API를 새로 추가했다(아래 표).
 
 배포 DB에는 #29의 V6와 이 PR의 V7을 함께 반영하거나 V6를 먼저 적용한다. V7만 적용한 개발 DB에서 뒤늦게 V6를 가져오면 Flyway 순서 검증에 걸릴 수 있으므로, 해당 개발 DB는 필요한 데이터를 보존한 뒤 별도 검증 DB를 사용한다. 운영 DB의 이력을 지우거나 이미 적용된 마이그레이션을 수정하지 않는다.
 
 ## 검증
 
 - `SupplierFileApiTest`: 업체별 격리, 원본 바이트 다운로드, 삭제·감사 이력, 계약·인증 연결과 이전 이력 보존, 페이지 조회, 잘못된 연결 거절, 조회자·익명 권한을 검증한다.
+- `AttachmentApiTest`(#5): 계약·인증 건별 첨부 목록 조회, 여러 건의 첨부 개수 일괄 조회(콤마로 이은 `ids` 포함)를 검증한다.
 - `backend`: Java 21과 Docker를 준비하고 `./gradlew test`.
 - `frontend`: `npm run build`, `npm run lint`.
 - 실제 브라우저: 로컬 백엔드와 프론트엔드를 실행하고 `node scripts/check-supplier-files.mjs`. 기본 주소는 `http://127.0.0.1:5174`, `BASE_URL`로 변경한다. Chrome과 개발 시연 계정을 사용하며 가상 업체 2곳·계약·인증·파일을 생성한다. 다른 서버에서는 실행하지 않는다.
