@@ -87,6 +87,9 @@ class FormApiTest {
                 .andExpect(jsonPath("$.totalElements").value(1));
         mvc.perform(get("/api/forms").param("keyword", keyword).param("category", "CONTRACT").param("size", "1").param("page", "1"))
                 .andExpect(jsonPath("$.content.length()").value(1));
+        mvc.perform(get("/api/forms/category-counts").param("keyword", keyword)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.CONTRACT").value(2)).andExpect(jsonPath("$.CHECKLIST").value(1))
+                .andExpect(jsonPath("$.OTHER").value(0));
     }
 
     /** 삭제 지정 첨부만 교체하고 나머지 파일은 그대로 유지한다. */

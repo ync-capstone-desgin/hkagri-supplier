@@ -3,7 +3,7 @@ import { Alert, App, Breadcrumb, Button, Flex, Input, Pagination, Table, Tabs, T
 import { ArrowUpOutlined, FileTextOutlined, FolderAddOutlined, FolderOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router'
-import { deleteForm, deleteFormFolder, fetchFormFolder, fetchForms, formCategories, type FormCategory, type FormDetail, type FormFolder, type FormPostItem } from '../../api/forms'
+import { deleteForm, deleteFormFolder, fetchFormCategoryCounts, fetchFormFolder, fetchForms, formCategories, type FormCategory, type FormDetail, type FormFolder, type FormPostItem } from '../../api/forms'
 import { toProblem } from '../../api/client'
 import { useAuth } from '../../app/AuthContext'
 import { useTabTitle } from '../../app/TabsContext'
@@ -42,6 +42,12 @@ function FolderContents({ folderId }: { folderId: number }) {
   useTabTitle(folder.data?.folder.name)
   const forms = useQuery({ queryKey: ['forms', folderId, keyword, category, page],
     queryFn: () => fetchForms(folderId, keyword, category, page), enabled: folder.isSuccess })
+  // 키가 'forms'로 시작해 refresh()의 무효화에 함께 걸린다.
+  const counts = useQuery({ queryKey: ['forms', 'category-counts', folderId, keyword],
+    queryFn: () => fetchFormCategoryCounts(folderId, keyword), enabled: folder.isSuccess })
+  /** 개수를 아직 못 받았으면 이름만 보여 준다. */
+  const tabLabel = (label: string, count?: number) => count === undefined ? label : `${label} (${count})`
+  const totalCount = counts.data && Object.values(counts.data).reduce((sum, count) => sum + count, 0)
   const rows: LibraryRow[] = [
     ...(folder.data?.children ?? []).map((item): LibraryRow => ({ key: `folder-${item.id}`, kind: 'folder', folder: item })),
     ...(forms.data?.content ?? []).map((post): LibraryRow => ({ key: `form-${post.id}`, kind: 'form', post })),
@@ -91,25 +97,23 @@ function FolderContents({ folderId }: { folderId: number }) {
       <div><Typography.Title level={3} style={{ margin: 0 }}>양식 자료실</Typography.Title>
         <Typography.Text type="secondary">폴더별로 양식을 찾아 내려받으세요.</Typography.Text></div>
       <Flex gap={8} wrap>
-        <Button icon={<ReloadOutlined />} loading={folder.isFetching || forms.isFetching} onClick={() => { void folder.refetch(); if (folder.isSuccess) void forms.refetch() }}>새로고침</Button>
+        <Button icon={<ReloadOutlined />} loading={folder.isFetching || forms.isFetching} onClick={() => { void folder.refetch(); if (folder.isSuccess) { void forms.refetch(); void counts.refetch() } }}>새로고침</Button>
         {canEdit && folder.isSuccess && <><Button icon={<FolderAddOutlined />} onClick={() => setFolderEditor({})}>새 폴더</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditor({})}>양식 등록</Button></>}
       </Flex>
     </Flex>
     {folder.isError ? <Alert type="error" showIcon title={toProblem(folder.error).detail} action={<Link to="/forms">최상위로 이동</Link>} /> : <>
-      <Flex gap={12} align="center" wrap>
-        {folder.data?.folder.parentId && <Button icon={<ArrowUpOutlined />} onClick={() => navigate(folderPath(folder.data!.folder.parentId!))}>상위 폴더</Button>}
+      {folder.data?.folder.parentId && <Flex gap={12} align="center" wrap>
+        <Button icon={<ArrowUpOutlined />} onClick={() => navigate(folderPath(folder.data!.folder.parentId!))}>상위 폴더</Button>
         <nav aria-label="폴더 경로"><Breadcrumb items={folder.data?.path.map((item, index, all) => ({
           title: index === all.length - 1 ? item.name : <Link to={folderPath(item.id)}>{item.name}</Link>,
         }))} /></nav>
-      </Flex>
-      <Flex justify="space-between" align="center" wrap gap={12}>
-        <Typography.Text>폴더 {folder.data?.children.length ?? 0}개, 양식 {forms.data?.totalElements ?? 0}개</Typography.Text>
-        <Input.Search aria-label="양식 이름 검색" placeholder="현재 폴더의 양식 이름 검색" allowClear value={draft}
-          onChange={(event) => setDraft(event.target.value)} onSearch={(value) => { setKeyword(value.trim()); setPage(0) }} style={{ width: 320, maxWidth: '100%' }} />
-      </Flex>
+      </Flex>}
       <Tabs activeKey={category ?? 'ALL'} onChange={(key) => { setCategory(key === 'ALL' ? undefined : key as FormCategory); setPage(0) }}
-        items={[{ key: 'ALL', label: '전체' }, ...formCategories.map((item) => ({ key: item.value, label: item.label }))]} style={{ marginBottom: -16 }} />
+        items={[{ key: 'ALL', label: tabLabel('전체', totalCount) },
+          ...formCategories.map((item) => ({ key: item.value, label: tabLabel(item.label, counts.data?.[item.value]) }))]} style={{ marginBottom: -16 }}
+        tabBarExtraContent={<Input.Search aria-label="양식 이름 검색" placeholder="현재 폴더의 양식 이름 검색" allowClear value={draft}
+          onChange={(event) => setDraft(event.target.value)} onSearch={(value) => { setKeyword(value.trim()); setPage(0) }} style={{ width: 'min(320px, 45vw)' }} />} />
       {forms.isError && <Alert type="error" showIcon title={toProblem(forms.error).detail} action={<Button onClick={() => void forms.refetch()}>다시 시도</Button>} />}
       <Table<LibraryRow> rowKey="key" dataSource={rows} loading={folder.isLoading || forms.isLoading} pagination={false} size="middle" scroll={{ x: 750 }}
         locale={{ emptyText: keyword || category ? '검색 결과가 없습니다.' : '등록된 양식이 없습니다.' }}

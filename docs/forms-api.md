@@ -16,6 +16,7 @@
 | 요청 | 기능 | 응답 |
 |---|---|---|
 | GET `/api/forms?folderId=1&keyword=&category=&page=0&size=20` | 현재 폴더의 제목 검색·분류 필터·최신순 페이지 | 200, `{content, page, size, totalElements}` |
+| GET `/api/forms/category-counts?folderId=1&keyword=` | 분류 탭에 붙일 개수 (목록과 같은 폴더·제목 조건) | 200, `{CONTRACT, CHECKLIST, OTHER}` |
 | GET `/api/forms/{id}` | 게시글 상세 및 살아 있는 첨부 | 200 |
 | POST `/api/forms` | 게시글·첨부 등록 | 201, 상세 |
 | PUT `/api/forms/{id}` | 제목·분류·설명 변경 및 첨부 추가/삭제 | 200, 상세 |

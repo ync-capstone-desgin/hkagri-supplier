@@ -50,6 +50,11 @@ export async function fetchForms(folderId: number, keyword: string, category: Fo
   return (await api.get('/forms', { params: { folderId, keyword, category, page, size: 20 } })).data
 }
 
+/** 분류 탭에 붙일 개수를 현재 폴더·검색어 기준으로 조회한다. */
+export async function fetchFormCategoryCounts(folderId: number, keyword: string): Promise<Record<FormCategory, number>> {
+  return (await api.get('/forms/category-counts', { params: { folderId, keyword } })).data
+}
+
 /** 양식 설명과 첨부파일을 조회한다. */
 export async function fetchForm(id: number): Promise<FormDetail> {
   return (await api.get(`/forms/${id}`)).data

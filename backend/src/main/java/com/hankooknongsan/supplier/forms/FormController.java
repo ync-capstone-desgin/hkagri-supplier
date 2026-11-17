@@ -1,6 +1,7 @@
 package com.hankooknongsan.supplier.forms;
 
 import java.util.List;
+import java.util.Map;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.forms.FormDtos.*;
 import jakarta.validation.Valid;
@@ -24,6 +25,13 @@ public class FormController {
             @RequestParam(required = false) String category, @RequestParam(required = false) Long folderId, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return service.list(keyword, category, folderId, page, size);
+    }
+
+    /** 분류 탭에 붙일 개수를 현재 폴더·검색어 기준으로 조회한다. */
+    @GetMapping("/category-counts")
+    public Map<FormCategory, Long> categoryCounts(@RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long folderId) {
+        return service.categoryCounts(keyword, folderId);
     }
 
     /** 게시글 상세와 첨부 정보를 조회한다. */
