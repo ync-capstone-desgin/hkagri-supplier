@@ -48,8 +48,9 @@ function FolderContents({ folderId }: { folderId: number }) {
   /** 개수를 아직 못 받았으면 이름만 보여 준다. */
   const tabLabel = (label: string, count?: number) => count === undefined ? label : `${label} (${count})`
   const totalCount = counts.data && Object.values(counts.data).reduce((sum, count) => sum + count, 0)
+  // 검색·종류 선택은 양식에만 적용되므로, 그동안은 조건과 무관한 폴더를 숨긴다.
   const rows: LibraryRow[] = [
-    ...(folder.data?.children ?? []).map((item): LibraryRow => ({ key: `folder-${item.id}`, kind: 'folder', folder: item })),
+    ...(keyword || category ? [] : folder.data?.children ?? []).map((item): LibraryRow => ({ key: `folder-${item.id}`, kind: 'folder', folder: item })),
     ...(forms.data?.content ?? []).map((post): LibraryRow => ({ key: `form-${post.id}`, kind: 'form', post })),
   ]
 

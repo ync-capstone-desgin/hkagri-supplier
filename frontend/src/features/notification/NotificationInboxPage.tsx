@@ -64,10 +64,10 @@ export function NotificationInboxPage() {
     }
   }
 
-  /** 업체 상세로 이동한다. 미확인이면 확인 처리한다. */
+  /** 알림 대상(계약·인증) 탭이 열린 업체 상세로 이동한다. 미확인이면 확인 처리한다. */
   const openSupplier = (n: NotificationItem) => {
     if (n.actionStatus === 'UNREAD') changeAction(n, 'READ', true)
-    navigate(`/suppliers/${n.supplierId}`)
+    navigate(`/suppliers/${n.supplierId}?tab=${n.targetType === 'CONTRACT' ? 'contracts' : 'certifications'}`)
   }
 
   /** 미확인 알림을 모두 확인 처리한다. */
