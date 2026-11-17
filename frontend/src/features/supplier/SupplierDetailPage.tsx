@@ -18,6 +18,7 @@ import { ContractFormModal } from '../contract/ContractFormModal'
 import { ContractGrid } from '../contract/ContractGrid'
 import { SupplierFormModal } from './SupplierFormModal'
 import { SupplierFilesTab } from './SupplierFilesTab'
+import { SupplierChangesTab } from '../history/SupplierChangesTab'
 
 /** 탭 안 목록 위의 도구 줄: 왼쪽에 "이전 이력 포함", 오른쪽에 등록 버튼 */
 function TabToolbar({ includeInactive, onToggle, addLabel, onAdd }: {
@@ -169,6 +170,7 @@ export function SupplierDetailPage() {
               ),
             },
             { key: 'files', label: '자료', children: <SupplierFilesTab key={id} supplierId={id} /> },
+            { key: 'changes', label: '변경 이력', children: <SupplierChangesTab key={id} supplierId={id} /> },
           ]}
         />
       </Card>

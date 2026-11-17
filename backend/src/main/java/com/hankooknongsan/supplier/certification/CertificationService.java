@@ -1,7 +1,9 @@
 package com.hankooknongsan.supplier.certification;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
@@ -14,6 +16,9 @@ import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.RenewalStatus;
+import com.hankooknongsan.supplier.history.ChangeAction;
+import com.hankooknongsan.supplier.history.ChangeLogService;
+import com.hankooknongsan.supplier.history.ChangeTarget;
 import com.hankooknongsan.supplier.supplier.Supplier;
 import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +46,7 @@ public class CertificationService {
     private final ExpiryPolicy policy;
     private final ApplicationEventPublisher events;
     private final AppClock clock;
+    private final ChangeLogService history;
 
     /** 인증 종류 목록을 표시 순서대로 조회한다. */
     public List<CertTypeItem> certTypes() {
@@ -69,6 +75,7 @@ public class CertificationService {
         Certification x = new Certification(supplierService.find(req.supplierId()));
         List<String> warnings = apply(x, req, null);
         certifications.save(x);
+        log(x, ChangeAction.CREATE, Map.of(), snapshot(x));
         return new Saved(toItem(x), warnings);
     }
 
@@ -76,8 +83,10 @@ public class CertificationService {
     @Transactional
     public Saved update(Long id, CertificationRequest req) {
         Certification x = find(id);
+        Map<String, String> before = snapshot(x);
         List<String> warnings = apply(x, req, id);
         certifications.flush();
+        log(x, ChangeAction.UPDATE, before, snapshot(x));
         return new Saved(toItem(x), warnings);
     }
 
@@ -94,7 +103,9 @@ public class CertificationService {
         if (!x.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 인증은 처리상태를 바꿀 수 없습니다.");
         }
+        Map<String, String> before = Map.of("갱신 처리상태", x.getRenewalStatus().label());
         x.changeRenewalStatus(status);
+        log(x, ChangeAction.STATUS, before, Map.of("갱신 처리상태", status.label()));
         if (status.closed()) {
             events.publishEvent(new RenewalClosedEvent(TargetType.CERTIFICATION, id));
         }
@@ -113,6 +124,7 @@ public class CertificationService {
         if (!old.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 인증입니다.");
         }
+        Map<String, String> before = snapshot(old);
         old.markRenewed();
         events.publishEvent(new RenewalClosedEvent(TargetType.CERTIFICATION, old.getId()));
         certifications.flush();
@@ -120,6 +132,7 @@ public class CertificationService {
         List<String> warnings = apply(renewed, req, null);
         renewed.linkPrevious(old);
         certifications.save(renewed);
+        log(renewed, ChangeAction.RENEW, before, snapshot(renewed));
         return new Saved(toItem(renewed), warnings);
     }
 
@@ -139,7 +152,29 @@ public class CertificationService {
             target.getPrev().restore();
         }
         certifications.flush();
+        log(target, ChangeAction.DELETE, Map.of(), Map.of());
         events.publishEvent(new TargetDeletedEvent(TargetType.CERTIFICATION, id, actor));
+    }
+
+    /** 인증의 변경 이력을 남긴다 (#45). */
+    private void log(Certification x, ChangeAction action, Map<String, String> before, Map<String, String> after) {
+        history.record(ChangeTarget.CERTIFICATION, x.getId(), x.getSupplier().getId(), x.getSupplier().getName(),
+                x.getDisplayName(), action, before, after);
+    }
+
+    /** 변경 이력 비교용으로 인증의 현재 값을 화면 항목 이름과 함께 뽑는다. */
+    private static Map<String, String> snapshot(Certification x) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("업체", x.getSupplier().getName());
+        m.put("인증 종류", x.getCertType().getName());
+        m.put("인증번호", x.getCertificateNumber());
+        m.put("적용 대상", x.getScope());
+        m.put("발급일", String.valueOf(x.getIssuedDate()));
+        m.put("만료일", x.getExpiryDate() == null ? "없음" : x.getExpiryDate().toString());
+        m.put("담당자", x.getOwner() == null ? null : x.getOwner().getName());
+        m.put("문서 링크", x.getDocumentUrl());
+        m.put("비고", x.getMemo());
+        return m;
     }
 
     /** ID로 인증 엔티티를 찾는다. */

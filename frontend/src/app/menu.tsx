@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import {
-  AlertOutlined, AuditOutlined, BellOutlined, CalendarOutlined, DashboardOutlined, FileTextOutlined, FolderOpenOutlined, ProjectOutlined, SettingOutlined, ShopOutlined, TeamOutlined,
+  AlertOutlined, AuditOutlined, BellOutlined, CalendarOutlined, DashboardOutlined, FileTextOutlined, FolderOpenOutlined, HistoryOutlined, ProjectOutlined, SettingOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons'
 
 /** 좌측 메뉴 항목 하나 */
@@ -31,6 +31,7 @@ export const MENU: MenuEntry[] = [
   { path: '/notifications', label: '알림함', icon: <BellOutlined /> },
   { path: '/settings', label: '알림 설정', icon: <SettingOutlined /> },
   { path: '/users', label: '사용자 관리', icon: <TeamOutlined />, adminOnly: true },
+  { path: '/changes', label: '변경 이력', icon: <HistoryOutlined />, adminOnly: true },
 ]
 
 /** 경로에 맞는 메뉴 항목을 찾는다. 상세 경로(/suppliers/3)는 상위 메뉴(/suppliers)로 본다. */

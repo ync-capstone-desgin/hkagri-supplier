@@ -25,6 +25,7 @@ import { SupplierListPage } from './features/supplier/SupplierListPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { UserManagementPage } from './features/users/UserManagementPage'
+import { ChangeLogPage } from './features/history/ChangeLogPage'
 import { FormsPage } from './features/forms/FormsPage'
 import './index.css'
 
@@ -78,6 +79,7 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/mypage" element={<MyPage />} />
                   <Route path="/users" element={<UserManagementPage />} />
+                  <Route path="/changes" element={<ChangeLogPage />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>
               </Routes>

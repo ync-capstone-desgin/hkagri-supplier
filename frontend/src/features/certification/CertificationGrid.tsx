@@ -39,7 +39,7 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
   const handleStatusChange = async (row: CertificationItem, status: RenewalStatus) => {
     try {
       await changeCertificationRenewalStatus(row.id, status)
-      await Promise.all(['certifications', 'expiries', 'dashboard'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
+      await Promise.all(['certifications', 'expiries', 'dashboard', 'changes'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
       message.success(`${row.certificateNumber} 처리상태를 변경했습니다.`)
     } catch (e) {
       message.error(toProblem(e).detail)
@@ -55,7 +55,7 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
       onOk: async () => {
         try {
           await deleteCertification(row.id)
-          await Promise.all(['certifications', 'expiries', 'dashboard', 'supplier', 'suppliers', 'supplier-files', 'notifications']
+          await Promise.all(['certifications', 'expiries', 'dashboard', 'supplier', 'suppliers', 'supplier-files', 'notifications', 'changes']
             .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
           message.success('인증을 삭제했습니다.')
         } catch (e) {

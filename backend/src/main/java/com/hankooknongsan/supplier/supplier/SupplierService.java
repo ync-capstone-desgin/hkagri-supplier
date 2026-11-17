@@ -1,5 +1,6 @@
 package com.hankooknongsan.supplier.supplier;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -12,6 +13,9 @@ import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
+import com.hankooknongsan.supplier.history.ChangeAction;
+import com.hankooknongsan.supplier.history.ChangeLogService;
+import com.hankooknongsan.supplier.history.ChangeTarget;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierDetail;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierListItem;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierRequest;
@@ -37,6 +41,7 @@ public class SupplierService {
     private final ExpiryPolicy policy;
     private final AppClock clock;
     private final ApplicationEventPublisher events;
+    private final ChangeLogService history;
 
     /** 조건에 맞는 협력업체 목록을 페이지 단위로 조회한다. */
     public PageResponse<SupplierListItem> search(String keyword, SupplierStatus status, String certType,
@@ -74,14 +79,18 @@ public class SupplierService {
         suppliers.save(s);
         s.assignCode("SUP-%04d".formatted(s.getId()));
         suppliers.flush();
+        log(s, ChangeAction.CREATE, Map.of(), snapshot(s));
         return get(s.getId());
     }
 
     /** 협력업체 기본정보를 수정한다. */
     @Transactional
     public SupplierDetail update(Long id, SupplierRequest req) {
-        apply(find(id), req);
+        Supplier s = find(id);
+        Map<String, String> before = snapshot(s);
+        apply(s, req);
         suppliers.flush();
+        log(s, ChangeAction.UPDATE, before, snapshot(s));
         return get(id);
     }
 
@@ -101,7 +110,27 @@ public class SupplierService {
         }
         s.delete(actor, clock.now());
         suppliers.flush();
+        log(s, ChangeAction.DELETE, Map.of(), Map.of());
         events.publishEvent(new SupplierDeletedEvent(id, actor));
+    }
+
+    /** 협력업체의 변경 이력을 남긴다 (#45). */
+    private void log(Supplier s, ChangeAction action, Map<String, String> before, Map<String, String> after) {
+        history.record(ChangeTarget.SUPPLIER, s.getId(), s.getId(), s.getName(), s.getName(), action, before, after);
+    }
+
+    /** 변경 이력 비교용으로 협력업체의 현재 값을 화면 항목 이름과 함께 뽑는다. */
+    private static Map<String, String> snapshot(Supplier s) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("업체명", s.getName());
+        m.put("사업자번호", s.getBusinessNumber());
+        m.put("거래상태", s.getStatus().label());
+        m.put("업체 담당자", s.getContactName());
+        m.put("연락처", s.getContactPhone());
+        m.put("이메일", s.getContactEmail());
+        m.put("내부 담당자", s.getOwner() == null ? null : s.getOwner().getName());
+        m.put("비고", s.getMemo());
+        return m;
     }
 
     /** ID로 협력업체 엔티티를 찾는다. 다른 기능(계약·인증)에서도 업체 확인에 사용한다. */
