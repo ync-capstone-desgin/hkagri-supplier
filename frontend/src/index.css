@@ -36,14 +36,25 @@ html, body, #root {
 /* 공통 화면 틀. PC의 기존 간격을 유지하고 휴대폰에서는 메뉴와 상단 바를 재배치한다. */
 .app-layout { height: 100%; }
 .app-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid #e5e7eb;
 }
-.app-brand { font-size: 17px; white-space: nowrap; }
-.app-header-spacer { flex: 1; }
+.app-brand {
+  font-family: var(--app-font);
+  font-size: 18px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.app-header-start, .app-header-tools { display: flex; align-items: center; gap: inherit; min-width: 0; }
+.app-header-tools { justify-content: flex-end; }
+.app-home-link { display: block; max-width: 100%; }
+.app-home-link img { display: block; max-width: 100%; height: auto; }
+.app-user-label { overflow: hidden; text-overflow: ellipsis; }
 .app-user-menu {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -54,7 +65,7 @@ html, body, #root {
   font: inherit;
   cursor: pointer;
 }
-.app-user-menu:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.app-user-menu:focus-visible, .app-home-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .app-page { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
 
 @media (max-width: 767px) {
@@ -63,14 +74,14 @@ html, body, #root {
     height: auto;
     padding: 8px 12px;
     line-height: normal;
-    flex-wrap: wrap;
     gap: 8px;
   }
-  .app-header .app-logo { width: 52px; height: auto; }
-  .app-header .app-header-spacer,
+  .app-header-start { display: contents; }
+  .app-home-link { grid-area: 1 / 1; width: 100px; }
+  .app-brand { grid-area: 1 / 2; font-size: 15px; }
+  .app-header-start > button { grid-area: 2 / 1; justify-self: start; }
+  .app-header-tools { grid-row: 2; grid-column: 2 / -1; }
   .app-header .app-user-label { display: none; }
-  .app-brand { flex: 1; min-width: 0; font-size: 15px; }
-  .app-clock { order: 1; width: 100%; text-align: right; }
   .app-page { padding: 12px; }
   .dashboard .ant-card-head-wrapper { flex-wrap: wrap; gap: 4px; padding-block: 8px; }
   .dashboard-progress { flex-direction: column; align-items: stretch; }
