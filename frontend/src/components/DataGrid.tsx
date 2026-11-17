@@ -16,7 +16,7 @@ const gridTheme = themeQuartz.withParams({
   headerFontWeight: 600,
   rowHeight: 36,
   headerHeight: 38,
-  headerBackgroundColor: '#f5f7f6',
+  headerBackgroundColor: '#f6f6f6',
   wrapperBorderRadius: 6,
   borderColor: '#e5e7eb',
 })

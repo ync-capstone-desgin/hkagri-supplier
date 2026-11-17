@@ -1,8 +1,30 @@
-/* 전역 기본 스타일: 한글 가독성을 위해 Pretendard 글꼴을 우선 사용한다. */
+@font-face {
+  font-family: 'Outfit';
+  src: url('/fonts/Outfit.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/GmarketSansMedium.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/GmarketSansBold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  color: #1f2937;
-  background: #f3f5f4;
+  --app-font: 'Outfit', 'Gmarket Sans', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --accent: #8a3048;
+  font-family: var(--app-font);
+  color: #222222;
+  background: #fff;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -32,7 +54,7 @@ html, body, #root {
   font: inherit;
   cursor: pointer;
 }
-.app-user-menu:focus-visible { outline: 2px solid #1f7a4d; outline-offset: 3px; }
+.app-user-menu:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .app-page { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
 
 @media (max-width: 767px) {
@@ -44,7 +66,7 @@ html, body, #root {
     flex-wrap: wrap;
     gap: 8px;
   }
-  .app-header .app-logo,
+  .app-header .app-logo { width: 52px; height: auto; }
   .app-header .app-demo-tag,
   .app-header .app-header-spacer,
   .app-header .app-user-label { display: none; }
@@ -97,7 +119,7 @@ html, body, #root {
   left: 8px;
   font-size: 11px;
   font-weight: 600;
-  color: #2f6b3a;
+  color: var(--accent);
 }
 /* 선택한 날짜의 만료 목록 패널 */
 .expiry-day-panel {
@@ -122,10 +144,10 @@ html, body, #root {
     position: static;
   }
 }
-/* 선택한 날짜 칸: 기본 회색 배경 대신 연한 초록으로 칸 안 글자가 잘 보이게 한다. */
+/* 선택한 날짜 칸: 기본 회색 배경 대신 연한 강조색으로 칸 안 글자가 잘 보이게 한다. */
 .expiry-calendar .ant-picker-cell-selected .ant-picker-calendar-date {
-  background: #eef6ef !important;
-  border-top-color: #2f6b3a !important;
+  background: #f8eef1 !important;
+  border-top-color: var(--accent) !important;
 }
 
 /* 갱신 현황판: 처리상태별 칸 4개를 가로로 놓고, 칸마다 세로로 스크롤한다. */
@@ -136,7 +158,7 @@ html, body, #root {
   overflow-x: auto;
 }
 .board-column {
-  background: #eef1ef;
+  background: #f2f2f2;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -146,8 +168,8 @@ html, body, #root {
 }
 /* 카드를 끌고 와서 놓을 수 있는 칸 */
 .board-column-over {
-  background: #e3efe5;
-  box-shadow: inset 0 0 0 2px #2f6b3a;
+  background: #f8eef1;
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 .board-column-head {
   padding: 10px 12px 8px;
@@ -174,7 +196,7 @@ html, body, #root {
   cursor: grab;
 }
 .board-card-draggable:hover {
-  border-color: #2f6b3a;
+  border-color: var(--accent);
 }
 /* 끌고 있는 카드의 원래 자리는 흐리게 남긴다. */
 .board-card-dragging {
