@@ -43,6 +43,9 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
     /** 삭제한 파일을 최근에 지운 순으로 조회한다. (삭제 이력) */
     Page<StoredFile> findByDeletedAtIsNotNullOrderByDeletedAtDesc(Pageable pageable);
 
+    /** 업체에 직접 올린 일반 자료(삭제 제외)를 찾는다. (업체 삭제 시 함께 삭제용) */
+    List<StoredFile> findBySupplierIdAndDeletedAtIsNull(Long supplierId);
+
     /** 계약 하나에 연결된 첨부(삭제 제외)를 최신 순으로 찾는다. */
     List<StoredFile> findByContractIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long contractId);
 

@@ -4,17 +4,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
+import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetType;
 import com.hankooknongsan.supplier.file.FileDtos.DeletedFile;
 import com.hankooknongsan.supplier.file.FileDtos.Download;
 import com.hankooknongsan.supplier.file.FileDtos.FileInfo;
 import com.hankooknongsan.supplier.file.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +45,30 @@ public class FileService {
     private final FileStorage storage;
     private final FilePolicy policy;
     private final AppClock clock;
+
+    /** 계약·인증이 삭제되면 그 건의 첨부도 함께 삭제한다 (#44). 삭제 이력은 남는다. */
+    @EventListener
+    @Transactional
+    public void onTargetDeleted(TargetDeletedEvent event) {
+        var attached = event.targetType() == TargetType.CONTRACT
+                ? files.findByContractIdAndDeletedAtIsNullOrderByCreatedAtDesc(event.targetId())
+                : files.findByCertificationIdAndDeletedAtIsNullOrderByCreatedAtDesc(event.targetId());
+        deleteAll(attached, event.deletedBy());
+    }
+
+    /** 협력업체가 삭제되면 그 업체에 올린 일반 자료도 함께 삭제한다 (#44). */
+    @EventListener
+    @Transactional
+    public void onSupplierDeleted(SupplierDeletedEvent event) {
+        deleteAll(files.findBySupplierIdAndDeletedAtIsNull(event.supplierId()), event.deletedBy());
+    }
+
+    /** 여러 파일에 지운 표시를 남긴다. 삭제 쿼리가 조회 결과를 비우므로 ID를 먼저 꺼내 둔다. */
+    private void deleteAll(List<StoredFile> targets, String deletedBy) {
+        for (Long id : targets.stream().map(StoredFile::getId).toList()) {
+            delete(id, deletedBy);
+        }
+    }
 
     /**
      * 파일을 올린다.

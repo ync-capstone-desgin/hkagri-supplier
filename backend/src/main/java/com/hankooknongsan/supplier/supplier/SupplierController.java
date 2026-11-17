@@ -14,6 +14,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -79,5 +81,12 @@ public class SupplierController {
     @PutMapping("/{id}")
     public SupplierDetail update(@PathVariable Long id, @Valid @RequestBody SupplierRequest req) {
         return service.update(id, req);
+    }
+
+    /** 협력업체를 삭제한다. 계약·인증이 남아 있으면 409, 업체에 올린 자료는 함께 삭제한다. */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id, Authentication auth) {
+        service.delete(id, auth.getName());
     }
 }

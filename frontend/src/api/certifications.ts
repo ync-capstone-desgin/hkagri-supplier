@@ -65,6 +65,11 @@ export async function changeCertificationRenewalStatus(id: number, renewalStatus
   return (await api.patch(`/certifications/${id}/renewal-status`, { renewalStatus })).data
 }
 
+/** 인증을 삭제한다. 갱신으로 등록한 인증이면 이전 인증이 다시 현재 인증이 된다. */
+export async function deleteCertification(id: number): Promise<void> {
+  await api.delete(`/certifications/${id}`)
+}
+
 /** 현재 검색조건의 인증 목록을 엑셀로 내려받는다. */
 export async function downloadCertificationExcel(search: CertificationSearch): Promise<void> {
   await downloadFile('/certifications/excel', toParams(search))

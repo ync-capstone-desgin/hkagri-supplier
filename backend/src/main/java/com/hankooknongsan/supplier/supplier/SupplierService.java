@@ -7,16 +7,20 @@ import java.util.stream.Collectors;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
+import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
+import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierDetail;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierListItem;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierRequest;
 import com.hankooknongsan.supplier.supplier.SupplierRepository.SupplierCounts;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,8 @@ public class SupplierService {
     private final SupplierRepository suppliers;
     private final AppUserRepository users;
     private final ExpiryPolicy policy;
+    private final AppClock clock;
+    private final ApplicationEventPublisher events;
 
     /** 조건에 맞는 협력업체 목록을 페이지 단위로 조회한다. */
     public PageResponse<SupplierListItem> search(String keyword, SupplierStatus status, String certType,
@@ -77,6 +83,25 @@ public class SupplierService {
         apply(find(id), req);
         suppliers.flush();
         return get(id);
+    }
+
+    /**
+     * 협력업체를 삭제한다 (#44). 지운 표시만 남긴다.
+     * 계약·인증(이전 이력 포함)이 남아 있으면 409로 막고, 업체에 올린 일반 자료는 이벤트로 함께 삭제한다.
+     */
+    @Transactional
+    public void delete(Long id, String actor) {
+        Supplier s = find(id);
+        long contracts = suppliers.countContracts(id);
+        long certifications = suppliers.countCertifications(id);
+        if (contracts + certifications > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "계약 %d건, 인증 %d건이 남아 있어 삭제할 수 없습니다. 계약·인증을 먼저 삭제해 주세요."
+                            .formatted(contracts, certifications));
+        }
+        s.delete(actor, clock.now());
+        suppliers.flush();
+        events.publishEvent(new SupplierDeletedEvent(id, actor));
     }
 
     /** ID로 협력업체 엔티티를 찾는다. 다른 기능(계약·인증)에서도 업체 확인에 사용한다. */

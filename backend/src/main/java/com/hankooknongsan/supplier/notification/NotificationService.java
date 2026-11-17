@@ -9,6 +9,7 @@ import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.RenewalClosedEvent;
+import com.hankooknongsan.supplier.common.TargetDeletedEvent;
 import com.hankooknongsan.supplier.notification.NotificationDtos.DeliveryItem;
 import com.hankooknongsan.supplier.notification.NotificationDtos.DeliveryLogItem;
 import com.hankooknongsan.supplier.notification.NotificationDtos.NotificationItem;
@@ -78,6 +79,13 @@ public class NotificationService {
     public void onRenewalClosed(RenewalClosedEvent event) {
         notifications.findByTargetTypeAndTargetIdAndActionStatusNot(event.targetType(), event.targetId(), ActionStatus.DONE)
                 .forEach(n -> n.changeAction(ActionStatus.DONE, clock.now()));
+    }
+
+    /** 계약·인증이 삭제되면 그 대상의 알림과 발송 기록을 알림함에서 없앤다 (#44). */
+    @EventListener
+    @Transactional
+    public void onTargetDeleted(TargetDeletedEvent event) {
+        notifications.deleteAll(notifications.findByTargetTypeAndTargetId(event.targetType(), event.targetId()));
     }
 
     /** 알림 엔티티를 오늘 기준 남은 일수가 포함된 응답 형식으로 변환한다. */

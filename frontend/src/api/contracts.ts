@@ -42,6 +42,11 @@ export async function changeContractRenewalStatus(id: number, renewalStatus: Ren
   return (await api.patch(`/contracts/${id}/renewal-status`, { renewalStatus })).data
 }
 
+/** 계약을 삭제한다. 갱신으로 등록한 계약이면 이전 계약이 다시 현재 계약이 된다. */
+export async function deleteContract(id: number): Promise<void> {
+  await api.delete(`/contracts/${id}`)
+}
+
 /** 현재 검색조건의 계약 목록을 엑셀로 내려받는다. */
 export async function downloadContractExcel(search: ContractSearch): Promise<void> {
   await downloadFile('/contracts/excel', toParams(search))
