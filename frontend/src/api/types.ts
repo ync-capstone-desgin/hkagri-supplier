@@ -91,6 +91,8 @@ export interface SupplierListItem {
   certCount: number
   /** 만료됐거나 90일 안에 만료되는 계약·인증 수 */
   expiringCount: number
+  /** 빠진 필수 서류 수. 필수 서류를 정하지 않았으면 0 */
+  missingDocCount: number
 }
 
 /** 협력업체 상세 */
@@ -109,6 +111,8 @@ export interface SupplierDetail {
   contractCount: number
   certCount: number
   expiringCount: number
+  /** 빠진 필수 서류 수. 필수 서류를 정하지 않았으면 0 */
+  missingDocCount: number
   createdAt: string
   createdBy: string
   updatedAt: string
@@ -133,6 +137,8 @@ export interface SupplierSearch {
   status?: SupplierStatus
   /** 이 인증 종류를 보유한 업체만 */
   certType?: string
+  /** 필수 서류가 하나라도 빠진 업체만 */
+  missingDocs?: boolean
 }
 
 /** 서버 오류 응답(RFC 7807 ProblemDetail) */

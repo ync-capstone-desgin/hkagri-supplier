@@ -53,6 +53,20 @@ public class FileCategoryService {
         return CategoryItem.of(category);
     }
 
+    /** 필수 서류 여부만 바꾼다. 필수로 하면 모든 업체에서 이 종류의 파일이 있는지 점검한다. */
+    @Transactional
+    public CategoryItem changeRequired(Long id, boolean required) {
+        FileCategory category = find(id);
+        category.changeRequired(required);
+        return CategoryItem.of(category);
+    }
+
+    /** 한 업체의 필수 서류별 제출 여부를 조회한다 (#47). 필수 종류가 없으면 빈 목록이다. */
+    public List<FileCategoryDtos.RequiredDocument> requiredDocuments(Long supplierId) {
+        return categories.requiredDocuments(supplierId).stream()
+                .map(r -> new FileCategoryDtos.RequiredDocument(r.getCategoryId(), r.getName(), r.getFileCount())).toList();
+    }
+
     /** 파일에 붙일 종류를 찾는다. null이면 종류 없음, 사용 중지한 종류는 새로 붙일 수 없다. */
     FileCategory forAssign(Long id) {
         if (id == null) {

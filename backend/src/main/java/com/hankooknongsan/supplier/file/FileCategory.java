@@ -32,6 +32,9 @@ public class FileCategory {
     /** 새로 고를 수 있는지 여부. 사용 중지해도 이미 붙인 파일의 종류는 그대로 보인다. */
     private boolean active = true;
 
+    /** 필수 서류인지 여부 (#47). 필수이면 업체마다 이 종류의 파일이 있는지 점검한다. */
+    private boolean required;
+
     /** 선택상자 표시 순서 */
     private int sortOrder;
 
@@ -46,6 +49,11 @@ public class FileCategory {
     void rename(String name, String nameKey) {
         this.name = name;
         this.nameKey = nameKey;
+    }
+
+    /** 필수 서류 여부를 바꾼다. */
+    void changeRequired(boolean required) {
+        this.required = required;
     }
 
     /** 사용 여부를 바꾼다. */
