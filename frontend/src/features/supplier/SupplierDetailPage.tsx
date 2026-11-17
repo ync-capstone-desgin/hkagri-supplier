@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { App, Button, Card, Checkbox, Descriptions, Flex, Result, Skeleton, Statistic, Tabs, Tag, Typography } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { searchCertifications } from '../../api/certifications'
 import { searchContracts } from '../../api/contracts'
 import { toProblem } from '../../api/client'
@@ -49,6 +49,8 @@ export function SupplierDetailPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { closeTab } = useTabs()
+  // 알림함 등에서 ?tab=contracts 처럼 특정 탭을 바로 열 수 있게 주소에 둔다.
+  const [searchParams, setSearchParams] = useSearchParams()
   const [editOpen, setEditOpen] = useState(false)
   const [contractOpen, setContractOpen] = useState(false)
   const [certOpen, setCertOpen] = useState(false)
@@ -127,6 +129,8 @@ export function SupplierDetailPage() {
 
       <Card>
         <Tabs
+          activeKey={searchParams.get('tab') ?? 'info'}
+          onChange={(key) => setSearchParams({ tab: key }, { replace: true })}
           items={[
             {
               key: 'info',
