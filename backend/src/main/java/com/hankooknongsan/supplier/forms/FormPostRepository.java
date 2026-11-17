@@ -1,5 +1,6 @@
 package com.hankooknongsan.supplier.forms;
 
+import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,14 @@ public interface FormPostRepository extends JpaRepository<FormPost, Long> {
               and lower(p.title) like lower(concat('%', :keyword, '%'))
             order by p.createdAt desc, p.id desc""")
     Page<FormPost> search(String keyword, FormCategory category, Long folderId, Pageable pageable);
+
+    /** 탭에 붙일 분류별 개수. 목록 검색과 같은 폴더·제목 조건을 쓰고 [분류, 개수] 행으로 반환한다. */
+    @Query("""
+            select p.category, count(p) from FormPost p where p.deletedAt is null
+              and (:folderId is null or p.folderId = :folderId)
+              and lower(p.title) like lower(concat('%', :keyword, '%'))
+            group by p.category""")
+    List<Object[]> countByCategory(String keyword, Long folderId);
 
     /** 수정·삭제 요청이 같은 게시글의 첨부를 동시에 바꾸지 않도록 먼저 행을 잠근다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
