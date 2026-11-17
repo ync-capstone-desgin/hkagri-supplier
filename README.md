@@ -116,6 +116,7 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 | [docs/cert-types.md](docs/cert-types.md) | 인증 종류 관리·권한·비활성 선택 규칙·DB |
 | [docs/cert-scope.md](docs/cert-scope.md) | 인증 적용 대상 입력·검색·갱신·만료 안내·API·DB |
 | [docs/demo-data.md](docs/demo-data.md) | 가상 시연 데이터 구성과 기존 DB를 보존하는 실행 방법 |
+| [docs/supplier-contacts.md](docs/supplier-contacts.md) | 업체 담당자 탭·소통 메모 탭 규칙·API·DB |
 | [docs/supplier-files.md](docs/supplier-files.md) | 업체 자료 탭 사용법, 파일 연결 API·DB, 검증 방법 |
 | [docs/deploy-aws.md](docs/deploy-aws.md) | AWS EC2 배포 가이드 |
 | [capstone-docs](https://github.com/ync-capstone-desgin/capstone-docs) | 기획서, 설계, 미팅 자료 |
