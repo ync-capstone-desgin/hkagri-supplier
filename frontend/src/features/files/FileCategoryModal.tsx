@@ -93,8 +93,12 @@ export function FileCategoryModal({ open, onClose }: { open: boolean; onClose: (
       onCancel={() => !saving && onClose()} closable={!saving} maskClosable={!saving}
       footer={<Button onClick={onClose} disabled={saving}>닫기</Button>}>
       <Typography.Paragraph type="secondary">
-        업체 자료가 어떤 서류인지 구분하는 이름입니다. 쓰지 않는 종류는 사용 중지해도 이미 붙인 파일의 종류는 유지됩니다.
-        <b> 필수</b>로 정한 종류는 업체마다 파일이 있는지 점검해, 빠진 업체를 협력업체 목록에서 모아 볼 수 있습니다.
+        업체 자료가 어떤 서류인지 구분하는 이름입니다. <b>업체 상세의 자료 탭</b>에서 파일을 올릴 때 고르고, 자료 탭과 자료 검색에서 종류별로 걸러 봅니다.
+        쓰지 않는 종류는 사용 중지해도 이미 붙인 파일의 종류는 유지됩니다.
+      </Typography.Paragraph>
+      <Typography.Paragraph type="secondary">
+        <b>필수</b>로 정한 종류는 모든 업체에 파일이 있는지 점검합니다. 결과는 업체 상세의 자료 탭 위쪽에 보이고, 빠진 업체는 협력업체 목록에서 모아 볼 수 있습니다.
+        특정 업체에만 해당 없는 서류는 그 업체의 자료 탭에서 <b>해당 없음</b>으로 뺄 수 있습니다.
       </Typography.Paragraph>
       <Form form={form} layout="vertical" onFinish={saveName} disabled={saving}>
         <Form.Item name="name" label={editing ? '자료 종류 이름 수정' : '새 자료 종류'}

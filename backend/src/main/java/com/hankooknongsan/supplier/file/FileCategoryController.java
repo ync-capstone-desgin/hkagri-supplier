@@ -4,12 +4,14 @@ import java.util.List;
 
 import com.hankooknongsan.supplier.file.FileCategoryDtos.ActiveRequest;
 import com.hankooknongsan.supplier.file.FileCategoryDtos.CategoryItem;
+import com.hankooknongsan.supplier.file.FileCategoryDtos.ExemptRequest;
 import com.hankooknongsan.supplier.file.FileCategoryDtos.NameRequest;
 import com.hankooknongsan.supplier.file.FileCategoryDtos.RequiredDocument;
 import com.hankooknongsan.supplier.file.FileCategoryDtos.RequiredRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +41,13 @@ public class FileCategoryController {
     @GetMapping("/api/suppliers/{supplierId}/required-documents")
     public List<RequiredDocument> requiredDocuments(@PathVariable Long supplierId) {
         return service.requiredDocuments(supplierId);
+    }
+
+    /** 필수 서류 하나를 이 업체에서 해당 없음으로 빼거나 되돌린다. 관리자와 담당자가 할 수 있다. (#85) */
+    @PutMapping("/api/suppliers/{supplierId}/required-documents/{categoryId}/exempt")
+    public List<RequiredDocument> changeExempt(@PathVariable Long supplierId, @PathVariable Long categoryId,
+                                               @Valid @RequestBody ExemptRequest request, Authentication auth) {
+        return service.changeExempt(supplierId, categoryId, request.exempt(), auth.getName());
     }
 
     /** 자료 종류를 필수 서류로 정하거나 해제한다. */

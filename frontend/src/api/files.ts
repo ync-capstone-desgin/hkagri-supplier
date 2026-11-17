@@ -126,12 +126,18 @@ export async function changeFileCategoryRequired(id: number, required: boolean):
   return (await api.patch(`/admin/file-categories/${id}/required`, { required })).data
 }
 
-/** 한 업체의 필수 서류 한 줄. fileCount가 0이면 누락이다. */
+/** 한 업체의 필수 서류 한 줄. fileCount가 0이면 누락이다. exempt면 이 업체에는 해당 없어 점검에서 뺀 서류다. */
 export interface RequiredDocument {
   categoryId: number
   name: string
   fileCount: number
   submitted: boolean
+  exempt: boolean
+}
+
+/** 필수 서류 하나를 이 업체에서 해당 없음으로 빼거나 되돌린다. 바뀐 점검 결과를 돌려준다. */
+export async function changeDocumentExempt(supplierId: number, categoryId: number, exempt: boolean): Promise<RequiredDocument[]> {
+  return (await api.put(`/suppliers/${supplierId}/required-documents/${categoryId}/exempt`, { exempt })).data
 }
 
 /** 한 업체의 필수 서류별 제출 여부를 조회한다. 필수 서류를 정하지 않았으면 빈 목록이다. */

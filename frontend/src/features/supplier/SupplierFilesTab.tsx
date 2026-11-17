@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Alert, App, Button, Flex, Select, Table, Tag, Typography, Upload } from 'antd'
+import { Alert, App, Button, Flex, Popconfirm, Select, Table, Tag, Typography, Upload } from 'antd'
 import { DeleteOutlined, DownloadOutlined, InboxOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { searchContracts } from '../../api/contracts'
 import { searchCertifications } from '../../api/certifications'
-import { changeFileCategory, deleteStoredFile, downloadStoredFile, fetchRequiredDocuments, fetchSupplierFiles, uploadSupplierFile, type SupplierFile } from '../../api/files'
+import { changeDocumentExempt, changeFileCategory, deleteStoredFile, downloadStoredFile, fetchRequiredDocuments, fetchSupplierFiles, uploadSupplierFile, type RequiredDocument, type SupplierFile } from '../../api/files'
 import { toProblem } from '../../api/client'
 import { useAuth } from '../../app/AuthContext'
 import { formatDateTime } from '../../components/format'
@@ -89,6 +89,34 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
     }
   }
 
+  /** 필수 서류를 이 업체에서 해당 없음으로 빼거나 되돌리고, 누락 건수가 보이는 곳을 새로 고친다 (#85). */
+  const changeExempt = async (doc: RequiredDocument, exempt: boolean) => {
+    try {
+      await changeDocumentExempt(supplierId, doc.categoryId, exempt)
+      await Promise.all(['required-docs', 'supplier', 'suppliers'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
+      message.success(exempt ? `${doc.name}: 이 업체는 해당 없음으로 뺐습니다.` : `${doc.name}: 다시 필수 서류로 점검합니다.`)
+    } catch (error) { message.error(toProblem(error).detail) }
+  }
+
+  /** 필수 서류 표시 하나. 누락이거나 해당 없음인 서류는 담당자가 눌러서 빼거나 되돌릴 수 있다. */
+  const requiredTag = (doc: RequiredDocument) => {
+    const tag = (clickable: boolean) => (
+      <Tag color={doc.exempt ? 'default' : doc.submitted ? 'green' : 'red'} style={clickable ? { cursor: 'pointer' } : undefined}
+        role={clickable ? 'button' : undefined} tabIndex={clickable ? 0 : undefined}>
+        {doc.name} · {doc.exempt ? '해당 없음' : doc.submitted ? `제출 ${doc.fileCount}` : '누락'}
+      </Tag>
+    )
+    if (!canEdit || (doc.submitted && !doc.exempt)) return <span key={doc.categoryId}>{tag(false)}</span>
+    return (
+      <Popconfirm key={doc.categoryId} okText={doc.exempt ? '되돌리기' : '해당 없음'} cancelText="취소"
+        title={doc.exempt ? `${doc.name}을(를) 다시 필수 서류로 점검할까요?` : `이 업체는 ${doc.name}을(를) 내지 않아도 됩니까?`}
+        description={doc.exempt ? undefined : '해당 없음으로 빼면 이 업체의 누락 건수에서 빠집니다.'}
+        onConfirm={() => changeExempt(doc, !doc.exempt)}>
+        {tag(true)}
+      </Popconfirm>
+    )
+  }
+
   /** 내려받기 오류는 화면에 안내한다. */
   const download = async (id: number) => {
     try { await downloadStoredFile(id) } catch (error) { message.error(toProblem(error).detail) }
@@ -99,13 +127,11 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
       {(required.data?.length ?? 0) > 0 && (
         <Flex align="center" gap={8} wrap role="status" aria-label="필수 서류 점검">
           <Typography.Text strong>필수 서류</Typography.Text>
-          {required.data!.map((doc) => (
-            <Tag key={doc.categoryId} color={doc.submitted ? 'green' : 'red'}>
-              {doc.name} · {doc.submitted ? `제출 ${doc.fileCount}` : '누락'}
-            </Tag>
-          ))}
-          {required.data!.some((doc) => !doc.submitted) && (
-            <Typography.Text type="secondary">누락된 서류는 아래에서 자료 종류를 골라 올리면 채워집니다.</Typography.Text>
+          {required.data!.map(requiredTag)}
+          {required.data!.some((doc) => !doc.submitted && !doc.exempt) && (
+            <Typography.Text type="secondary">
+              누락된 서류는 아래에서 자료 종류를 골라 올리면 채워집니다.{canEdit && ' 이 업체에 해당 없는 서류는 눌러서 뺄 수 있습니다.'}
+            </Typography.Text>
           )}
         </Flex>
       )}

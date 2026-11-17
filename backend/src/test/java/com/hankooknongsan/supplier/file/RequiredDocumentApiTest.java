@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -152,6 +153,39 @@ class RequiredDocumentApiTest {
         mvc.perform(get("/api/suppliers/{id}/required-documents", supplierId))
                 .andExpect(jsonPath("$[?(@.categoryId == %d)]".formatted(docB), hasSize(0)));
         org.assertj.core.api.Assertions.assertThat(missingCount()).isEqualTo(before - 1);
+    }
+
+    /** 해당 없음 요청을 보낸다. */
+    org.springframework.test.web.servlet.ResultActions exempt(long supplier, long categoryId, boolean exempt) throws Exception {
+        return mvc.perform(put("/api/suppliers/{s}/required-documents/{c}/exempt", supplier, categoryId)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"exempt\":" + exempt + "}"));
+    }
+
+    /** 해당 없음으로 뺀 서류는 그 업체의 누락에서만 빠지고, 되돌리면 다시 누락이 된다. 다른 업체에는 영향이 없다. (#85) */
+    @Test
+    void exemptDocumentIsNotCountedAsMissingForThatSupplierOnly() throws Exception {
+        long other = suppliers.save(new Supplier("필수서류업체-다른-" + tag, SupplierStatus.ACTIVE)).getId();
+        upload(docA, null);
+        long before = missingCount();
+        org.assertj.core.api.Assertions.assertThat(listedAsMissing()).isTrue();
+
+        exempt(supplierId, docB, true).andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.categoryId == %d)].exempt".formatted(docB)).value(true));
+        exempt(supplierId, docB, true).andExpect(status().isOk());
+
+        org.assertj.core.api.Assertions.assertThat(missingCount()).isEqualTo(before - 1);
+        org.assertj.core.api.Assertions.assertThat(listedAsMissing()).isFalse();
+        mvc.perform(get("/api/suppliers/{id}/required-documents", other))
+                .andExpect(jsonPath("$[?(@.categoryId == %d)].exempt".formatted(docB)).value(false));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select created_by from doc_exemption where supplier_id = ? and category_id = ?", String.class, supplierId, docB)).isEqualTo("manager1");
+
+        exempt(supplierId, docB, false).andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.categoryId == %d)].exempt".formatted(docB)).value(false));
+        org.assertj.core.api.Assertions.assertThat(missingCount()).isEqualTo(before);
+        exempt(999_999_999L, docB, true).andExpect(status().isNotFound());
+        mvc.perform(put("/api/suppliers/{s}/required-documents/{c}/exempt", supplierId, docB).with(user("viewer").roles("VIEWER"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"exempt\":true}")).andExpect(status().isForbidden());
     }
 
     /** 필수 여부는 관리자만 바꾸고, 조회자도 업체의 필수 서류 점검 결과는 볼 수 있다. */
