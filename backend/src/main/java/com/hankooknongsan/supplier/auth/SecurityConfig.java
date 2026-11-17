@@ -27,6 +27,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
  *   <li>내 정보·비밀번호(/api/me/**): 로그인한 사용자 모두 (역할 무관, 자기 자신만 다룸)</li>
  *   <li>등록·수정: ADMIN, MANAGER</li>
  *   <li>기준정보 변경·시연 도구(/api/admin): ADMIN</li>
+ *   <li>가입·비밀번호 찾기·재설정: 로그인 전에도 가능</li>
  * </ul>
  * PoC이므로 CSRF 보호는 끄고, 실제 서비스 전환 시 쿠키 기반 CSRF 토큰을 적용한다.
  */
@@ -50,7 +51,7 @@ public class SecurityConfig {
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()))
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/signup").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                         .requestMatchers("/api/auth/login", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/settings/**").hasRole("ADMIN")
