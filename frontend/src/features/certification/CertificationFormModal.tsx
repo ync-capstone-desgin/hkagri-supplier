@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Typography } from 'antd'
+import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, type UploadFile } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { createCertification, renewCertification, updateCertification } from '../../api/certifications'
 import { toProblem } from '../../api/client'
-import { fetchCertificationFiles } from '../../api/files'
+import { fetchCertificationFiles, uploadFilesTo } from '../../api/files'
 import type { CertificationItem, CertificationRequest } from '../../api/types'
-import { AttachmentField } from '../../components/AttachmentField'
+import { AttachmentField, PendingFilesField } from '../../components/AttachmentField'
 import { fromDayjs, toDayjs } from '../../components/format'
 import { useCertTypeOptions, useOwnerOptions, useSupplierOptions } from '../../hooks/useOptions'
 import { useSaveShortcut } from '../../hooks/useSaveShortcut'
@@ -62,6 +62,8 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
   const queryClient = useQueryClient()
   const [form] = Form.useForm<FormValues>()
   const [saving, setSaving] = useState(false)
+  /** 등록·갱신 창에서 골라 둔 파일. 저장한 직후 새 인증에 올린다 (#83). */
+  const [pending, setPending] = useState<UploadFile[]>([])
   const supplierOptions = useSupplierOptions(open)
   const ownerOptions = useOwnerOptions(open, certification)
   const certTypeOptions = useCertTypeOptions({
@@ -73,6 +75,7 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
   useEffect(() => {
     if (!open) return
     form.resetFields()
+    setPending([])
     form.setFieldsValue(initialValues(mode, certification, supplierId))
   }, [open, mode, certification, supplierId, form])
 
@@ -88,6 +91,13 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
       await Promise.all(['certifications', 'suppliers', 'supplier', 'expiries', 'dashboard', 'changes'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
       message.success(mode === 'renew' ? '갱신 인증을 등록했습니다. 기존 인증은 이전 이력으로 옮겨졌습니다.' : '저장했습니다.')
       saved.warnings.forEach((w) => message.warning(w, 6))
+      if (mode !== 'edit' && pending.length > 0) {
+        const failed = await uploadFilesTo(values.supplierId, `certification:${saved.item.id}`, pending.map((f) => (f.originFileObj ?? f) as File))
+        await Promise.all([['certification-file-counts'], ['supplier-files', values.supplierId]].map((queryKey) => queryClient.invalidateQueries({ queryKey })))
+        if (failed.length > 0) {
+          message.warning(`인증은(는) 저장됐고 파일 ${failed.length}개는 올리지 못했습니다: ${failed.join(', ')}. 수정 창에서 다시 첨부해 주세요.`, 10)
+        }
+      }
       onClose()
     } catch (e) {
       const problem = toProblem(e)
@@ -165,7 +175,7 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
             </Form.Item>
           </Col>
           <Col span={14}>
-            <Form.Item name="documentUrl" label="인증서 위치(링크)" rules={[{ type: 'url', message: 'http:// 또는 https://로 시작하는 주소를 입력해 주세요.' }]}>
+            <Form.Item name="documentUrl" label="외부 문서 주소 (선택)" extra="파일이 드라이브 등 다른 곳에 있을 때만 주소를 적으세요." rules={[{ type: 'url', message: 'http:// 또는 https://로 시작하는 주소를 입력해 주세요.' }]}>
               <Input placeholder="https://" maxLength={500} />
             </Form.Item>
           </Col>
@@ -181,7 +191,7 @@ export function CertificationFormModal({ open, mode, certification, supplierId, 
                   target={`certification:${certification.id}`} fetchFiles={() => fetchCertificationFiles(certification.id)}
                   onChanged={() => void queryClient.invalidateQueries({ queryKey: ['certification-file-counts'] })} />
               ) : (
-                <Typography.Text type="secondary">저장한 뒤 다시 열면 첨부할 수 있습니다.</Typography.Text>
+                <PendingFilesField files={pending} onChange={setPending} />
               )}
             </Form.Item>
           </Col>
