@@ -5,6 +5,8 @@ import java.util.List;
 import com.hankooknongsan.supplier.file.FileCategoryDtos.ActiveRequest;
 import com.hankooknongsan.supplier.file.FileCategoryDtos.CategoryItem;
 import com.hankooknongsan.supplier.file.FileCategoryDtos.NameRequest;
+import com.hankooknongsan.supplier.file.FileCategoryDtos.RequiredDocument;
+import com.hankooknongsan.supplier.file.FileCategoryDtos.RequiredRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,6 +33,18 @@ public class FileCategoryController {
     @GetMapping("/api/file-categories")
     public List<CategoryItem> list() {
         return service.list();
+    }
+
+    /** 한 업체의 필수 서류별 제출 여부를 조회한다. 로그인한 모든 사용자가 본다. */
+    @GetMapping("/api/suppliers/{supplierId}/required-documents")
+    public List<RequiredDocument> requiredDocuments(@PathVariable Long supplierId) {
+        return service.requiredDocuments(supplierId);
+    }
+
+    /** 자료 종류를 필수 서류로 정하거나 해제한다. */
+    @PatchMapping("/api/admin/file-categories/{id}/required")
+    public CategoryItem changeRequired(@PathVariable Long id, @Valid @RequestBody RequiredRequest request) {
+        return service.changeRequired(id, request.required());
     }
 
     /** 새 자료 종류를 추가한다. */

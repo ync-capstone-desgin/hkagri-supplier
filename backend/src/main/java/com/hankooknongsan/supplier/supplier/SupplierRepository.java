@@ -19,6 +19,7 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
      * 검색어는 업체명·업체코드에 부분 일치(대소문자 무시), 거래상태는 일치 조건,
      * 인증 종류는 해당 인증을 유효하게 보유한 업체만 남긴다.
      * 빈 문자열이거나 null인 조건은 적용하지 않는다.
+     * missingDocs가 true면 필수 서류(#47)가 하나라도 빠진 업체만 남긴다. 자료 종류·파일은 JPQL 엔티티 이름으로만 참조한다.
      */
     @EntityGraph(attributePaths = "owner")
     @Query("""
@@ -28,9 +29,16 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
               and (:status is null or s.status = :status)
               and (:certType = '' or exists (select 1 from Certification x
                                              where x.supplier = s and x.active = true and x.certType.code = :certType))
+              and (:missingDocs = false or exists (
+                     select 1 from FileCategory fc
+                     where fc.required = true and fc.active = true and not exists (
+                         select 1 from StoredFile f left join f.contract fct left join f.certification fx
+                         where f.category = fc and f.deletedAt is null
+                           and (f.supplier = s or fct.supplier = s or fx.supplier = s))))
             """)
     Page<Supplier> search(@Param("keyword") String keyword, @Param("status") SupplierStatus status,
-                          @Param("certType") String certType, Pageable pageable);
+                          @Param("certType") String certType, @Param("missingDocs") boolean missingDocs,
+                          Pageable pageable);
 
     /** 업체별 유효 계약·인증 건수와, 기준일(horizon) 이전에 만료되는(이미 만료 포함) 건수 */
     interface SupplierCounts {
@@ -50,6 +58,9 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
         /** 만료됐거나 기준일까지 만료되는 유효 인증 수 */
         long getExpiringCertCount();
 
+        /** 빠진 필수 서류 수 (#47). 필수 종류가 없으면 0 */
+        long getMissingDocCount();
+
         /** 만료·임박 건수 합계 (계약 + 인증) */
         default long getExpiringCount() {
             return getExpiringContractCount() + getExpiringCertCount();
@@ -67,7 +78,12 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
                    (select count(c) from Contract c
                      where c.supplier = s and c.active = true and c.endDate <= :horizon) as expiringContractCount,
                    (select count(x) from Certification x
-                     where x.supplier = s and x.active = true and x.expiryDate <= :horizon) as expiringCertCount
+                     where x.supplier = s and x.active = true and x.expiryDate <= :horizon) as expiringCertCount,
+                   (select count(fc) from FileCategory fc
+                     where fc.required = true and fc.active = true and not exists (
+                         select 1 from StoredFile f left join f.contract fct left join f.certification fx
+                         where f.category = fc and f.deletedAt is null
+                           and (f.supplier = s or fct.supplier = s or fx.supplier = s))) as missingDocCount
             from Supplier s where s.id in :ids
             """)
     List<SupplierCounts> counts(@Param("ids") Collection<Long> ids, @Param("horizon") LocalDate horizon);

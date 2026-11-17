@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Alert, App, Button, Flex, Select, Table, Typography, Upload } from 'antd'
+import { Alert, App, Button, Flex, Select, Table, Tag, Typography, Upload } from 'antd'
 import { DeleteOutlined, DownloadOutlined, InboxOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { searchContracts } from '../../api/contracts'
 import { searchCertifications } from '../../api/certifications'
-import { changeFileCategory, deleteStoredFile, downloadStoredFile, fetchSupplierFiles, uploadSupplierFile, type SupplierFile } from '../../api/files'
+import { changeFileCategory, deleteStoredFile, downloadStoredFile, fetchRequiredDocuments, fetchSupplierFiles, uploadSupplierFile, type SupplierFile } from '../../api/files'
 import { toProblem } from '../../api/client'
 import { useAuth } from '../../app/AuthContext'
 import { formatDateTime } from '../../components/format'
@@ -28,6 +28,7 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
   const [filterCategory, setFilterCategory] = useState<number>()
   const categories = useFileCategories()
   const files = useQuery({ queryKey: ['supplier-files', supplierId, page, filterCategory], queryFn: () => fetchSupplierFiles(supplierId, page, filterCategory) })
+  const required = useQuery({ queryKey: ['required-docs', supplierId], queryFn: () => fetchRequiredDocuments(supplierId) })
   const contracts = useQuery({ queryKey: ['contracts', { supplierId, includeInactive: true }],
     queryFn: () => searchContracts({ supplierId, includeInactive: true }), enabled: canEdit })
   const certs = useQuery({ queryKey: ['certifications', { supplierId, includeInactive: true }],
@@ -45,6 +46,9 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
     setPage(0)
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['supplier-files', supplierId] }),
+      queryClient.invalidateQueries({ queryKey: ['required-docs', supplierId] }),
+      queryClient.invalidateQueries({ queryKey: ['supplier', supplierId] }),
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
       queryClient.invalidateQueries({ queryKey: ['contract-file-counts'] }),
       queryClient.invalidateQueries({ queryKey: ['certification-file-counts'] }),
       ...(contractId ? [queryClient.invalidateQueries({ queryKey: ['contract-files', contractId] })] : []),
@@ -78,7 +82,7 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
   const changeCategory = async (row: SupplierFile, categoryId: number | undefined) => {
     try {
       await changeFileCategory(row.file.id, categoryId ?? null)
-      await Promise.all(['supplier-files', 'file-search'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
+      await Promise.all(['supplier-files', 'file-search', 'required-docs', 'supplier', 'suppliers'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
       message.success(`${row.file.originalName}의 자료 종류를 바꿨습니다.`)
     } catch (error) {
       message.error(toProblem(error).detail)
@@ -92,6 +96,19 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
 
   return (
     <Flex vertical gap={16}>
+      {(required.data?.length ?? 0) > 0 && (
+        <Flex align="center" gap={8} wrap role="status" aria-label="필수 서류 점검">
+          <Typography.Text strong>필수 서류</Typography.Text>
+          {required.data!.map((doc) => (
+            <Tag key={doc.categoryId} color={doc.submitted ? 'green' : 'red'}>
+              {doc.name} · {doc.submitted ? `제출 ${doc.fileCount}` : '누락'}
+            </Tag>
+          ))}
+          {required.data!.some((doc) => !doc.submitted) && (
+            <Typography.Text type="secondary">누락된 서류는 아래에서 자료 종류를 골라 올리면 채워집니다.</Typography.Text>
+          )}
+        </Flex>
+      )}
       {canEdit && <>
         <Flex vertical gap={8}>
           <label htmlFor="file-target">연결할 계약·인증 (선택)</label>

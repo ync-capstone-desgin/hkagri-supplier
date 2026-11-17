@@ -115,6 +115,9 @@ export function SupplierDetailPage() {
             <Statistic title="유효 인증" value={data.certCount} suffix="건" />
             <Statistic title="만료·임박(90일)" value={data.expiringCount} suffix="건"
               styles={{ content: { color: data.expiringCount > 0 ? '#cf1322' : undefined } }} />
+            {data.missingDocCount > 0 && (
+              <Statistic title="필수 서류 누락" value={data.missingDocCount} suffix="건" styles={{ content: { color: '#cf1322' } }} />
+            )}
             {canEdit && <Button icon={<EditOutlined />} onClick={() => setEditOpen(true)}>기본정보 수정</Button>}
             {canEdit && <Button danger icon={<DeleteOutlined />} onClick={confirmDelete}>삭제</Button>}
           </Flex>

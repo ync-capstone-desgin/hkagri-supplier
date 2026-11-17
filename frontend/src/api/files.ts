@@ -97,6 +97,8 @@ export interface FileCategory {
   id: number
   name: string
   active: boolean
+  /** 필수 서류인지. 필수이면 업체마다 이 종류의 파일이 있는지 점검한다 */
+  required: boolean
 }
 
 /** 전체 자료 종류를 표시 순서대로 조회한다. */
@@ -117,6 +119,24 @@ export async function renameFileCategory(id: number, name: string): Promise<File
 /** 자료 종류를 사용 중지하거나 다시 사용한다. (관리자 전용) */
 export async function changeFileCategoryActive(id: number, active: boolean): Promise<FileCategory> {
   return (await api.patch(`/admin/file-categories/${id}/active`, { active })).data
+}
+
+/** 자료 종류를 필수 서류로 정하거나 해제한다. (관리자 전용) */
+export async function changeFileCategoryRequired(id: number, required: boolean): Promise<FileCategory> {
+  return (await api.patch(`/admin/file-categories/${id}/required`, { required })).data
+}
+
+/** 한 업체의 필수 서류 한 줄. fileCount가 0이면 누락이다. */
+export interface RequiredDocument {
+  categoryId: number
+  name: string
+  fileCount: number
+  submitted: boolean
+}
+
+/** 한 업체의 필수 서류별 제출 여부를 조회한다. 필수 서류를 정하지 않았으면 빈 목록이다. */
+export async function fetchRequiredDocuments(supplierId: number): Promise<RequiredDocument[]> {
+  return (await api.get(`/suppliers/${supplierId}/required-documents`)).data
 }
 
 /** 이미 올린 파일의 자료 종류를 바꾼다. null이면 종류를 지운다. */

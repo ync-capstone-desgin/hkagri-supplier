@@ -109,7 +109,7 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 | [docs/user-guide.md](docs/user-guide.md) | 메뉴별 사용 설명서 (스크린샷 포함) |
 | [docs/forms-api.md](docs/forms-api.md) | 양식 자료실 API·첨부·권한·DB 적용 순서 |
 | [docs/forms-ui.md](docs/forms-ui.md) | 하위 폴더 탐색·양식 등록·첨부 다운로드 및 화면 검증 |
-| [docs/file-categories.md](docs/file-categories.md) | 자료 종류: 붙이기·걸러 보기·관리 규칙·API·DB |
+| [docs/file-categories.md](docs/file-categories.md) | 자료 종류와 필수 서류 점검: 규칙·API·DB |
 | [docs/file-search.md](docs/file-search.md) | 자료 검색: 찾는 범위·검색어·API |
 | [docs/change-log.md](docs/change-log.md) | 변경 이력: 남는 내용·보는 곳·API·DB |
 | [docs/delete.md](docs/delete.md) | 협력업체·계약·인증 삭제 규칙·API·DB (지운 표시만 남김) |

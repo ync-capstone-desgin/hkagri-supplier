@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { App, Button, Flex, Input, Select, Tooltip, Typography } from 'antd'
+import { App, Button, Checkbox, Flex, Input, Select, Tooltip, Typography } from 'antd'
 import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
@@ -77,6 +77,17 @@ export function SupplierListPage() {
             <Typography.Text type="secondary" className="num">0</Typography.Text>
           ),
       },
+      {
+        field: 'missingDocCount',
+        headerName: '서류 누락',
+        headerTooltip: '관리자가 필수로 정한 자료 종류 중 이 업체에 파일이 없는 종류 수',
+        width: 110,
+        type: 'rightAligned',
+        cellRenderer: (p: { value: number }) =>
+          p.value > 0
+            ? <Typography.Text type="danger" strong className="num">{p.value}</Typography.Text>
+            : <Typography.Text type="secondary" className="num">0</Typography.Text>,
+      },
     ],
     [navigate],
   )
@@ -134,6 +145,9 @@ export function SupplierListPage() {
             onChange={(certType) => setDraft({ ...draft, certType })}
           />
         </SearchField>
+        <Checkbox checked={!!draft.missingDocs} onChange={(e) => setDraft({ ...draft, missingDocs: e.target.checked || undefined })}>
+          필수 서류 누락만
+        </Checkbox>
       </SearchPanel>
 
       <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
