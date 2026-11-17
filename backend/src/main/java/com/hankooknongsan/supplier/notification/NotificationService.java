@@ -9,6 +9,7 @@ import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.RenewalClosedEvent;
+import com.hankooknongsan.supplier.common.SupplierPurgedEvent;
 import com.hankooknongsan.supplier.common.TargetDeletedEvent;
 import com.hankooknongsan.supplier.notification.NotificationDtos.DeliveryItem;
 import com.hankooknongsan.supplier.notification.NotificationDtos.DeliveryLogItem;
@@ -86,6 +87,14 @@ public class NotificationService {
     @Transactional
     public void onTargetDeleted(TargetDeletedEvent event) {
         notifications.deleteAll(notifications.findByTargetTypeAndTargetId(event.targetType(), event.targetId()));
+    }
+
+    /** 협력업체를 영구삭제하면 그 업체를 가리키는 알림이 남지 않게 지운다 (#77). */
+    @EventListener
+    @Transactional
+    public void onSupplierPurged(SupplierPurgedEvent event) {
+        notifications.purgeDeliveriesOfSupplier(event.supplierId());
+        notifications.purgeOfSupplier(event.supplierId());
     }
 
     /** 알림 엔티티를 오늘 기준 남은 일수가 포함된 응답 형식으로 변환한다. */

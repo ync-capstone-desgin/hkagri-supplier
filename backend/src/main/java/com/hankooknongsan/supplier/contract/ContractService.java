@@ -23,6 +23,7 @@ import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
 import com.hankooknongsan.supplier.common.RenewalClosedEvent;
 import com.hankooknongsan.supplier.common.TargetDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetPurgedEvent;
 import com.hankooknongsan.supplier.common.TargetRestoredEvent;
 import com.hankooknongsan.supplier.common.TargetType;
 import org.springframework.context.ApplicationEventPublisher;
@@ -172,6 +173,21 @@ public class ContractService {
             events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, target.getPrev().getId()));
         }
         log(target, ChangeAction.RESTORE, Map.of(), Map.of());
+    }
+
+    /**
+     * 삭제된 계약을 영구삭제한다 (#77, 관리자 전용). 되돌릴 수 없다.
+     * 첨부는 이벤트로 DB와 저장소에서 함께 지우고, 영구삭제했다는 사실만 변경 이력에 남긴다.
+     */
+    @Transactional
+    public void purge(Long id) {
+        if (contracts.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 계약");
+        }
+        events.publishEvent(new TargetPurgedEvent(TargetType.CONTRACT, id));
+        contracts.detachPrev(id);
+        contracts.purge(id);
+        history.recordPurge(ChangeTarget.CONTRACT, id);
     }
 
     /** 계약의 변경 이력을 남긴다 (#45). */

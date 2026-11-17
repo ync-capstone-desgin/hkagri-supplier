@@ -120,4 +120,27 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = "update supplier set deleted_at = null, deleted_by = null where id = :id and deleted_at is not null", nativeQuery = true)
     int undelete(@Param("id") Long id);
+
+    /** 삭제된 건까지 포함해 업체에 남은 계약 행 수. (#77 영구삭제 가능 여부 확인용) */
+    @Query(value = "select count(*) from contract where supplier_id = :id", nativeQuery = true)
+    long countContractRows(@Param("id") Long id);
+
+    /** 삭제된 건까지 포함해 업체에 남은 인증 행 수. (#77 영구삭제 가능 여부 확인용) */
+    @Query(value = "select count(*) from certification where supplier_id = :id", nativeQuery = true)
+    long countCertificationRows(@Param("id") Long id);
+
+    /** 업체의 담당자를 완전히 지운다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from supplier_contact where supplier_id = :id", nativeQuery = true)
+    int purgeContacts(@Param("id") Long id);
+
+    /** 업체의 메모를 완전히 지운다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from supplier_note where supplier_id = :id", nativeQuery = true)
+    int purgeNotes(@Param("id") Long id);
+
+    /** 삭제된 협력업체의 행을 완전히 지운다. 삭제되지 않은 업체는 지우지 않는다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from supplier where id = :id and deleted_at is not null", nativeQuery = true)
+    int purge(@Param("id") Long id);
 }

@@ -60,6 +60,20 @@ public class ChangeLogService {
                 mapper.writeValueAsString(changes), actor, actorName, clock.now()));
     }
 
+    /**
+     * 영구삭제했다는 사실을 남긴다 (#77). 대상 행이 이미 없으므로 업체명·대상 이름은 그 대상의 마지막 기록에서 옮겨 적는다.
+     * 이전 기록이 없으면(이력 기능 도입 전에 지운 건) 이름 없이 남기고, 업체 ID는 알 수 없어 0으로 둔다.
+     */
+    @Transactional
+    public void recordPurge(ChangeTarget targetType, Long targetId) {
+        ChangeLog last = logs.findFirstByTargetTypeAndTargetIdOrderByIdDesc(targetType, targetId).orElse(null);
+        String actor = auditor.getCurrentAuditor().orElse("system");
+        String actorName = users.findByUsername(actor).map(AppUser::getName).orElse(actor);
+        logs.save(new ChangeLog(targetType, targetId, last != null ? last.getSupplierId() : targetType == ChangeTarget.SUPPLIER ? targetId : 0L,
+                last == null ? "" : last.getSupplierName(), last == null ? "" : last.getTargetName(),
+                ChangeAction.PURGE, "[]", actor, actorName, clock.now()));
+    }
+
     /** 한 업체와 그 업체의 계약·인증 이력을 최신순으로 조회한다. */
     public PageResponse<ChangeItem> forSupplier(Long supplierId, Pageable pageable) {
         return PageResponse.of(logs.findBySupplierIdOrderByCreatedAtDescIdDesc(supplierId, pageable), this::toItem);

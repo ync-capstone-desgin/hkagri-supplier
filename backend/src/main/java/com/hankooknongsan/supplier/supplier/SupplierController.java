@@ -102,4 +102,11 @@ public class SupplierController {
     public void restore(@PathVariable Long id) {
         service.restore(id);
     }
+
+    /** 삭제된 협력업체을(를) 영구삭제한다. 되돌릴 수 없고 관리자만 할 수 있다 (보안 설정의 purge 규칙). */
+    @DeleteMapping("/{id}/purge")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void purge(@PathVariable Long id) {
+        service.purge(id);
+    }
 }

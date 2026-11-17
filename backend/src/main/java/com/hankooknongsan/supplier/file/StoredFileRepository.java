@@ -154,4 +154,26 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
             update stored_file f set deleted_at = null, deleted_by = null
               from supplier t where f.supplier_id = t.id and t.id = :id and f.deleted_at >= t.deleted_at""", nativeQuery = true)
     int undeleteWithSupplier(@Param("id") Long id);
+
+    /**
+     * 계약·인증·협력업체 중 하나에 딸린 모든 파일(삭제된 것 포함)의 저장 키를 찾는다 (#77 영구삭제).
+     * 셋 중 하나만 주고 나머지는 null로 준다.
+     */
+    @Query(value = """
+            select storage_key from stored_file
+             where contract_id = cast(:contractId as bigint)
+                or certification_id = cast(:certificationId as bigint)
+                or supplier_id = cast(:supplierId as bigint)""", nativeQuery = true)
+    List<String> findStorageKeysOf(@Param("contractId") Long contractId, @Param("certificationId") Long certificationId,
+                                   @Param("supplierId") Long supplierId);
+
+    /** 계약·인증·협력업체 중 하나에 딸린 모든 파일 기록을 완전히 지운다 (#77). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            delete from stored_file
+             where contract_id = cast(:contractId as bigint)
+                or certification_id = cast(:certificationId as bigint)
+                or supplier_id = cast(:supplierId as bigint)""", nativeQuery = true)
+    int purgeOf(@Param("contractId") Long contractId, @Param("certificationId") Long certificationId,
+                @Param("supplierId") Long supplierId);
 }

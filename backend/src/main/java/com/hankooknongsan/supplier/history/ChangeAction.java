@@ -7,7 +7,8 @@ public enum ChangeAction {
     RENEW("갱신"),
     STATUS("처리상태 변경"),
     DELETE("삭제"),
-    RESTORE("되살리기");
+    RESTORE("되살리기"),
+    PURGE("영구삭제");
 
     private final String label;
 

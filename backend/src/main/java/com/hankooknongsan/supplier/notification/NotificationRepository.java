@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -40,4 +41,14 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     /** 수신자의 미확인 알림을 모두 찾는다. ([모두 확인] 처리용) */
     List<Notification> findByRecipientIdAndActionStatus(Long recipientId, ActionStatus actionStatus);
+
+    /** 협력업체의 알림에 딸린 발송 기록을 완전히 지운다. (#77 업체 영구삭제) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from notification_delivery where notification_id in (select id from notification where supplier_id = :supplierId)", nativeQuery = true)
+    int purgeDeliveriesOfSupplier(@Param("supplierId") Long supplierId);
+
+    /** 협력업체의 알림을 완전히 지운다. (#77 업체 영구삭제) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from notification where supplier_id = :supplierId", nativeQuery = true)
+    int purgeOfSupplier(@Param("supplierId") Long supplierId);
 }

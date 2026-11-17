@@ -107,4 +107,14 @@ public interface CertificationRepository extends JpaRepository<Certification, Lo
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = "update certification set deleted_at = null, deleted_by = null where id = :id and deleted_at is not null", nativeQuery = true)
     int undelete(@Param("id") Long id);
+
+    /** 영구삭제할 인증을 이전 건으로 가리키는 (삭제된) 갱신 건의 연결을 끊는다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "update certification set prev_id = null where prev_id = :id", nativeQuery = true)
+    int detachPrev(@Param("id") Long id);
+
+    /** 삭제된 인증의 행을 완전히 지운다. 삭제되지 않은 건은 지우지 않는다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from certification where id = :id and deleted_at is not null", nativeQuery = true)
+    int purge(@Param("id") Long id);
 }

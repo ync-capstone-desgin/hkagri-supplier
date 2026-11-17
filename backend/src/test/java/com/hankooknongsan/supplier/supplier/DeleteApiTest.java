@@ -1,6 +1,7 @@
 package com.hankooknongsan.supplier.supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -22,6 +23,7 @@ import com.hankooknongsan.supplier.auth.Role;
 import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.TargetType;
 import com.hankooknongsan.supplier.file.StoredFileRepository;
+import com.hankooknongsan.supplier.file.storage.FileStorage;
 import com.hankooknongsan.supplier.notification.Channel;
 import com.hankooknongsan.supplier.notification.Notification;
 import com.hankooknongsan.supplier.notification.NotificationRepository;
@@ -62,6 +64,7 @@ class DeleteApiTest {
     @Autowired StoredFileRepository files;
     @Autowired JdbcTemplate jdbc;
     @Autowired AppClock clock;
+    @Autowired FileStorage storage;
 
     Long supplierId;
 
@@ -253,5 +256,73 @@ class DeleteApiTest {
         restore("/api/certifications/" + certificationId).andExpect(status().isNoContent());
         mvc.perform(get("/api/certifications/" + certificationId)).andExpect(jsonPath("$.active").value(true));
         mvc.perform(get("/api/suppliers/" + supplierId)).andExpect(jsonPath("$.certCount").value(1));
+    }
+
+    /** 관리자 권한으로 영구삭제를 요청한다. */
+    ResultActions purge(String path) throws Exception {
+        return mvc.perform(delete(path + "/purge").with(user("admin").roles("ADMIN")));
+    }
+
+    /** 영구삭제하면 계약 행과 첨부(기록·저장소 내용)가 없어지고 되살릴 수 없으며, 이력에는 영구삭제 기록만 남는다. (#77) */
+    @Test
+    void purgedContractIsGoneWithItsFiles() throws Exception {
+        long oldId = contract("/api/contracts");
+        long newId = contract("/api/contracts/" + oldId + "/renew");
+        long fileId = upload("contractId", newId);
+        String storageKey = jdbc.queryForObject("select storage_key from stored_file where id = ?", String.class, fileId);
+        mvc.perform(delete("/api/contracts/" + newId + "/purge").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete("/api/contracts/" + newId)).andExpect(status().isNoContent());
+        assertThat(storage.load(storageKey).exists()).isTrue();
+        mvc.perform(get("/api/admin/files/purge-count").param("contractId", String.valueOf(newId))
+                .with(user("admin").roles("ADMIN"))).andExpect(jsonPath("$").value(1));
+
+        mvc.perform(delete("/api/contracts/" + newId + "/purge")).andExpect(status().isForbidden());
+        purge("/api/contracts/" + newId).andExpect(status().isNoContent());
+
+        assertThat(jdbc.queryForObject("select count(*) from contract where id = ?", Long.class, newId)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from stored_file where id = ?", Long.class, fileId)).isZero();
+        assertThatThrownBy(() -> storage.load(storageKey)).hasMessageContaining("저장된 파일이 없습니다");
+        mvc.perform(get("/api/contracts/" + oldId)).andExpect(jsonPath("$.active").value(true));
+        restore("/api/contracts/" + newId).andExpect(status().isNotFound());
+        mvc.perform(get("/api/suppliers/{id}/changes", supplierId))
+                .andExpect(jsonPath("$.content[0].action").value("PURGE"))
+                .andExpect(jsonPath("$.content[0].targetName").value("삭제 테스트 계약"))
+                .andExpect(jsonPath("$.content[?(@.action == 'DELETE')].restorable").value(false));
+    }
+
+    /** 갱신 건과 이전 건을 모두 지운 뒤 이전 건을 먼저 영구삭제해도, 그것을 가리키던 갱신 건은 남아 되살릴 수 있다. (#77) */
+    @Test
+    void purgingPreviousKeepsDeletedRenewalRestorable() throws Exception {
+        long oldId = certification("/api/certifications");
+        long newId = certification("/api/certifications/" + oldId + "/renew");
+        mvc.perform(delete("/api/certifications/" + newId)).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/certifications/" + oldId)).andExpect(status().isNoContent());
+
+        purge("/api/certifications/" + oldId).andExpect(status().isNoContent());
+        restore("/api/certifications/" + newId).andExpect(status().isNoContent());
+        mvc.perform(get("/api/certifications/" + newId)).andExpect(jsonPath("$.active").value(true));
+    }
+
+    /** 삭제된 계약이 남은 협력업체는 영구삭제를 막고 건수를 알려 준다. 계약을 먼저 영구삭제하면 담당자·메모·자료와 함께 지워진다. (#77) */
+    @Test
+    void supplierPurgeIsBlockedWhileDeletedContractsRemain() throws Exception {
+        long contractId = contract("/api/contracts");
+        long fileId = upload(null, null);
+        mvc.perform(post("/api/suppliers/{id}/notes", supplierId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"영구삭제 테스트 메모\",\"contactDate\":\"2026-01-01\"}")).andExpect(status().isCreated());
+        mvc.perform(delete("/api/contracts/" + contractId)).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/suppliers/" + supplierId)).andExpect(status().isNoContent());
+
+        purge("/api/suppliers/" + supplierId).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail", containsString("삭제된 계약 1건, 인증 0건")));
+        purge("/api/contracts/" + contractId).andExpect(status().isNoContent());
+        purge("/api/suppliers/" + supplierId).andExpect(status().isNoContent());
+
+        assertThat(jdbc.queryForObject("select count(*) from supplier where id = ?", Long.class, supplierId)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from supplier_note where supplier_id = ?", Long.class, supplierId)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from stored_file where id = ?", Long.class, fileId)).isZero();
+        mvc.perform(get("/api/admin/changes").param("keyword", "삭제 테스트 업체").with(user("admin").roles("ADMIN")))
+                .andExpect(jsonPath("$.content[0].action").value("PURGE"));
     }
 }

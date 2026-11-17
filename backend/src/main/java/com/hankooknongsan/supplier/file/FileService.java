@@ -11,8 +11,10 @@ import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
+import com.hankooknongsan.supplier.common.SupplierPurgedEvent;
 import com.hankooknongsan.supplier.common.SupplierRestoredEvent;
 import com.hankooknongsan.supplier.common.TargetDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetPurgedEvent;
 import com.hankooknongsan.supplier.common.TargetRestoredEvent;
 import com.hankooknongsan.supplier.common.TargetType;
 import com.hankooknongsan.supplier.file.FileDtos.DeletedFile;
@@ -82,6 +84,47 @@ public class FileService {
     @Transactional
     public void onSupplierRestored(SupplierRestoredEvent event) {
         files.undeleteWithSupplier(event.supplierId());
+    }
+
+    /** 계약·인증을 영구삭제하면 그 건의 첨부를 DB와 저장소에서 모두 지운다 (#77). */
+    @EventListener
+    @Transactional
+    public void onTargetPurged(TargetPurgedEvent event) {
+        boolean contract = event.targetType() == TargetType.CONTRACT;
+        purge(contract ? event.targetId() : null, contract ? null : event.targetId(), null);
+    }
+
+    /** 협력업체를 영구삭제하면 업체 자료를 DB와 저장소에서 모두 지운다 (#77). */
+    @EventListener
+    @Transactional
+    public void onSupplierPurged(SupplierPurgedEvent event) {
+        purge(null, null, event.supplierId());
+    }
+
+    /** 영구삭제하면 함께 없어질 파일 수 (삭제된 것 포함). 확인 창에 보여 준다. 셋 중 하나만 준다. */
+    public long purgeCount(Long contractId, Long certificationId, Long supplierId) {
+        return files.findStorageKeysOf(contractId, certificationId, supplierId).size();
+    }
+
+    /**
+     * 딸린 파일의 기록을 지우고, 그 삭제가 확정(커밋)된 뒤에 저장소의 내용을 지운다.
+     * 저장소에서 지우다 실패하면 주인 없는 파일만 남고 업무 자료는 어긋나지 않으므로 경고만 남긴다.
+     */
+    private void purge(Long contractId, Long certificationId, Long supplierId) {
+        List<String> keys = files.findStorageKeysOf(contractId, certificationId, supplierId);
+        files.purgeOf(contractId, certificationId, supplierId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                for (String key : keys) {
+                    try {
+                        storage.delete(key);
+                    } catch (RuntimeException e) {
+                        log.warn("영구삭제한 파일의 내용을 저장소에서 지우지 못했습니다: {}", key, e);
+                    }
+                }
+            }
+        });
     }
 
     /** 여러 파일에 지운 표시를 남긴다. 삭제 쿼리가 조회 결과를 비우므로 ID를 먼저 꺼내 둔다. */
