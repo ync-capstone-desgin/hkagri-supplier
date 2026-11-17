@@ -12,6 +12,9 @@
 	# 그 밖의 주소는 화면 파일을 보여준다. 화면 내부 경로(/suppliers/3 등)는 index.html로 보낸다.
 	handle {
 		root * /srv
+		# index.html을 브라우저가 오래 저장하면 배포 후에도 옛 화면이 뜬다. 이름이 매번 바뀌는 /assets 외에는 매번 서버에 확인하게 한다.
+		@page not path /assets/*
+		header @page Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}
