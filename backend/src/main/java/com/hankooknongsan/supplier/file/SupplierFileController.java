@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,16 +23,23 @@ public class SupplierFileController {
 
     /** 업체의 자료를 페이지별로 조회한다. */
     @GetMapping("/api/suppliers/{supplierId}/files")
-    public PageResponse<SupplierFile> list(@PathVariable Long supplierId,
+    public PageResponse<SupplierFile> list(@PathVariable Long supplierId, @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        return service.list(supplierId, page, size);
+        return service.list(supplierId, categoryId, page, size);
     }
 
     /** 파일 하나를 업체 또는 업체의 계약·인증에 연결한다. 다중 업로드는 화면에서 파일별로 요청한다. */
     @PostMapping(path = "/api/suppliers/{supplierId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public SupplierFile upload(@PathVariable Long supplierId, @RequestParam("file") MultipartFile file,
-            @RequestParam(required = false) Long contractId, @RequestParam(required = false) Long certificationId) {
-        return service.upload(supplierId, file, contractId, certificationId);
+            @RequestParam(required = false) Long contractId, @RequestParam(required = false) Long certificationId,
+            @RequestParam(required = false) Long categoryId) {
+        return service.upload(supplierId, file, contractId, certificationId, categoryId);
+    }
+
+    /** 이미 올린 파일의 자료 종류를 바꾼다. categoryId가 null이면 종류를 지운다. */
+    @PatchMapping("/api/files/{id}/category")
+    public SupplierFile categorize(@PathVariable Long id, @RequestBody FileCategoryDtos.AssignRequest request) {
+        return service.categorize(id, request.categoryId());
     }
 }

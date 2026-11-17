@@ -46,9 +46,10 @@ public class FileController {
     /** 전체 자료를 검색한다. 로그인한 모든 사용자가 쓸 수 있다. 검색어가 없으면 최신순 전체다. */
     @GetMapping("/api/files/search")
     public PageResponse<FileSearchItem> search(@RequestParam(required = false) String keyword,
+                                               @RequestParam(required = false) Long categoryId,
                                                @RequestParam(defaultValue = "0") int page,
                                                @RequestParam(defaultValue = "20") int size) {
-        return service.search(keyword, PageRequest.of(page, size));
+        return service.search(keyword, categoryId, PageRequest.of(page, size));
     }
 
     /** 파일 정보(이름·크기·올린 사람)를 조회한다. */

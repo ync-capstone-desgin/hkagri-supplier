@@ -18,15 +18,17 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
     /** 삭제하지 않은 파일만 ID로 찾는다. */
     Optional<StoredFile> findByIdAndDeletedAtIsNull(Long id);
 
-    /** 업체 일반 자료와 계약·인증 첨부를 함께 조회한다. 갱신된 건의 파일도 포함하고 삭제된 파일은 제외한다. */
-    @EntityGraph(attributePaths = {"contract", "certification", "certification.certType"})
+    /** 업체 일반 자료와 계약·인증 첨부를 함께 조회한다. 갱신된 건의 파일도 포함하고 삭제된 파일은 제외한다. 종류가 null이면 전체다. */
+    @EntityGraph(attributePaths = {"contract", "certification", "certification.certType", "category"})
     @Query("""
             select f from StoredFile f
             left join f.contract c left join f.certification cert
             where f.deletedAt is null
               and (f.supplier.id = :supplierId or c.supplier.id = :supplierId or cert.supplier.id = :supplierId)
+              and (:categoryId is null or f.category.id = :categoryId)
             order by f.createdAt desc, f.id desc""")
-    Page<StoredFile> findForSupplier(@Param("supplierId") Long supplierId, Pageable pageable);
+    Page<StoredFile> findForSupplier(@Param("supplierId") Long supplierId, @Param("categoryId") Long categoryId,
+                                     Pageable pageable);
 
     /**
      * 아직 삭제하지 않은 파일만 삭제 상태로 바꾸고, 바뀐 행 수(0 또는 1)를 돌려준다.
@@ -77,7 +79,7 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
     /**
      * 업체 자료·계약·인증 첨부·양식 자료실 파일을 한 번에 검색한다 (#53). 최신순.
      * 검색어는 파일 이름, 업체명, 계약명·계약번호, 인증 종류·적용 대상·인증번호, 양식 제목에 부분 일치한다.
-     * 삭제된 파일과, 어디에도 연결되지 않은 파일(올리다 만 파일)은 제외한다.
+     * 삭제된 파일과, 어디에도 연결되지 않은 파일(올리다 만 파일)은 제외한다. 종류가 null이면 전체다.
      * 양식 게시글은 JPQL 엔티티 이름으로만 참조해 file → forms 패키지 의존이 생기지 않게 한다.
      */
     @Query(value = """
@@ -89,6 +91,7 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
             left join FormPost p on f member of p.files and p.deletedAt is null
             where f.deletedAt is null
               and (s is not null or c is not null or x is not null or p is not null)
+              and (:categoryId is null or f.category.id = :categoryId)
               and (:keyword = '' or lower(f.originalName) like lower(concat('%', :keyword, '%'))
                                  or lower(s.name) like lower(concat('%', :keyword, '%'))
                                  or lower(cs.name) like lower(concat('%', :keyword, '%'))
@@ -109,6 +112,7 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
             left join FormPost p on f member of p.files and p.deletedAt is null
             where f.deletedAt is null
               and (s is not null or c is not null or x is not null or p is not null)
+              and (:categoryId is null or f.category.id = :categoryId)
               and (:keyword = '' or lower(f.originalName) like lower(concat('%', :keyword, '%'))
                                  or lower(s.name) like lower(concat('%', :keyword, '%'))
                                  or lower(cs.name) like lower(concat('%', :keyword, '%'))
@@ -119,7 +123,7 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
                                  or lower(x.scope) like lower(concat('%', :keyword, '%'))
                                  or lower(x.certificateNumber) like lower(concat('%', :keyword, '%'))
                                  or lower(p.title) like lower(concat('%', :keyword, '%')))""")
-    Page<FileHit> search(@Param("keyword") String keyword, Pageable pageable);
+    Page<FileHit> search(@Param("keyword") String keyword, @Param("categoryId") Long categoryId, Pageable pageable);
 
     /** id별 개수 한 행 (위 두 집계 쿼리의 결과 형식). */
     interface IdCount {

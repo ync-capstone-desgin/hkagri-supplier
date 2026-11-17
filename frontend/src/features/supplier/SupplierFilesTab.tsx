@@ -4,10 +4,11 @@ import { DeleteOutlined, DownloadOutlined, InboxOutlined, ReloadOutlined } from 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { searchContracts } from '../../api/contracts'
 import { searchCertifications } from '../../api/certifications'
-import { deleteStoredFile, downloadStoredFile, fetchSupplierFiles, uploadSupplierFile, type SupplierFile } from '../../api/files'
+import { changeFileCategory, deleteStoredFile, downloadStoredFile, fetchSupplierFiles, uploadSupplierFile, type SupplierFile } from '../../api/files'
 import { toProblem } from '../../api/client'
 import { useAuth } from '../../app/AuthContext'
 import { formatDateTime } from '../../components/format'
+import { useFileCategories } from '../../hooks/useFileCategories'
 
 /** 파일 크기를 화면에서 읽기 쉬운 단위로 표시한다. */
 function fileSize(bytes: number): string {
@@ -23,7 +24,10 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(0)
   const [target, setTarget] = useState<string>()
-  const files = useQuery({ queryKey: ['supplier-files', supplierId, page], queryFn: () => fetchSupplierFiles(supplierId, page) })
+  const [uploadCategory, setUploadCategory] = useState<number>()
+  const [filterCategory, setFilterCategory] = useState<number>()
+  const categories = useFileCategories()
+  const files = useQuery({ queryKey: ['supplier-files', supplierId, page, filterCategory], queryFn: () => fetchSupplierFiles(supplierId, page, filterCategory) })
   const contracts = useQuery({ queryKey: ['contracts', { supplierId, includeInactive: true }],
     queryFn: () => searchContracts({ supplierId, includeInactive: true }), enabled: canEdit })
   const certs = useQuery({ queryKey: ['certifications', { supplierId, includeInactive: true }],
@@ -70,6 +74,17 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
     })
   }
 
+  /** 이미 올린 파일의 자료 종류를 바꾸거나 지운다. 보고 있던 쪽은 그대로 두고 목록만 새로 고친다. */
+  const changeCategory = async (row: SupplierFile, categoryId: number | undefined) => {
+    try {
+      await changeFileCategory(row.file.id, categoryId ?? null)
+      await Promise.all(['supplier-files', 'file-search'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
+      message.success(`${row.file.originalName}의 자료 종류를 바꿨습니다.`)
+    } catch (error) {
+      message.error(toProblem(error).detail)
+    }
+  }
+
   /** 내려받기 오류는 화면에 안내한다. */
   const download = async (id: number) => {
     try { await downloadStoredFile(id) } catch (error) { message.error(toProblem(error).detail) }
@@ -84,11 +99,15 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
             placeholder="선택하지 않으면 업체 일반 자료로 보관합니다" options={targetOptions}
             loading={contracts.isLoading || certs.isLoading} style={{ width: '100%' }} />
           {(contracts.isError || certs.isError) && <Alert type="warning" showIcon title="계약·인증 목록을 불러오지 못했습니다. 새로고침 후 연결할 항목을 선택해 주세요." />}
+          <label htmlFor="file-category">자료 종류 (선택)</label>
+          <Select id="file-category" allowClear showSearch={{ optionFilterProp: 'label' }} value={uploadCategory} onChange={setUploadCategory}
+            placeholder="올리는 파일이 어떤 서류인지 고릅니다. 나중에 목록에서 바꿀 수 있습니다" options={categories.options}
+            loading={categories.isLoading} style={{ width: '100%' }} />
         </Flex>
         <Upload.Dragger multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
           customRequest={async ({ file, onSuccess, onError }) => {
             try {
-              const saved = await uploadSupplierFile(supplierId, file as File, target)
+              const saved = await uploadSupplierFile(supplierId, file as File, target, uploadCategory)
               onSuccess?.(saved)
               await refresh(saved.contractId, saved.certificationId)
             } catch (error) {
@@ -103,16 +122,29 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
         </Upload.Dragger>
       </>}
       <Flex justify="space-between" align="center">
-        <Typography.Text>자료 {files.data?.totalElements ?? 0}개</Typography.Text>
+        <Flex align="center" gap={12}>
+          <Typography.Text>자료 {files.data?.totalElements ?? 0}개</Typography.Text>
+          <Select allowClear aria-label="자료 종류로 걸러 보기" placeholder="자료 종류 전체" style={{ width: 180 }} options={categories.options}
+            value={filterCategory} onChange={(value) => { setFilterCategory(value); setPage(0) }} />
+        </Flex>
         <Button icon={<ReloadOutlined />} onClick={() => void reload()}
           loading={files.isFetching || (canEdit && (contracts.isFetching || certs.isFetching))}>새로고침</Button>
       </Flex>
       {files.isError && <Alert type="error" showIcon title={toProblem(files.error).detail} />}
       <Table<SupplierFile> rowKey={(row) => row.file.id} dataSource={files.data?.content} loading={files.isLoading} size="small"
-        scroll={{ x: 900 }} locale={{ emptyText: '등록된 자료가 없습니다.' }}
+        scroll={{ x: 1070 }} locale={{ emptyText: filterCategory ? '이 종류의 자료가 없습니다.' : '등록된 자료가 없습니다.' }}
         pagination={{ current: page + 1, pageSize: 20, total: files.data?.totalElements ?? 0, showSizeChanger: false, onChange: (next) => setPage(next - 1) }}
         columns={[
           { title: '파일 이름', dataIndex: ['file', 'originalName'], width: 250, render: (name) => <span style={{ overflowWrap: 'anywhere' }}>{name}</span> },
+          {
+            title: '자료 종류', width: 170,
+            render: (_, row) => canEdit
+              ? <Select allowClear size="small" variant="borderless" placeholder="종류 없음" style={{ width: '100%' }} aria-label={`${row.file.originalName} 자료 종류`}
+                  value={row.categoryId ?? undefined} onChange={(value) => void changeCategory(row, value)}
+                  options={row.categoryId && !categories.options.some((o) => o.value === row.categoryId)
+                    ? [...categories.options, { value: row.categoryId, label: `${row.categoryName} (사용 중지)` }] : categories.options} />
+              : row.categoryName ?? '-',
+          },
           { title: '크기', dataIndex: ['file', 'size'], width: 90, render: fileSize },
           { title: '올린 사람', dataIndex: ['file', 'createdBy'], width: 110, render: (by) => by ?? '-' },
           { title: '올린 날짜', dataIndex: ['file', 'createdAt'], width: 160, render: formatDateTime },

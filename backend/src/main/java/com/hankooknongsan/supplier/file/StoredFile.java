@@ -51,6 +51,10 @@ public class StoredFile extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private Certification certification;
 
+    /** 자료 종류 (선택). 어떤 서류인지 구분한다. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    private FileCategory category;
+
     /** 삭제한 시각. 삭제하지 않았으면 null. 삭제는 {@link StoredFileRepository#markDeleted}로만 한다. */
     private LocalDateTime deletedAt;
     /** 삭제한 사람 아이디 */
@@ -69,6 +73,11 @@ public class StoredFile extends BaseEntity {
         this.supplier = contract == null && certification == null ? supplier : null;
         this.contract = contract;
         this.certification = certification;
+    }
+
+    /** 자료 종류를 붙이거나(값) 지운다(null). */
+    void categorize(FileCategory category) {
+        this.category = category;
     }
 
     /** 삭제한 파일인지 확인한다. */
