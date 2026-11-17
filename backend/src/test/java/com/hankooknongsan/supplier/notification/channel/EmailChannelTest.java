@@ -37,7 +37,7 @@ class EmailChannelTest {
         channel.send(delivery);
         verify(sender).send(mail);
         mail.saveChanges();
-        assertThat(mail.getSubject()).isEqualTo("[한국농산 협력업체 통합관리] 계약 만료");
+        assertThat(mail.getSubject()).isEqualTo("[한국농산] 계약 만료");
         Multipart parts = (Multipart) mail.getContent();
         while (!parts.getContentType().startsWith("multipart/alternative")) {
             parts = (Multipart) parts.getBodyPart(0).getContent();

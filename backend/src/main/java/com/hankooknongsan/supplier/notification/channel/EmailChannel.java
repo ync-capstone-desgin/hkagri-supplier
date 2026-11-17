@@ -44,18 +44,22 @@ public class EmailChannel implements NotificationChannel {
         var mail = new MimeMessageHelper(message, true, "UTF-8");
         mail.setFrom(from);
         mail.setTo(n.getRecipient().getEmail());
-        mail.setSubject("[한국농산 협력업체 통합관리] " + n.getTitle());
+        mail.setSubject("[한국농산] " + n.getTitle());
         String inbox = webUrl + "/notifications";
         String supplier = webUrl + "/suppliers/" + n.getSupplier().getId();
         String plain = """
-                %s님, 안녕하세요.
+                안녕하세요, %s님.
+                한국농산 협력업체 통합관리 시스템에서 알려드립니다.
 
                 %s
 
                 ▶ 알림함에서 확인하기: %s
                 ▶ 협력업체 상세: %s
 
-                ※ 이 메일은 한국농산 협력업체 통합관리에서 자동 발송되었습니다.
+                ──────────────────────────
+                이 메일은 발신 전용이며 회신해도 확인하지 않습니다.
+                알림 수신 설정은 마이페이지에서 바꿀 수 있습니다.
+                한국농산 협력업체 통합관리 시스템 드림
                 """.formatted(n.getRecipient().getName(), n.getMessage(), inbox, supplier);
         String html = """
                 <div lang="ko" style="max-width:560px;background:#fff;color:#222;font-family:'Gmarket Sans','Malgun Gothic',sans-serif;line-height:1.6">
@@ -64,7 +68,8 @@ public class EmailChannel implements NotificationChannel {
                   <p>%s님, 안녕하세요.</p>
                   <p style="white-space:pre-line">%s</p>
                   <p><a style="color:#8a3048" href="%s">알림함에서 확인하기</a> · <a style="color:#8a3048" href="%s">협력업체 상세</a></p>
-                  <p style="color:#595959;font-size:12px">한국농산 협력업체 통합관리에서 자동 발송한 메일입니다.</p>
+                  <p style="color:#595959;font-size:12px">이 메일은 발신 전용이며 회신해도 확인하지 않습니다.<br>
+                    알림 수신 설정은 마이페이지에서 바꿀 수 있습니다.<br>한국농산 협력업체 통합관리 시스템 드림</p>
                 </div>
                 """.formatted(HtmlUtils.htmlEscape(n.getTitle()), HtmlUtils.htmlEscape(n.getRecipient().getName()),
                 HtmlUtils.htmlEscape(n.getMessage()), HtmlUtils.htmlEscape(inbox), HtmlUtils.htmlEscape(supplier));
