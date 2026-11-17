@@ -52,14 +52,22 @@ export function AppLayout() {
     navigate('/login', { replace: true })
   }
 
-  const menuItems = MENU.filter((m) => !m.adminOnly || me?.role === 'ADMIN').map((m) => ({
-    key: m.path, icon: m.icon, disabled: m.planned,
-    label: <span>
-      {m.label}
-      {m.path === '/users' && <Badge count={adminUsers?.pendingCount ?? 0} style={{ marginInlineStart: 6 }} />}
-      {m.planned && <Tag variant="filled" style={{ marginInlineStart: 6, fontSize: 11 }}>예정</Tag>}
-    </span>,
-  }))
+  // 보이는 메뉴를 묶음별로 모아 구분 제목을 붙인다 (#65). 묶음이 없는 항목은 제목 없이 그대로 둔다.
+  const menuItems: NonNullable<MenuProps['items']> = []
+  for (const m of MENU.filter((entry) => !entry.adminOnly || me?.role === 'ADMIN')) {
+    const item = {
+      key: m.path, icon: m.icon, disabled: m.planned,
+      label: <span>
+        {m.label}
+        {m.path === '/users' && <Badge count={adminUsers?.pendingCount ?? 0} style={{ marginInlineStart: 6 }} />}
+        {m.planned && <Tag variant="filled" style={{ marginInlineStart: 6, fontSize: 11 }}>예정</Tag>}
+      </span>,
+    }
+    const last = menuItems[menuItems.length - 1]
+    if (!m.group) menuItems.push(item)
+    else if (last && 'type' in last && last.type === 'group' && last.key === m.group) last.children!.push(item)
+    else menuItems.push({ type: 'group', key: m.group, label: m.group, children: [item] })
+  }
 
   return (
     <Layout className="app-layout">
@@ -94,7 +102,8 @@ export function AppLayout() {
         </Dropdown>
       </Header>
       <Layout style={{ minHeight: 0 }}>
-        {!showDrawerMenu && <Sider width={200} style={{ borderRight: '1px solid #e5e7eb' }}>
+        {/* 구분 제목만큼 메뉴가 길어져, 창이 낮으면 넘치는 만큼 사이드바 안에서 스크롤한다. */}
+        {!showDrawerMenu && <Sider width={200} style={{ borderRight: '1px solid #e5e7eb', overflowY: 'auto' }}>
           <Menu
             mode="inline"
             selectedKeys={activeMenu ? [activeMenu.path] : []}
