@@ -77,6 +77,13 @@ public class SupplierContactController {
         return service.addNote(supplierId, req, auth.getName(), isAdmin(auth));
     }
 
+    /** 소통 메모를 수정한다. 작성자 본인과 관리자만 할 수 있다. */
+    @PutMapping("/notes/{noteId}")
+    public NoteItem updateNote(@PathVariable Long supplierId, @PathVariable Long noteId,
+                               @Valid @RequestBody NoteRequest req, Authentication auth) {
+        return service.updateNote(supplierId, noteId, req, auth.getName(), isAdmin(auth));
+    }
+
     /** 소통 메모를 삭제한다. 작성자 본인과 관리자만 할 수 있다. */
     @DeleteMapping("/notes/{noteId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

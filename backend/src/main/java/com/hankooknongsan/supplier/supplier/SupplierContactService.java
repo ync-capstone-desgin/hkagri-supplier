@@ -95,6 +95,21 @@ public class SupplierContactService {
         return toItem(note, actor, admin);
     }
 
+    /** 메모의 소통한 날짜와 내용을 고친다 (#82). 삭제와 같이 작성자 본인과 관리자만 할 수 있다. */
+    @Transactional
+    public NoteItem updateNote(Long supplierId, Long noteId, NoteRequest req, String actor, boolean admin) {
+        supplierService.find(supplierId);
+        SupplierNote note = notes.findByIdAndSupplierId(noteId, supplierId).orElseThrow(() -> BusinessException.notFound("메모"));
+        if (!deletable(note, actor, admin)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "작성자 본인과 관리자만 메모를 수정할 수 있습니다.");
+        }
+        if (req.contactDate().isAfter(clock.today())) {
+            throw BusinessException.invalid("contactDate", "소통한 날짜는 오늘 이후일 수 없습니다.");
+        }
+        note.update(req.contactDate(), req.content().trim());
+        return toItem(note, actor, admin);
+    }
+
     /** 메모를 삭제한다. 작성자 본인과 관리자만 할 수 있고, 지운 표시만 남긴다. */
     @Transactional
     public void deleteNote(Long supplierId, Long noteId, String actor, boolean admin) {

@@ -150,6 +150,25 @@ class SupplierContactApiTest {
         mvc.perform(get("/api/suppliers/{id}/notes", supplierId)).andExpect(jsonPath("$.content", hasSize(0)));
     }
 
+    /** 메모는 작성자 본인과 관리자만 고칠 수 있다. 다른 담당자는 403, 오늘 이후 날짜는 막는다. (#82) */
+    @Test
+    void onlyAuthorOrAdminUpdatesNote() throws Exception {
+        long id = idOf(addNote("2026-11-10", "오타가 있는 매모"));
+        String fixed = "{\"contactDate\":\"2026-11-11\",\"content\":\"오타를 고친 메모\"}";
+
+        mvc.perform(put("/api/suppliers/{id}/notes/{n}", supplierId, id).contentType(MediaType.APPLICATION_JSON).content(fixed)
+                .with(user("manager2").roles("MANAGER"))).andExpect(status().isForbidden());
+        mvc.perform(put("/api/suppliers/{id}/notes/{n}", supplierId, id).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"contactDate\":\"2026-11-18\",\"content\":\"내일\"}")).andExpect(status().isBadRequest());
+        mvc.perform(put("/api/suppliers/{id}/notes/{n}", supplierId, id).contentType(MediaType.APPLICATION_JSON).content(fixed))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content").value("오타를 고친 메모"))
+                .andExpect(jsonPath("$.contactDate").value("2026-11-11")).andExpect(jsonPath("$.author").value("manager1"));
+        mvc.perform(put("/api/suppliers/{id}/notes/{n}", supplierId, id).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"contactDate\":\"2026-11-12\",\"content\":\"관리자가 고침\"}").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.author").value("manager1"));
+        mvc.perform(get("/api/suppliers/{id}/notes", supplierId)).andExpect(jsonPath("$.content[0].content").value("관리자가 고침"));
+    }
+
     /** 조회자는 담당자와 메모를 볼 수만 있다. */
     @Test
     @WithMockUser(username = "viewer", roles = "VIEWER")
