@@ -11,6 +11,7 @@ import com.hankooknongsan.supplier.expiry.ExpiryItem;
  * @param today              집계 기준일
  * @param supplierTotal      전체 협력업체 수
  * @param supplierActive     거래중 협력업체 수
+ * @param certExpiredSuppliers 필수 인증이 만료된 협력업체 수 (#46)
  * @param activeContracts    유효 계약 수
  * @param activeCertifications 유효 인증 수
  * @param expired            이미 만료된 유효 계약·인증 수
@@ -23,7 +24,8 @@ import com.hankooknongsan.supplier.expiry.ExpiryItem;
  * @param mine               조치 대상 중 로그인 사용자 담당 건수
  * @param urgent             가장 급한 항목 최대 10건 (만료 → 임박 순)
  */
-public record DashboardSummary(LocalDate today, long supplierTotal, long supplierActive, long activeContracts,
+public record DashboardSummary(LocalDate today, long supplierTotal, long supplierActive, long certExpiredSuppliers,
+                               long activeContracts,
                                long activeCertifications, long expired, long within7, long within30, long within90,
                                long unknown, long inProgress, long notStarted, long mine, List<ExpiryItem> urgent) {
 }

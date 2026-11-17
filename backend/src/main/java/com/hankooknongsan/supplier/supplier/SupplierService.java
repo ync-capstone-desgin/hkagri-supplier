@@ -43,19 +43,19 @@ public class SupplierService {
     private final ApplicationEventPublisher events;
     private final ChangeLogService history;
 
-    /** 조건에 맞는 협력업체 목록을 페이지 단위로 조회한다. missingDocs가 true면 필수 서류가 빠진 업체만 조회한다. */
+    /** 조건에 맞는 협력업체 목록을 페이지 단위로 조회한다. missingDocs가 true면 필수 서류가 빠진 업체만, certExpired가 true면 필수 인증이 만료된 업체만 조회한다. */
     public PageResponse<SupplierListItem> search(String keyword, SupplierStatus status, String certType,
-                                                 boolean missingDocs, Pageable pageable) {
+                                                 boolean missingDocs, boolean certExpired, Pageable pageable) {
         Page<Supplier> page = suppliers.search(nullToEmpty(keyword).trim(), status, nullToEmpty(certType), missingDocs,
-                pageable);
+                certExpired, policy.today(), pageable);
         Map<Long, SupplierCounts> counts = countsOf(page.getContent());
         return PageResponse.of(page, s -> toListItem(s, counts.get(s.getId())));
     }
 
     /** 조건에 맞는 협력업체 전체를 조회한다. (엑셀 다운로드용) */
     public List<SupplierListItem> searchAll(String keyword, SupplierStatus status, String certType,
-                                            boolean missingDocs) {
-        return search(keyword, status, certType, missingDocs, Pageable.ofSize(10_000)).content();
+                                            boolean missingDocs, boolean certExpired) {
+        return search(keyword, status, certType, missingDocs, certExpired, Pageable.ofSize(10_000)).content();
     }
 
     /** 협력업체 한 곳의 상세정보를 조회한다. 없으면 404. */
@@ -67,7 +67,7 @@ public class SupplierService {
                 s.getContactName(), s.getContactPhone(), s.getContactEmail(),
                 owner == null ? null : owner.getId(), owner == null ? null : owner.getName(), s.getMemo(),
                 c.getContractCount(), c.getCertCount(), c.getExpiringCount(), c.getMissingDocCount(),
-                s.getCreatedAt(), s.getCreatedBy(), s.getUpdatedAt(), s.getUpdatedBy());
+                c.getExpiredRequiredCertCount(), s.getCreatedAt(), s.getCreatedBy(), s.getUpdatedAt(), s.getUpdatedBy());
     }
 
     /**
@@ -157,7 +157,7 @@ public class SupplierService {
             return Map.of();
         }
         return suppliers.counts(list.stream().map(Supplier::getId).toList(),
-                        policy.horizon())
+                        policy.horizon(), policy.today())
                 .stream().collect(Collectors.toMap(SupplierCounts::getId, Function.identity()));
     }
 
@@ -166,7 +166,8 @@ public class SupplierService {
         AppUser owner = s.getOwner();
         return new SupplierListItem(s.getId(), s.getCode(), s.getName(), s.getStatus(), s.getContactName(),
                 owner == null ? null : owner.getId(), owner == null ? null : owner.getName(),
-                c.getContractCount(), c.getCertCount(), c.getExpiringCount(), c.getMissingDocCount());
+                c.getContractCount(), c.getCertCount(), c.getExpiringCount(), c.getMissingDocCount(),
+                c.getExpiredRequiredCertCount());
     }
 
     /** null을 빈 문자열로 바꾼다. (검색 조건 무시 처리용) */

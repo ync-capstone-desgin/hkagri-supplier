@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { App, Button, Card, Checkbox, Descriptions, Flex, Result, Skeleton, Statistic, Tabs, Typography } from 'antd'
+import { App, Button, Card, Checkbox, Descriptions, Flex, Result, Skeleton, Statistic, Tabs, Tag, Typography } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router'
@@ -105,6 +105,7 @@ export function SupplierDetailPage() {
             <Flex align="center" gap={8}>
               <Typography.Title level={4} style={{ margin: 0 }}>{data.name}</Typography.Title>
               <SupplierStatusTag status={data.status} />
+              {data.expiredRequiredCertCount > 0 && <Tag color="red">인증 만료 {data.expiredRequiredCertCount}건</Tag>}
             </Flex>
             <Typography.Text type="secondary" className="num">
               {data.code} · 내부 담당자 {data.ownerName ?? '미지정'}

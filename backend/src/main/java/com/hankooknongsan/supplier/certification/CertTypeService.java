@@ -44,6 +44,13 @@ public class CertTypeService {
         return save(type);
     }
 
+    /** 현재 이름·사용 여부를 유지하면서 필수 인증 여부만 변경한다 (#46). */
+    public CertTypeItem changeRequired(String code, boolean required) {
+        CertType type = types.findForUpdate(code).orElseThrow(() -> BusinessException.notFound("인증 종류"));
+        type.changeRequired(required);
+        return save(type);
+    }
+
     /** 자기 자신을 제외하고 비활성 종류까지 포함해 중복을 검사한다. */
     private void checkDuplicate(String key, String code) {
         if (types.existsByNameKeyAndCodeNot(key, code)) {

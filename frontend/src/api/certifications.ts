@@ -30,6 +30,11 @@ export async function updateCertType(code: string, name: string): Promise<CertTy
   return (await api.put(`/admin/cert-types/${encodeURIComponent(code)}`, { name })).data
 }
 
+/** 인증 종류를 필수 인증으로 정하거나 해제한다. (관리자 전용) */
+export async function changeCertTypeRequired(code: string, required: boolean): Promise<CertType> {
+  return (await api.patch(`/admin/cert-types/${encodeURIComponent(code)}/required`, { required })).data
+}
+
 /** 이름 변경과 독립적으로 사용 여부만 바꾼다. */
 export async function changeCertTypeActive(code: string, active: boolean): Promise<CertType> {
   return (await api.patch(`/admin/cert-types/${encodeURIComponent(code)}/active`, { active })).data

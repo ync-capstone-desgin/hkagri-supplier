@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
-import { App, Button, Checkbox, Flex, Input, Select, Tooltip, Typography } from 'antd'
+import { useEffect, useMemo, useState } from 'react'
+import { App, Button, Checkbox, Flex, Input, Select, Tag, Tooltip, Typography } from 'antd'
 import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { downloadSupplierExcel, searchSuppliers } from '../../api/suppliers'
 import type { SupplierListItem, SupplierSearch } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
@@ -31,6 +31,16 @@ export function SupplierListPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [downloading, setDownloading] = useState(false)
 
+  // 대시보드의 "인증 만료 N곳"에서 넘어오면(?certExpired=1) 그 조건만 적용해 조회하고 주소에서 표시를 지운다.
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    if (params.get('certExpired')) {
+      setDraft({ certExpired: true })
+      setSearch({ certExpired: true })
+      setParams({}, { replace: true })
+    }
+  }, [params, setParams, setDraft, setSearch])
+
   const { data, isFetching } = useQuery({
     queryKey: ['suppliers', search],
     queryFn: () => searchSuppliers(search),
@@ -55,8 +65,15 @@ export function SupplierListPage() {
       {
         field: 'status',
         headerName: '거래상태',
-        width: 120,
-        cellRenderer: (p: { data: SupplierListItem }) => <SupplierStatusTag status={p.data.status} />,
+        width: 180,
+        cellRenderer: (p: { data: SupplierListItem }) => (
+          <>
+            <SupplierStatusTag status={p.data.status} />
+            {p.data.expiredRequiredCertCount > 0 && (
+              <Tooltip title={`필수 인증 ${p.data.expiredRequiredCertCount}건이 만료됐습니다`}><Tag color="red">인증 만료</Tag></Tooltip>
+            )}
+          </>
+        ),
       },
       { field: 'contactName', headerName: '업체 담당자', width: 140 },
       { field: 'ownerName', headerName: '내부 담당자', width: 130 },
@@ -147,6 +164,9 @@ export function SupplierListPage() {
         </SearchField>
         <Checkbox checked={!!draft.missingDocs} onChange={(e) => setDraft({ ...draft, missingDocs: e.target.checked || undefined })}>
           필수 서류 누락만
+        </Checkbox>
+        <Checkbox checked={!!draft.certExpired} onChange={(e) => setDraft({ ...draft, certExpired: e.target.checked || undefined })}>
+          필수 인증 만료만
         </Checkbox>
       </SearchPanel>
 

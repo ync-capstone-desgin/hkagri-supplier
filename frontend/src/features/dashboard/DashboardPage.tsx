@@ -101,7 +101,16 @@ export function DashboardPage() {
 
       <Row gutter={[12, 12]}>
         <Col xs={24} md={12} lg={6}>
-          <KpiCard title="협력업체" value={data.supplierTotal} sub={`거래중 ${data.supplierActive}곳`} icon={<ShopOutlined />} onClick={() => navigate('/suppliers')} />
+          <KpiCard title="협력업체" value={data.supplierTotal} icon={<ShopOutlined />} onClick={() => navigate('/suppliers')}
+            sub={<>
+              거래중 {data.supplierActive}곳
+              {data.certExpiredSuppliers > 0 && (
+                <Typography.Link type="danger" strong style={{ marginInlineStart: 8 }}
+                  onClick={(e) => { e.stopPropagation(); navigate('/suppliers?certExpired=1') }}>
+                  인증 만료 {data.certExpiredSuppliers}곳
+                </Typography.Link>
+              )}
+            </>} />
         </Col>
         <Col xs={24} md={12} lg={6}>
           <KpiCard title="유효 계약" value={data.activeContracts} icon={<FileTextOutlined />} onClick={() => navigate('/contracts')} />
