@@ -26,6 +26,16 @@ export async function logout(): Promise<void> {
   await api.post('/auth/logout')
 }
 
+/** 아이디 또는 이메일로 비밀번호 재설정 메일을 요청한다. 계정이 없어도 같은 응답이 온다. */
+export async function forgotPassword(usernameOrEmail: string): Promise<void> {
+  await api.post('/auth/forgot-password', { usernameOrEmail })
+}
+
+/** 메일 속 토큰으로 새 비밀번호를 설정한다. 만료되었거나 이미 쓴 토큰이면 오류가 난다. */
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await api.post('/auth/reset-password', { token, newPassword })
+}
+
 /** 현재 로그인한 사용자 정보를 조회한다. 로그인 전이면 401 오류가 난다. */
 export async function fetchMe(): Promise<Me> {
   return (await api.get<Me>('/auth/me')).data

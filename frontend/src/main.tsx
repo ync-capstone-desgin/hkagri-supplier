@@ -22,7 +22,9 @@ import { SettingsPage } from './features/settings/SettingsPage'
 import { ContractListPage } from './features/contract/ContractListPage'
 import { SupplierDetailPage } from './features/supplier/SupplierDetailPage'
 import { SupplierListPage } from './features/supplier/SupplierListPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { LoginPage } from './pages/LoginPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { SignupPage } from './pages/SignupPage'
 import { UserManagementPage } from './features/users/UserManagementPage'
 import { ChangeLogPage } from './features/history/ChangeLogPage'
@@ -56,6 +58,8 @@ createRoot(document.getElementById('root')!).render(
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route
                   element={
                     <RequireAuth>
