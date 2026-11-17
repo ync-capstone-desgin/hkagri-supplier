@@ -13,6 +13,7 @@ import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
+import com.hankooknongsan.supplier.common.SupplierPurgedEvent;
 import com.hankooknongsan.supplier.common.SupplierRestoredEvent;
 import com.hankooknongsan.supplier.history.ChangeAction;
 import com.hankooknongsan.supplier.history.ChangeLogService;
@@ -127,6 +128,29 @@ public class SupplierService {
         events.publishEvent(new SupplierRestoredEvent(id));
         suppliers.undelete(id);
         log(find(id), ChangeAction.RESTORE, Map.of(), Map.of());
+    }
+
+    /**
+     * 삭제된 협력업체를 영구삭제한다 (#77, 관리자 전용). 되돌릴 수 없다.
+     * 삭제된 계약·인증이 남아 있으면 409로 막고 건수를 안내한다. 따로 지울 화면이 없는 담당자·메모·업체 자료는 함께 지운다.
+     */
+    @Transactional
+    public void purge(Long id) {
+        if (suppliers.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 협력업체");
+        }
+        long contracts = suppliers.countContractRows(id);
+        long certifications = suppliers.countCertificationRows(id);
+        if (contracts + certifications > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "삭제된 계약 %d건, 인증 %d건이 남아 있어 영구삭제할 수 없습니다. 계약·인증을 먼저 영구삭제해 주세요."
+                            .formatted(contracts, certifications));
+        }
+        events.publishEvent(new SupplierPurgedEvent(id));
+        suppliers.purgeContacts(id);
+        suppliers.purgeNotes(id);
+        suppliers.purge(id);
+        history.recordPurge(ChangeTarget.SUPPLIER, id);
     }
 
     /** 협력업체의 변경 이력을 남긴다 (#45). */

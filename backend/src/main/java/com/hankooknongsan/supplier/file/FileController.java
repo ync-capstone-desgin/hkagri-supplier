@@ -79,6 +79,14 @@ public class FileController {
         service.delete(id, auth.getName());
     }
 
+    /** 계약·인증·협력업체를 영구삭제하면 함께 없어질 파일 수. 셋 중 하나만 준다. (관리자 전용, #77) */
+    @GetMapping("/api/admin/files/purge-count")
+    public long purgeCount(@RequestParam(required = false) Long contractId,
+                           @RequestParam(required = false) Long certificationId,
+                           @RequestParam(required = false) Long supplierId) {
+        return service.purgeCount(contractId, certificationId, supplierId);
+    }
+
     /** 삭제한 파일 목록(삭제 이력)을 최근에 지운 순으로 조회한다. (관리자 전용) */
     @GetMapping("/api/admin/files/deleted")
     public PageResponse<DeletedFile> deletedHistory(@RequestParam(defaultValue = "0") int page,

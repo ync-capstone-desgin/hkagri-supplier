@@ -94,4 +94,14 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = "update contract set deleted_at = null, deleted_by = null where id = :id and deleted_at is not null", nativeQuery = true)
     int undelete(@Param("id") Long id);
+
+    /** 영구삭제할 계약을 이전 건으로 가리키는 (삭제된) 갱신 건의 연결을 끊는다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "update contract set prev_id = null where prev_id = :id", nativeQuery = true)
+    int detachPrev(@Param("id") Long id);
+
+    /** 삭제된 계약의 행을 완전히 지운다. 삭제되지 않은 건은 지우지 않는다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from contract where id = :id and deleted_at is not null", nativeQuery = true)
+    int purge(@Param("id") Long id);
 }

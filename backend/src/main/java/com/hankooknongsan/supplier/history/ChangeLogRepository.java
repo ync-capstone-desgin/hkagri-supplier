@@ -1,5 +1,7 @@
 package com.hankooknongsan.supplier.history;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +16,9 @@ public interface ChangeLogRepository extends JpaRepository<ChangeLog, Long> {
 
     /** 같은 대상에 이 기록보다 나중 기록이 있는지. 삭제 뒤에는 되살리기 말고 남는 기록이 없다. (#72) */
     boolean existsByTargetTypeAndTargetIdAndIdGreaterThan(ChangeTarget targetType, Long targetId, Long id);
+
+    /** 대상의 가장 최근 기록. 영구삭제 기록에 업체명·대상 이름을 옮겨 적는 데 쓴다. (#77) */
+    Optional<ChangeLog> findFirstByTargetTypeAndTargetIdOrderByIdDesc(ChangeTarget targetType, Long targetId);
 
     /**
      * 전체 이력을 최신순으로 검색한다. (관리자용)

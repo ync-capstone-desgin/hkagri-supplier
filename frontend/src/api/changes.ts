@@ -20,7 +20,7 @@ export interface ChangeItem {
   supplierId: number
   supplierName: string
   targetName: string
-  action: 'CREATE' | 'UPDATE' | 'RENEW' | 'STATUS' | 'DELETE' | 'RESTORE'
+  action: 'CREATE' | 'UPDATE' | 'RENEW' | 'STATUS' | 'DELETE' | 'RESTORE' | 'PURGE'
   actionLabel: string
   changes: FieldChange[]
   actor: string
@@ -48,4 +48,15 @@ const TARGET_PATH: Record<ChangeTarget, string> = { SUPPLIER: 'suppliers', CONTR
 /** 삭제한 협력업체·계약·인증을 되살린다. (관리자 전용) */
 export async function restoreTarget(targetType: ChangeTarget, targetId: number): Promise<void> {
   await api.post(`/${TARGET_PATH[targetType]}/${targetId}/restore`)
+}
+
+/** 영구삭제하면 함께 없어질 첨부 파일 수를 조회한다. 확인 창에 보여 준다. (관리자 전용) */
+export async function fetchPurgeFileCount(targetType: ChangeTarget, targetId: number): Promise<number> {
+  const key = { SUPPLIER: 'supplierId', CONTRACT: 'contractId', CERTIFICATION: 'certificationId' }[targetType]
+  return (await api.get('/admin/files/purge-count', { params: { [key]: targetId } })).data
+}
+
+/** 삭제된 협력업체·계약·인증을 영구삭제한다. 되돌릴 수 없다. (관리자 전용) */
+export async function purgeTarget(targetType: ChangeTarget, targetId: number): Promise<void> {
+  await api.delete(`/${TARGET_PATH[targetType]}/${targetId}/purge`)
 }
