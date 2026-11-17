@@ -36,6 +36,27 @@ public final class FileDtos {
         }
     }
 
+    /**
+     * 전체 자료 검색 결과의 한 행 (#53). 파일이 어디에 있는지와, 그곳으로 이동하는 데 필요한 ID를 함께 준다.
+     * location은 "업체 자료"·"계약 첨부"·"인증 첨부"·"양식 자료실" 중 하나다. 해당하지 않는 항목은 null이다.
+     */
+    public record FileSearchItem(FileInfo file, String location, Long supplierId, String supplierName,
+                                 String contractName, String certificationName,
+                                 Long formId, String formTitle, Long folderId) {
+        /** 검색 결과 한 행을 응답 형식으로 바꾼다. 업체는 파일이 직접 또는 계약·인증을 거쳐 속한 업체다. */
+        static FileSearchItem of(StoredFileRepository.FileHit hit) {
+            StoredFile f = hit.getFile();
+            SupplierFile linked = SupplierFile.of(f);
+            var supplier = f.getContract() != null ? f.getContract().getSupplier()
+                    : f.getCertification() != null ? f.getCertification().getSupplier() : f.getSupplier();
+            String location = f.getContract() != null ? "계약 첨부" : f.getCertification() != null ? "인증 첨부"
+                    : supplier != null ? "업체 자료" : "양식 자료실";
+            return new FileSearchItem(linked.file(), location, supplier == null ? null : supplier.getId(),
+                    supplier == null ? null : supplier.getName(), linked.contractName(), linked.certificationName(),
+                    hit.getFormId(), hit.getFormTitle(), hit.getFolderId());
+        }
+    }
+
     /** 삭제 이력의 한 행. 언제 누가 올렸고 언제 누가 지웠는지 보여준다. */
     public record DeletedFile(Long id, String originalName, long size, LocalDateTime createdAt, String createdBy,
                               LocalDateTime deletedAt, String deletedBy) {

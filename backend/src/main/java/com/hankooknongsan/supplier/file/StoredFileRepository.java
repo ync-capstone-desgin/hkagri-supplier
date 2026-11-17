@@ -66,6 +66,61 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
             group by f.certification.id""")
     List<IdCount> countByCertificationIds(@Param("ids") List<Long> ids);
 
+    /** 전체 자료 검색 결과 한 행: 파일과, 양식 자료실 파일이면 그 게시글의 ID·제목·폴더. */
+    interface FileHit {
+        StoredFile getFile();
+        Long getFormId();
+        String getFormTitle();
+        Long getFolderId();
+    }
+
+    /**
+     * 업체 자료·계약·인증 첨부·양식 자료실 파일을 한 번에 검색한다 (#53). 최신순.
+     * 검색어는 파일 이름, 업체명, 계약명·계약번호, 인증 종류·적용 대상·인증번호, 양식 제목에 부분 일치한다.
+     * 삭제된 파일과, 어디에도 연결되지 않은 파일(올리다 만 파일)은 제외한다.
+     * 양식 게시글은 JPQL 엔티티 이름으로만 참조해 file → forms 패키지 의존이 생기지 않게 한다.
+     */
+    @Query(value = """
+            select f as file, p.id as formId, p.title as formTitle, p.folderId as folderId
+            from StoredFile f
+            left join f.supplier s
+            left join f.contract c left join c.supplier cs
+            left join f.certification x left join x.supplier xs left join x.certType t
+            left join FormPost p on f member of p.files and p.deletedAt is null
+            where f.deletedAt is null
+              and (s is not null or c is not null or x is not null or p is not null)
+              and (:keyword = '' or lower(f.originalName) like lower(concat('%', :keyword, '%'))
+                                 or lower(s.name) like lower(concat('%', :keyword, '%'))
+                                 or lower(cs.name) like lower(concat('%', :keyword, '%'))
+                                 or lower(xs.name) like lower(concat('%', :keyword, '%'))
+                                 or lower(c.title) like lower(concat('%', :keyword, '%'))
+                                 or lower(c.contractNumber) like lower(concat('%', :keyword, '%'))
+                                 or lower(t.name) like lower(concat('%', :keyword, '%'))
+                                 or lower(x.scope) like lower(concat('%', :keyword, '%'))
+                                 or lower(x.certificateNumber) like lower(concat('%', :keyword, '%'))
+                                 or lower(p.title) like lower(concat('%', :keyword, '%')))
+            order by f.createdAt desc, f.id desc""",
+            countQuery = """
+            select count(f)
+            from StoredFile f
+            left join f.supplier s
+            left join f.contract c left join c.supplier cs
+            left join f.certification x left join x.supplier xs left join x.certType t
+            left join FormPost p on f member of p.files and p.deletedAt is null
+            where f.deletedAt is null
+              and (s is not null or c is not null or x is not null or p is not null)
+              and (:keyword = '' or lower(f.originalName) like lower(concat('%', :keyword, '%'))
+                                 or lower(s.name) like lower(concat('%', :keyword, '%'))
+                                 or lower(cs.name) like lower(concat('%', :keyword, '%'))
+                                 or lower(xs.name) like lower(concat('%', :keyword, '%'))
+                                 or lower(c.title) like lower(concat('%', :keyword, '%'))
+                                 or lower(c.contractNumber) like lower(concat('%', :keyword, '%'))
+                                 or lower(t.name) like lower(concat('%', :keyword, '%'))
+                                 or lower(x.scope) like lower(concat('%', :keyword, '%'))
+                                 or lower(x.certificateNumber) like lower(concat('%', :keyword, '%'))
+                                 or lower(p.title) like lower(concat('%', :keyword, '%')))""")
+    Page<FileHit> search(@Param("keyword") String keyword, Pageable pageable);
+
     /** id별 개수 한 행 (위 두 집계 쿼리의 결과 형식). */
     interface IdCount {
         Long getId();

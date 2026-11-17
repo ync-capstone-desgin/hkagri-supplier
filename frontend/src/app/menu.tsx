@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import {
-  AlertOutlined, AuditOutlined, BellOutlined, CalendarOutlined, DashboardOutlined, FileTextOutlined, FolderOpenOutlined, HistoryOutlined, ProjectOutlined, SettingOutlined, ShopOutlined, TeamOutlined,
+  AlertOutlined, AuditOutlined, BellOutlined, CalendarOutlined, DashboardOutlined, FileSearchOutlined, FileTextOutlined, FolderOpenOutlined, HistoryOutlined, ProjectOutlined, SettingOutlined, ShopOutlined, TeamOutlined,
 } from '@ant-design/icons'
 
 /** 좌측 메뉴 항목 하나 */
@@ -25,6 +25,7 @@ export const MENU: MenuEntry[] = [
   { path: '/contracts', label: '계약 관리', icon: <FileTextOutlined /> },
   { path: '/certifications', label: '인증 관리', icon: <AuditOutlined /> },
   { path: '/forms', label: '양식 자료실', icon: <FolderOpenOutlined /> },
+  { path: '/files', label: '자료 검색', icon: <FileSearchOutlined /> },
   { path: '/expiries', label: '만료 예정', icon: <AlertOutlined /> },
   { path: '/expiry-calendar', label: '만료 캘린더', icon: <CalendarOutlined /> },
   { path: '/renewal-board', label: '갱신 현황판', icon: <ProjectOutlined /> },

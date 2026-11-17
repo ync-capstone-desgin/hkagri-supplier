@@ -16,6 +16,7 @@ import com.hankooknongsan.supplier.common.TargetType;
 import com.hankooknongsan.supplier.file.FileDtos.DeletedFile;
 import com.hankooknongsan.supplier.file.FileDtos.Download;
 import com.hankooknongsan.supplier.file.FileDtos.FileInfo;
+import com.hankooknongsan.supplier.file.FileDtos.FileSearchItem;
 import com.hankooknongsan.supplier.file.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -106,6 +107,11 @@ public class FileService {
     /** 삭제한 파일 목록(삭제 이력)을 최근에 지운 순으로 조회한다. (관리자용) */
     public PageResponse<DeletedFile> deletedHistory(Pageable pageable) {
         return PageResponse.of(files.findByDeletedAtIsNotNullOrderByDeletedAtDesc(pageable), DeletedFile::of);
+    }
+
+    /** 업체 자료·계약·인증 첨부·양식 자료실 파일을 검색어로 한 번에 찾는다 (#53). */
+    public PageResponse<FileSearchItem> search(String keyword, Pageable pageable) {
+        return PageResponse.of(files.search(keyword == null ? "" : keyword.trim(), pageable), FileSearchItem::of);
     }
 
     /** 파일 정보를 조회한다. 없으면 404. */

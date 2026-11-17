@@ -20,6 +20,25 @@ export interface SupplierFile {
   certificationName: string | null
 }
 
+/** 전체 자료 검색 결과의 한 행. 파일이 있는 곳과, 그곳으로 이동할 때 쓸 ID를 담는다. */
+export interface FileSearchItem {
+  file: FileInfo
+  /** "업체 자료" | "계약 첨부" | "인증 첨부" | "양식 자료실" */
+  location: string
+  supplierId: number | null
+  supplierName: string | null
+  contractName: string | null
+  certificationName: string | null
+  formId: number | null
+  formTitle: string | null
+  folderId: number | null
+}
+
+/** 업체 자료·계약·인증 첨부·양식 자료실 파일을 검색어로 한 번에 찾는다. 검색어가 없으면 최신순 전체다. */
+export async function searchFiles(keyword: string, page: number): Promise<PageResponse<FileSearchItem>> {
+  return (await api.get('/files/search', { params: { keyword: keyword.trim() || undefined, page, size: 20 } })).data
+}
+
 /** 업체 자료를 최신순으로 한 페이지 조회한다. */
 export async function fetchSupplierFiles(supplierId: number, page: number): Promise<PageResponse<SupplierFile>> {
   return (await api.get(`/suppliers/${supplierId}/files`, { params: { page, size: 20 } })).data
