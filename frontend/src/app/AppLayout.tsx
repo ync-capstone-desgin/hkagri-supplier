@@ -3,7 +3,7 @@ import { Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Tabs, Tag,
 import { useQuery } from '@tanstack/react-query'
 import { fetchAdminUsers } from '../api/userAdmin'
 import { IdcardOutlined, LogoutOutlined, MenuOutlined, UserOutlined } from '@ant-design/icons'
-import { Outlet, useNavigate } from 'react-router'
+import { Link, Outlet, useNavigate } from 'react-router'
 import { useAuth } from './AuthContext'
 import { ClockIndicator } from './ClockIndicator'
 import { NotificationBell } from './NotificationBell'
@@ -71,31 +71,36 @@ export function AppLayout() {
   return (
     <Layout className="app-layout">
       <Header className="app-header">
-        {showDrawerMenu && <DrawerMenu key={activePath} items={menuItems} selectedPath={activeMenu?.path} />}
-        <img className="app-logo" src="/hkagri-logo.png" width={82} height={24} alt="한국농산" />
-        <Typography.Text className="app-brand" strong>
+        <div className="app-header-start">
+          <Link className="app-home-link" to="/dashboard" aria-label="한국농산 대시보드">
+            <img src="/hkagri-logo.png" width={144} height={42} alt="한국농산" />
+          </Link>
+          {showDrawerMenu && <DrawerMenu key={activePath} items={menuItems} selectedPath={activeMenu?.path} />}
+        </div>
+        <span className="app-brand">
           협력업체 통합관리
-        </Typography.Text>
-        <div className="app-header-spacer" />
-        <div className="app-clock"><ClockIndicator /></div>
-        <NotificationBell mobile={mobile} />
-        <Dropdown
-          trigger={mobile ? ['click'] : ['hover', 'click']}
-          menu={{
-            items: [
-              { key: 'mypage', icon: <IdcardOutlined />, label: '마이페이지', onClick: () => navigate('/mypage') },
-              { type: 'divider' },
-              { key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout },
-            ],
-          }}
-        >
-          <button type="button" className="app-user-menu" aria-label={`사용자 메뉴: ${me?.name} (${label('role', me?.role)})`}>
-            <Avatar size="small" icon={<UserOutlined />} style={{ background: '#222' }} />
-            <span className="app-user-label" style={{ whiteSpace: 'nowrap' }}>
-              {me?.name} <Typography.Text type="secondary">({label('role', me?.role)})</Typography.Text>
-            </span>
-          </button>
-        </Dropdown>
+        </span>
+        <div className="app-header-tools">
+          <div className="app-clock"><ClockIndicator /></div>
+          <NotificationBell mobile={mobile} />
+          <Dropdown
+            trigger={mobile ? ['click'] : ['hover', 'click']}
+            menu={{
+              items: [
+                { key: 'mypage', icon: <IdcardOutlined />, label: '마이페이지', onClick: () => navigate('/mypage') },
+                { type: 'divider' },
+                { key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout },
+              ],
+            }}
+          >
+            <button type="button" className="app-user-menu" aria-label={`사용자 메뉴: ${me?.name} (${label('role', me?.role)})`}>
+              <Avatar size="small" icon={<UserOutlined />} style={{ background: '#222' }} />
+              <span className="app-user-label" style={{ whiteSpace: 'nowrap' }}>
+                {me?.name} <Typography.Text type="secondary">({label('role', me?.role)})</Typography.Text>
+              </span>
+            </button>
+          </Dropdown>
+        </div>
       </Header>
       <Layout style={{ minHeight: 0 }}>
         {/* 구분 제목만큼 메뉴가 길어져, 창이 낮으면 넘치는 만큼 사이드바 안에서 스크롤한다. */}
