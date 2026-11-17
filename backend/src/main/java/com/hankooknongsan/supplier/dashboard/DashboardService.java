@@ -45,6 +45,7 @@ public class DashboardService {
                 policy.today(),
                 suppliers.count(),
                 suppliers.countByStatus(SupplierStatus.ACTIVE),
+                suppliers.countCertExpired(policy.today()),
                 contracts.countByActiveTrue(),
                 certifications.countByActiveTrue(),
                 count(actionable, e -> e.daysLeft() < 0),

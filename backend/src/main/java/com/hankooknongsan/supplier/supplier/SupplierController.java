@@ -37,15 +37,16 @@ public class SupplierController {
 
     private final SupplierService service;
 
-    /** 협력업체 목록을 검색한다. 인증 종류(certType)로 보유 업체만, missingDocs로 필수 서류가 빠진 업체만 걸러낼 수 있다. 기본 정렬은 업체명. */
+    /** 협력업체 목록을 검색한다. 인증 종류(certType)로 보유 업체만, missingDocs로 필수 서류가 빠진 업체만, certExpired로 필수 인증이 만료된 업체만 걸러낼 수 있다. 기본 정렬은 업체명. */
     @GetMapping
     public PageResponse<SupplierListItem> search(@RequestParam(required = false) String keyword,
                                                  @RequestParam(required = false) SupplierStatus status,
                                                  @RequestParam(required = false) String certType,
                                                  @RequestParam(defaultValue = "false") boolean missingDocs,
+                                                 @RequestParam(defaultValue = "false") boolean certExpired,
                                                  @RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "50") int size) {
-        return service.search(keyword, status, certType, missingDocs, PageRequest.of(page, size, Sort.by("name")));
+        return service.search(keyword, status, certType, missingDocs, certExpired, PageRequest.of(page, size, Sort.by("name")));
     }
 
     /** 현재 검색조건의 협력업체 목록을 엑셀 파일로 내려받는다. */
@@ -53,7 +54,8 @@ public class SupplierController {
     public ResponseEntity<byte[]> excel(@RequestParam(required = false) String keyword,
                                         @RequestParam(required = false) SupplierStatus status,
                                         @RequestParam(required = false) String certType,
-                                        @RequestParam(defaultValue = "false") boolean missingDocs) {
+                                        @RequestParam(defaultValue = "false") boolean missingDocs,
+                                        @RequestParam(defaultValue = "false") boolean certExpired) {
         List<Column<SupplierListItem>> columns = List.of(
                 new Column<>("업체코드", SupplierListItem::code),
                 new Column<>("업체명", SupplierListItem::name),
@@ -63,8 +65,9 @@ public class SupplierController {
                 new Column<>("계약수", SupplierListItem::contractCount),
                 new Column<>("인증수", SupplierListItem::certCount),
                 new Column<>("만료·임박(90일)", SupplierListItem::expiringCount),
-                new Column<>("필수 서류 누락", SupplierListItem::missingDocCount));
-        return ExcelExporter.export("협력업체목록", columns, service.searchAll(keyword, status, certType, missingDocs));
+                new Column<>("필수 서류 누락", SupplierListItem::missingDocCount),
+                new Column<>("필수 인증 만료", SupplierListItem::expiredRequiredCertCount));
+        return ExcelExporter.export("협력업체목록", columns, service.searchAll(keyword, status, certType, missingDocs, certExpired));
     }
 
     /** 협력업체 상세정보를 조회한다. */

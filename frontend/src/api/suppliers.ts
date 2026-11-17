@@ -8,6 +8,7 @@ function toParams(search: SupplierSearch) {
     status: search.status || undefined,
     certType: search.certType || undefined,
     missingDocs: search.missingDocs || undefined,
+    certExpired: search.certExpired || undefined,
   }
 }
 

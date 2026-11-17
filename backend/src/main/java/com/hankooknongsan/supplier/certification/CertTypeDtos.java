@@ -22,6 +22,11 @@ public final class CertTypeDtos {
             @Size(max = 100, message = "이름은 100자 이내로 입력해 주세요.") String name) {
     }
 
+    /** 이름·사용 여부를 덮어쓰지 않고 필수 인증 여부만 변경한다. */
+    public record RequiredRequest(
+            @NotNull(message = "필수 여부를 선택해 주세요.") Boolean required) {
+    }
+
     /** 이름을 덮어쓰지 않고 사용 여부만 변경한다. */
     public record ActiveRequest(
             @NotNull(message = "사용 여부를 선택해 주세요.") Boolean active) {

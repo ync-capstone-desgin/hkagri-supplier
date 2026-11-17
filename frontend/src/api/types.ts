@@ -93,6 +93,8 @@ export interface SupplierListItem {
   expiringCount: number
   /** 빠진 필수 서류 수. 필수 서류를 정하지 않았으면 0 */
   missingDocCount: number
+  /** 만료된 필수 인증 수. 0보다 크면 "인증 만료"로 표시한다 */
+  expiredRequiredCertCount: number
 }
 
 /** 협력업체 상세 */
@@ -113,6 +115,8 @@ export interface SupplierDetail {
   expiringCount: number
   /** 빠진 필수 서류 수. 필수 서류를 정하지 않았으면 0 */
   missingDocCount: number
+  /** 만료된 필수 인증 수. 0보다 크면 "인증 만료"로 표시한다 */
+  expiredRequiredCertCount: number
   createdAt: string
   createdBy: string
   updatedAt: string
@@ -139,6 +143,8 @@ export interface SupplierSearch {
   certType?: string
   /** 필수 서류가 하나라도 빠진 업체만 */
   missingDocs?: boolean
+  /** 필수 인증이 만료된 업체만 */
+  certExpired?: boolean
 }
 
 /** 서버 오류 응답(RFC 7807 ProblemDetail) */
@@ -209,6 +215,8 @@ export interface CertType {
   code: string
   name: string
   active: boolean
+  /** 필수 인증인지. 필수 종류의 인증이 만료된 업체에 "인증 만료"를 표시한다 */
+  required: boolean
 }
 
 /** 인증 (목록·상세 공통) */
@@ -294,6 +302,8 @@ export interface DashboardSummary {
   today: string
   supplierTotal: number
   supplierActive: number
+  /** 필수 인증이 만료된 협력업체 수 */
+  certExpiredSuppliers: number
   activeContracts: number
   activeCertifications: number
   expired: number

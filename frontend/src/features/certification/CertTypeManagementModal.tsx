@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Alert, App, Button, Flex, Form, Input, Modal, Space, Table, Tag, Typography } from 'antd'
+import { Alert, App, Button, Flex, Form, Input, Modal, Space, Switch, Table, Tag, Typography } from 'antd'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { changeCertTypeActive, createCertType, fetchCertTypes, updateCertType } from '../../api/certifications'
+import { changeCertTypeActive, changeCertTypeRequired, createCertType, fetchCertTypes, updateCertType } from '../../api/certifications'
 import { toProblem } from '../../api/client'
 import type { CertType } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
@@ -44,6 +44,20 @@ export function CertTypeManagementModal({ open, onClose }: { open: boolean; onCl
     }
   }
 
+  /** 필수 인증 여부를 바로 바꾼다. 바꾸면 업체의 "인증 만료" 표시와 대시보드 건수가 다시 계산된다. */
+  const toggleRequired = async (type: CertType, required: boolean) => {
+    setSaving(true)
+    try {
+      await changeCertTypeRequired(type.code, required)
+      await refresh()
+      message.success(required ? `${type.name}: 필수 인증으로 정했습니다.` : `${type.name}: 필수 인증에서 뺐습니다.`)
+    } catch (e) {
+      message.error(toProblem(e).detail)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   /** 기존 기록 보존과 신규 선택 제한을 안내한 뒤 사용 여부만 변경한다. */
   const toggleActive = (type: CertType) => {
     modal.confirm({
@@ -75,11 +89,12 @@ export function CertTypeManagementModal({ open, onClose }: { open: boolean; onCl
   if (me?.role !== 'ADMIN') return null
 
   return (
-    <Modal open={open} title="인증 종류 관리" width={720} destroyOnHidden
+    <Modal open={open} title="인증 종류 관리" width={780} destroyOnHidden
       onCancel={() => !saving && onClose()} closable={!saving} maskClosable={!saving}
       footer={<Button onClick={onClose} disabled={saving}>닫기</Button>}>
       <Typography.Paragraph type="secondary">
         필요한 인증 종류를 직접 추가하세요. 사용하지 않는 종류는 비활성화해도 기존 인증과 갱신 이력이 유지됩니다.
+        <b> 필수</b>로 정한 종류의 인증이 만료된 업체에는 협력업체 목록과 상세에 “인증 만료”가 표시됩니다.
       </Typography.Paragraph>
       <Form form={form} layout="vertical" onFinish={saveName} disabled={saving}>
         <Form.Item name="name" label={editing ? '인증 종류 이름 수정' : '새 인증 종류'}
@@ -97,6 +112,10 @@ export function CertTypeManagementModal({ open, onClose }: { open: boolean; onCl
       <Table<CertType> rowKey="code" size="small" dataSource={data} loading={isFetching}
         pagination={{ pageSize: 8, showSizeChanger: false }} columns={[
           { title: '인증 종류', dataIndex: 'name', render: (name: string) => <span style={{ overflowWrap: 'anywhere' }}>{name}</span> },
+          { title: '필수 인증', key: 'required', width: 100, render: (_, type) => (
+            <Switch size="small" checked={type.required} disabled={saving} aria-label={`${type.name} 필수 인증`}
+              onChange={(checked) => void toggleRequired(type, checked)} />
+          ) },
           { title: '상태', key: 'active', width: 90, render: (_, type) => <Tag color={type.active ? 'green' : 'default'}>{type.active ? '사용' : '비활성'}</Tag> },
           { title: '관리', key: 'actions', width: 200, render: (_, type) => (
             <Space wrap>
