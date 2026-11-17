@@ -67,7 +67,6 @@ html, body, #root {
     gap: 8px;
   }
   .app-header .app-logo { width: 52px; height: auto; }
-  .app-header .app-demo-tag,
   .app-header .app-header-spacer,
   .app-header .app-user-label { display: none; }
   .app-brand { flex: 1; min-width: 0; font-size: 15px; }
