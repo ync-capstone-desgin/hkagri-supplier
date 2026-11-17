@@ -143,3 +143,15 @@ export async function fetchRequiredDocuments(supplierId: number): Promise<Requir
 export async function changeFileCategory(fileId: number, categoryId: number | null): Promise<SupplierFile> {
   return (await api.patch(`/files/${fileId}/category`, { categoryId })).data
 }
+
+/**
+ * 방금 등록한 계약·인증에 미리 골라 둔 파일을 차례로 올린다 (#83).
+ * 하나가 실패해도 나머지는 계속 올리고, 올리지 못한 파일 이름을 돌려준다.
+ */
+export async function uploadFilesTo(supplierId: number, target: string, files: File[]): Promise<string[]> {
+  const failed: string[] = []
+  for (const file of files) {
+    try { await uploadSupplierFile(supplierId, file, target) } catch { failed.push(file.name) }
+  }
+  return failed
+}

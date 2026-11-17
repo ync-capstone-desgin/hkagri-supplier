@@ -23,7 +23,7 @@ export function FormsPage() {
   return <FolderContents key={folderId} folderId={folderId} />
 }
 
-type LibraryRow = { key: string; kind: 'folder'; folder: FormFolder } | { key: string; kind: 'form'; post: FormPostItem }
+type LibraryRow = { key: string; kind: 'parent'; parentId: number } | { key: string; kind: 'folder'; folder: FormFolder } | { key: string; kind: 'form'; post: FormPostItem }
 
 /** 공유 폴더와 양식을 함께 탐색한다. 검색·분류는 현재 폴더 안의 양식에 적용한다. */
 function FolderContents({ folderId }: { folderId: number }) {
@@ -49,7 +49,10 @@ function FolderContents({ folderId }: { folderId: number }) {
   const tabLabel = (label: string, count?: number) => count === undefined ? label : `${label} (${count})`
   const totalCount = counts.data && Object.values(counts.data).reduce((sum, count) => sum + count, 0)
   // 검색·종류 선택은 양식에만 적용되므로, 그동안은 조건과 무관한 폴더를 숨긴다.
+  // 하위 폴더에서는 파일 탐색기처럼 목록 첫 줄에 상위 폴더로 가는 행을 둔다 (#84).
+  const parentId = folder.data?.folder.parentId
   const rows: LibraryRow[] = [
+    ...(parentId ? [{ key: 'parent', kind: 'parent', parentId } satisfies LibraryRow] : []),
     ...(keyword || category ? [] : folder.data?.children ?? []).map((item): LibraryRow => ({ key: `folder-${item.id}`, kind: 'folder', folder: item })),
     ...(forms.data?.content ?? []).map((post): LibraryRow => ({ key: `form-${post.id}`, kind: 'form', post })),
   ]
@@ -104,8 +107,7 @@ function FolderContents({ folderId }: { folderId: number }) {
       </Flex>
     </Flex>
     {folder.isError ? <Alert type="error" showIcon title={toProblem(folder.error).detail} action={<Link to="/forms">최상위로 이동</Link>} /> : <>
-      {folder.data?.folder.parentId && <Flex gap={12} align="center" wrap>
-        <Button icon={<ArrowUpOutlined />} onClick={() => navigate(folderPath(folder.data!.folder.parentId!))}>상위 폴더</Button>
+      {parentId && <Flex gap={12} align="center" wrap>
         <nav aria-label="폴더 경로"><Breadcrumb items={folder.data?.path.map((item, index, all) => ({
           title: index === all.length - 1 ? item.name : <Link to={folderPath(item.id)}>{item.name}</Link>,
         }))} /></nav>
@@ -119,12 +121,14 @@ function FolderContents({ folderId }: { folderId: number }) {
       <Table<LibraryRow> rowKey="key" dataSource={rows} loading={folder.isLoading || forms.isLoading} pagination={false} size="middle" scroll={{ x: 750 }}
         locale={{ emptyText: keyword || category ? '검색 결과가 없습니다.' : '등록된 양식이 없습니다.' }}
         columns={[
-          { title: '이름', key: 'name', render: (_, row) => row.kind === 'folder'
+          { title: '이름', key: 'name', render: (_, row) => row.kind === 'parent'
+            ? <Button type="link" icon={<ArrowUpOutlined />} onClick={() => navigate(folderPath(row.parentId))} style={{ padding: 0, height: 'auto' }}>상위 폴더</Button>
+            : row.kind === 'folder'
             ? <Button type="link" icon={<FolderOutlined />} aria-label={`폴더 열기: ${row.folder.name}`} onClick={() => navigate(folderPath(row.folder.id))} style={{ padding: 0, height: 'auto', whiteSpace: 'normal', textAlign: 'left' }}>{row.folder.name}</Button>
             : <Button type="link" icon={<FileTextOutlined />} aria-label={`양식 열기: ${row.post.title}`} onClick={() => setSelectedId(row.post.id)} style={{ padding: 0, height: 'auto', whiteSpace: 'normal', textAlign: 'left', overflowWrap: 'anywhere' }}>{row.post.title}</Button> },
-          { title: '종류', width: 120, render: (_, row) => row.kind === 'folder' ? '폴더' : <Tag>{formCategories.find((item) => item.value === row.post.category)?.label}</Tag> },
-          { title: '수정일', width: 160, render: (_, row) => formatDateTime(row.kind === 'folder' ? row.folder.updatedAt : row.post.updatedAt) },
-          { title: '수정한 사람', width: 110, render: (_, row) => (row.kind === 'folder' ? row.folder.updatedBy : row.post.updatedBy) ?? '-' },
+          { title: '종류', width: 120, render: (_, row) => row.kind === 'parent' ? '' : row.kind === 'folder' ? '폴더' : <Tag>{formCategories.find((item) => item.value === row.post.category)?.label}</Tag> },
+          { title: '수정일', width: 160, render: (_, row) => row.kind === 'parent' ? '' : formatDateTime(row.kind === 'folder' ? row.folder.updatedAt : row.post.updatedAt) },
+          { title: '수정한 사람', width: 110, render: (_, row) => row.kind === 'parent' ? '' : (row.kind === 'folder' ? row.folder.updatedBy : row.post.updatedBy) ?? '-' },
           ...(canEdit ? [{ title: '폴더 관리', width: 160, render: (_: unknown, row: LibraryRow) => row.kind === 'folder' && <Flex gap={4}>
             <Button size="small" aria-label={`폴더 이름 변경: ${row.folder.name}`} onClick={() => setFolderEditor({ folder: row.folder })}>이름 변경</Button>
             <Button size="small" danger aria-label={`폴더 삭제: ${row.folder.name}`} onClick={() => confirmDeleteFolder(row.folder)}>삭제</Button>
