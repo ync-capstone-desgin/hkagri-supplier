@@ -41,16 +41,20 @@ public class EmailChannel implements NotificationChannel {
         SimpleMailMessage mail = new SimpleMailMessage();
         mail.setFrom(from);
         mail.setTo(n.getRecipient().getEmail());
-        mail.setSubject("[협력업체 통합관리] " + n.getTitle());
+        mail.setSubject("[한국농산] " + n.getTitle());
         mail.setText("""
-                %s님, 안녕하세요.
+                안녕하세요, %s님.
+                한국농산 협력업체 통합관리 시스템에서 알려드립니다.
 
                 %s
 
                 ▶ 알림함에서 확인하기: %s/notifications
                 ▶ 협력업체 상세: %s/suppliers/%d
 
-                ※ 이 메일은 협력업체 통합관리 PoC에서 자동 발송되었습니다.
+                ──────────────────────────
+                이 메일은 발신 전용이며 회신해도 확인하지 않습니다.
+                알림 수신 설정은 마이페이지에서 바꿀 수 있습니다.
+                한국농산 협력업체 통합관리 시스템 드림
                 """.formatted(n.getRecipient().getName(), n.getMessage(), webUrl, webUrl, n.getSupplier().getId()));
         mailSender.send(mail);
     }

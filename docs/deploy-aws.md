@@ -1,7 +1,7 @@
 # AWS EC2 배포 가이드 (담당자 체험용)
 
 - 작성자: JinsuBae2
-- 최종 수정일: 2026-10-21
+- 최종 수정일: 2026-11-17
 - 대상: 기업 담당자가 URL로 접속해 시스템을 써 볼 수 있게 서버 한 대에 올린다.
 - 방식: **AWS 웹 콘솔에서만** 진행한다. 내 PC에 따로 설치할 것은 없다. 명령은 AWS 페이지 안의 브라우저 터미널(EC2 Instance Connect)에 붙여 넣는다.
 
@@ -176,7 +176,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend
 - 계정: `manager1` (담당자 화면), 필요하면 `admin` (알림 설정·시연 도구)
 - 비밀번호: `.env.prod`의 `SEED_PASSWORD` (로그인 화면의 "README 참고" 문구는 무시해도 된다고 안내)
 - 화면의 업체·계약·인증은 모두 가상 데이터이며, 실제 계약·개인정보는 넣지 말 것
-- 알림 메일은 실제로 발송되지 않는다. 알림은 화면 오른쪽 위 🔔와 알림함에서 확인한다.
+- 알림 메일은 기본적으로 실제 발송되지 않는다(내부 Mailpit으로만 쌓임). 알림은 화면 오른쪽 위 🔔와 알림함에서 확인한다.
+  실제로 메일을 받게 하려면 11장을 먼저 진행한다.
 
 ## 9. 운영
 
@@ -211,3 +212,44 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f backend
 | 인증서 오류 (HTTPS 경고) | `SITE_ADDRESS`가 고정 IP와 맞는지, `... logs web`에서 인증서 오류 확인. sslip.io 발급이 계속 실패하면 도메인을 사서 연결한다 |
 | 로그인 후 바로 튕김, 502 오류 | 백엔드가 아직 기동 중이거나 실패. `... logs backend` 확인 |
 | 빌드 중 터미널이 멈춤 | 인스턴스 유형이 t3.small 이상인지, 스왑이 켜졌는지 (`free -h`의 Swap 줄이 2.0Gi) |
+
+## 11. 실제 메일(Gmail) 설정 (선택)
+
+기본값은 내부 Mailpit이라 메일이 실제로 나가지 않는다(화면 알림만 쌓임). 담당자가 진짜 메일함으로 받게 하려면 아래를 **7장(실행) 전에** 해둔다.
+
+### 11-1. Gmail 앱 비밀번호 발급
+
+1. 발신용으로 쓸 Gmail 계정으로 로그인한 상태에서 https://myaccount.google.com/security → **2단계 인증**을 켠다. (앱 비밀번호는 2단계 인증을 켜야만 만들 수 있다)
+2. https://myaccount.google.com/apppasswords → 앱 이름 아무거나 입력 → **만들기** → 16자리 비밀번호가 나온다. 이게 일반 로그인 비밀번호가 아니라 이 앱 전용 비밀번호다. 공백 없이 그대로 적어 둔다.
+
+### 11-2. `.env.prod`에 추가
+
+6장에서 만든 `.env.prod` 파일 끝에 아래를 추가한다(`SEED_PASSWORD=...` 아래 줄에 이어 붙이면 된다).
+
+```bash
+cat >> .env.prod <<EOF
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=실제Gmail계정@gmail.com
+MAIL_PASSWORD=11-1에서-발급받은-16자리-앱비밀번호
+MAIL_SMTP_AUTH=true
+MAIL_SMTP_STARTTLS=true
+MAIL_FROM=한국농산 협력업체 통합관리 <실제Gmail계정@gmail.com>
+EOF
+```
+
+**`MAIL_FROM`의 이메일 주소는 `MAIL_USERNAME`과 반드시 같아야 한다.** Gmail은 인증한 계정과 발신 주소가 다르면 발송을 거부하거나 스팸으로 분류한다.
+
+### 11-3. 적용
+
+이미 서버를 실행한 뒤라면(7장을 먼저 했다면), 백엔드만 다시 띄워 새 설정을 반영한다.
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d backend
+```
+
+### 11-4. 확인
+
+admin 계정으로 로그인 → **알림 설정** → "시연 도구" 카드의 **만료 점검 지금 실행** 버튼을 누른다. 담당자 메일함(스팸함도 확인)에 메일이 오면 성공이다.
+
+> 서버에 쌓인 가상 샘플 데이터 중 받는 사람 이메일이 가짜 주소(`...@supplier-poc.local`)인 것이 많으면, 처음 켜는 순간 그만큼 "배달 실패" 반송 메일이 발신 계정으로 돌아올 수 있다. 실제 담당자에게 체험 서버를 넘기기 전에는, 마이페이지에서 실제로 쓸 이메일 주소로 미리 바꿔 두거나 `down -v`로 샘플 데이터를 초기화한 뒤 시작한다.
