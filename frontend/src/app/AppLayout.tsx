@@ -9,7 +9,6 @@ import { ClockIndicator } from './ClockIndicator'
 import { NotificationBell } from './NotificationBell'
 import { findMenu, MENU } from './menu'
 import { useTabs } from './TabsContext'
-import { BRAND } from './theme'
 import { useCodes } from '../hooks/useCodes'
 
 const { Header, Sider, Content } = Layout
@@ -73,11 +72,11 @@ export function AppLayout() {
     <Layout className="app-layout">
       <Header className="app-header">
         {showDrawerMenu && <DrawerMenu key={activePath} items={menuItems} selectedPath={activeMenu?.path} />}
-        <img className="app-logo" src="/favicon.svg" width={28} height={28} alt="" />
-        <Typography.Text className="app-brand" strong style={{ color: BRAND }}>
+        <img className="app-logo" src="/hkagri-logo.png" width={82} height={24} alt="한국농산" />
+        <Typography.Text className="app-brand" strong>
           협력업체 통합관리
         </Typography.Text>
-        <Tag className="app-demo-tag" color="green" style={{ marginInlineStart: 4 }}>
+        <Tag className="app-demo-tag" style={{ marginInlineStart: 4 }}>
           PoC
         </Tag>
         <div className="app-header-spacer" />
@@ -94,7 +93,7 @@ export function AppLayout() {
           }}
         >
           <button type="button" className="app-user-menu" aria-label={`사용자 메뉴: ${me?.name} (${label('role', me?.role)})`}>
-            <Avatar size="small" icon={<UserOutlined />} style={{ background: BRAND }} />
+            <Avatar size="small" icon={<UserOutlined />} style={{ background: '#222' }} />
             <span className="app-user-label" style={{ whiteSpace: 'nowrap' }}>
               {me?.name} <Typography.Text type="secondary">({label('role', me?.role)})</Typography.Text>
             </span>

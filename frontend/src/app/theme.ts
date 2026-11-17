@@ -1,7 +1,7 @@
 import type { ThemeConfig } from 'antd'
 
-/** 브랜드 기본색(짙은 녹색). 농산물 기업 이미지에 맞추고 흰 배경에서 대비가 충분한 색을 쓴다. */
-export const BRAND = '#1f7a4d'
+/** 한국농산의 흑백 화면에서 링크와 선택 상태를 표시하는 베리색. */
+export const BRAND = '#8a3048'
 
 /**
  * Ant Design 전역 테마.
@@ -11,13 +11,14 @@ export const theme: ThemeConfig = {
   token: {
     colorPrimary: BRAND,
     colorLink: BRAND,
-    fontFamily: "Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
+    colorText: '#222222',
+    fontFamily: 'var(--app-font)',
     fontSize: 14,
     borderRadius: 6,
-    colorBgLayout: '#f3f5f4',
+    colorBgLayout: '#f7f7f7',
   },
   components: {
     Layout: { headerBg: '#ffffff', siderBg: '#ffffff', headerHeight: 56, headerPadding: '0 20px' },
-    Menu: { itemHeight: 42, itemSelectedBg: '#e8f3ec', itemSelectedColor: BRAND },
+    Menu: { itemHeight: 42, itemSelectedBg: '#f8eef1', itemSelectedColor: BRAND },
   },
 }
