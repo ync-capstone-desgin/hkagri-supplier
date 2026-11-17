@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
+import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
@@ -16,6 +17,7 @@ import com.hankooknongsan.supplier.supplier.Supplier;
 import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
 import com.hankooknongsan.supplier.common.RenewalClosedEvent;
+import com.hankooknongsan.supplier.common.TargetDeletedEvent;
 import com.hankooknongsan.supplier.common.TargetType;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +38,7 @@ public class ContractService {
     private final AppUserRepository users;
     private final ExpiryPolicy policy;
     private final ApplicationEventPublisher events;
+    private final AppClock clock;
 
     /** 조건에 맞는 계약 목록을 조회한다. */
     public PageResponse<ContractItem> search(Long supplierId, String keyword, Long ownerId,
@@ -107,6 +110,25 @@ public class ContractService {
         renewed.linkPrevious(old);
         contracts.save(renewed);
         return new Saved(toItem(renewed), warnings);
+    }
+
+    /**
+     * 계약을 삭제한다 (#44). 지운 표시만 남기고, 알림과 첨부는 이벤트로 함께 정리한다.
+     * 갱신으로 등록한 건이면 이전 계약이 다시 현재 계약이 된다. 이전 이력은 직접 지울 수 없어 409로 막는다.
+     */
+    @Transactional
+    public void delete(Long id, String actor) {
+        Contract target = find(id);
+        if (!target.isActive()) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "이전 이력은 삭제할 수 없습니다. 현재 계약을 삭제하면 이전 계약이 다시 현재 계약이 됩니다.");
+        }
+        target.delete(actor, clock.now());
+        if (target.getPrev() != null) {
+            target.getPrev().restore();
+        }
+        contracts.flush();
+        events.publishEvent(new TargetDeletedEvent(TargetType.CONTRACT, id, actor));
     }
 
     /** ID로 계약 엔티티를 찾는다. */

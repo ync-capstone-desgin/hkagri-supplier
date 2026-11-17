@@ -72,6 +72,14 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
             """)
     List<SupplierCounts> counts(@Param("ids") Collection<Long> ids, @Param("horizon") LocalDate horizon);
 
+    /** 업체에 남아 있는(삭제되지 않은) 계약 수. 이전 이력도 센다. (업체 삭제 가능 여부 확인용) */
+    @Query("select count(c) from Contract c where c.supplier.id = :id")
+    long countContracts(@Param("id") Long id);
+
+    /** 업체에 남아 있는(삭제되지 않은) 인증 수. 이전 이력도 센다. (업체 삭제 가능 여부 확인용) */
+    @Query("select count(x) from Certification x where x.supplier.id = :id")
+    long countCertifications(@Param("id") Long id);
+
     /** 거래상태별 업체 수를 센다. (대시보드용) */
     long countByStatus(SupplierStatus status);
 }

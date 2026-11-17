@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { App, Button, Flex, Tag, Tooltip, Typography } from 'antd'
-import { EditOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
 import { useNavigate } from 'react-router'
-import { changeCertificationRenewalStatus } from '../../api/certifications'
+import { changeCertificationRenewalStatus, deleteCertification } from '../../api/certifications'
 import { toProblem } from '../../api/client'
 import { fetchCertificationFileCounts, fetchCertificationFiles } from '../../api/files'
 import type { CertificationItem, RenewalStatus } from '../../api/types'
@@ -28,7 +28,7 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
   height?: number
 }) {
   const navigate = useNavigate()
-  const { message } = App.useApp()
+  const { message, modal: confirmModal } = App.useApp()
   const queryClient = useQueryClient()
   const { canEdit } = useAuth()
   const [modal, setModal] = useState<{ mode: CertificationFormMode; certification: CertificationItem }>()
@@ -44,6 +44,25 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
     } catch (e) {
       message.error(toProblem(e).detail)
     }
+  }
+
+  /** 삭제 전에 함께 사라지는 것을 알리고 확인받은 뒤 삭제한다. 갱신 건이면 이전 인증이 되살아난다. */
+  const confirmDelete = (row: CertificationItem) => {
+    confirmModal.confirm({
+      title: '이 인증을 삭제하시겠습니까?',
+      content: `첨부 파일과 알림도 함께 삭제됩니다.${row.prevId ? ' 갱신 전 인증이 다시 현재 인증으로 돌아옵니다.' : ''}`,
+      okText: '삭제', okButtonProps: { danger: true }, cancelText: '취소',
+      onOk: async () => {
+        try {
+          await deleteCertification(row.id)
+          await Promise.all(['certifications', 'expiries', 'dashboard', 'supplier', 'suppliers', 'supplier-files', 'notifications']
+            .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+          message.success('인증을 삭제했습니다.')
+        } catch (e) {
+          message.error(toProblem(e).detail)
+        }
+      },
+    })
   }
 
   /** 그리드 컬럼 정의. 만료일이 없으면 "없음"으로 표시한다. */
@@ -92,11 +111,12 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
     },
     { field: 'ownerName', headerName: '담당자', width: 100 },
     ...(canEdit ? [{
-      headerName: '작업', width: 150, sortable: false, pinned: 'right',
+      headerName: '작업', width: 215, sortable: false, pinned: 'right',
       cellRenderer: (p: { data: CertificationItem }) => p.data.active && (
         <Flex gap={4}>
           <Button size="small" icon={<EditOutlined />} onClick={() => setModal({ mode: 'edit', certification: p.data })}>수정</Button>
           <Button size="small" icon={<SyncOutlined />} onClick={() => setModal({ mode: 'renew', certification: p.data })}>갱신</Button>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => confirmDelete(p.data)}>삭제</Button>
         </Flex>
       ),
     } as ColDef<CertificationItem>] : []),

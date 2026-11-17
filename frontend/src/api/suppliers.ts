@@ -33,6 +33,11 @@ export async function updateSupplier(id: number, req: SupplierRequest): Promise<
   return (await api.put(`/suppliers/${id}`, req)).data
 }
 
+/** 협력업체를 삭제한다. 계약·인증이 남아 있으면 서버가 막고, 업체에 올린 자료는 함께 삭제된다. */
+export async function deleteSupplier(id: number): Promise<void> {
+  await api.delete(`/suppliers/${id}`)
+}
+
 /** 현재 검색조건의 협력업체 목록을 엑셀로 내려받는다. */
 export async function downloadSupplierExcel(search: SupplierSearch): Promise<void> {
   await downloadFile('/suppliers/excel', toParams(search))

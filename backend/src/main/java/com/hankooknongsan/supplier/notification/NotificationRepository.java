@@ -35,6 +35,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByTargetTypeAndTargetIdAndActionStatusNot(TargetType targetType, Long targetId,
                                                                        ActionStatus actionStatus);
 
+    /** 한 대상의 알림을 처리상태와 관계없이 모두 찾는다. (대상 삭제 시 알림 제거용) */
+    List<Notification> findByTargetTypeAndTargetId(TargetType targetType, Long targetId);
+
     /** 수신자의 미확인 알림을 모두 찾는다. ([모두 확인] 처리용) */
     List<Notification> findByRecipientIdAndActionStatus(Long recipientId, ActionStatus actionStatus);
 }

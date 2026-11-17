@@ -9,6 +9,7 @@ import com.hankooknongsan.supplier.certification.CertificationDtos.CertTypeItem;
 import com.hankooknongsan.supplier.certification.CertificationDtos.CertificationItem;
 import com.hankooknongsan.supplier.certification.CertificationDtos.CertificationRequest;
 import com.hankooknongsan.supplier.certification.CertificationDtos.Saved;
+import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
@@ -17,6 +18,7 @@ import com.hankooknongsan.supplier.supplier.Supplier;
 import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
 import com.hankooknongsan.supplier.common.RenewalClosedEvent;
+import com.hankooknongsan.supplier.common.TargetDeletedEvent;
 import com.hankooknongsan.supplier.common.TargetType;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +40,7 @@ public class CertificationService {
     private final AppUserRepository users;
     private final ExpiryPolicy policy;
     private final ApplicationEventPublisher events;
+    private final AppClock clock;
 
     /** 인증 종류 목록을 표시 순서대로 조회한다. */
     public List<CertTypeItem> certTypes() {
@@ -118,6 +121,25 @@ public class CertificationService {
         renewed.linkPrevious(old);
         certifications.save(renewed);
         return new Saved(toItem(renewed), warnings);
+    }
+
+    /**
+     * 인증을 삭제한다 (#44). 지운 표시만 남기고, 알림과 첨부는 이벤트로 함께 정리한다.
+     * 갱신으로 등록한 건이면 이전 인증이 다시 현재 인증이 된다. 이전 이력은 직접 지울 수 없어 409로 막는다.
+     */
+    @Transactional
+    public void delete(Long id, String actor) {
+        Certification target = find(id);
+        if (!target.isActive()) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "이전 이력은 삭제할 수 없습니다. 현재 인증을 삭제하면 이전 인증이 다시 현재 인증이 됩니다.");
+        }
+        target.delete(actor, clock.now());
+        if (target.getPrev() != null) {
+            target.getPrev().restore();
+        }
+        certifications.flush();
+        events.publishEvent(new TargetDeletedEvent(TargetType.CERTIFICATION, id, actor));
     }
 
     /** ID로 인증 엔티티를 찾는다. */

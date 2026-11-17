@@ -18,6 +18,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -113,5 +115,12 @@ public class CertificationController {
     @PatchMapping("/api/certifications/{id}/renewal-status")
     public CertificationItem changeRenewalStatus(@PathVariable Long id, @Valid @RequestBody RenewalStatusRequest req) {
         return service.changeRenewalStatus(id, req.renewalStatus());
+    }
+
+    /** 인증을 삭제한다. 현재 인증만 지울 수 있고, 갱신 건이면 이전 인증이 되살아난다. */
+    @DeleteMapping("/api/certifications/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id, Authentication auth) {
+        service.delete(id, auth.getName());
     }
 }

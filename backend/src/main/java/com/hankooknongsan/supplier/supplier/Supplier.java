@@ -1,7 +1,7 @@
 package com.hankooknongsan.supplier.supplier;
 
 import com.hankooknongsan.supplier.auth.AppUser;
-import com.hankooknongsan.supplier.common.BaseEntity;
+import com.hankooknongsan.supplier.common.DeletableEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * 협력업체 엔티티 (FR-001~004).
@@ -22,7 +23,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Supplier extends BaseEntity {
+@SQLRestriction("deleted_at is null")
+public class Supplier extends DeletableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

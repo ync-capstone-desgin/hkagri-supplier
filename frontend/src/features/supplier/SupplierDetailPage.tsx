@@ -1,13 +1,15 @@
 import { useState, type ReactNode } from 'react'
-import { Button, Card, Checkbox, Descriptions, Flex, Result, Skeleton, Statistic, Tabs, Typography } from 'antd'
-import { EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router'
+import { App, Button, Card, Checkbox, Descriptions, Flex, Result, Skeleton, Statistic, Tabs, Typography } from 'antd'
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate, useParams } from 'react-router'
 import { searchCertifications } from '../../api/certifications'
 import { searchContracts } from '../../api/contracts'
-import { fetchSupplier } from '../../api/suppliers'
+import { toProblem } from '../../api/client'
+import { fetchSupplierFiles } from '../../api/files'
+import { deleteSupplier, fetchSupplier } from '../../api/suppliers'
 import { useAuth } from '../../app/AuthContext'
-import { useTabTitle } from '../../app/TabsContext'
+import { useTabs, useTabTitle } from '../../app/TabsContext'
 import { formatDateTime } from '../../components/format'
 import { SupplierStatusTag } from '../../components/SupplierStatusTag'
 import { CertificationFormModal } from '../certification/CertificationFormModal'
@@ -40,6 +42,10 @@ function TabToolbar({ includeInactive, onToggle, addLabel, onAdd }: {
 export function SupplierDetailPage() {
   const id = Number(useParams().id)
   const { canEdit } = useAuth()
+  const { message, modal } = App.useApp()
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const { closeTab } = useTabs()
   const [editOpen, setEditOpen] = useState(false)
   const [contractOpen, setContractOpen] = useState(false)
   const [certOpen, setCertOpen] = useState(false)
@@ -56,6 +62,30 @@ export function SupplierDetailPage() {
     queryFn: () => searchCertifications({ supplierId: id, includeInactive: certHistory }),
   })
   useTabTitle(data?.name)
+
+  /**
+   * 업체 삭제를 확인받는다. 함께 삭제되는 자료 수를 미리 보여 주고, 계약·인증이 남아 있으면 서버 안내 문구를 그대로 보여 준다.
+   * 삭제되면 이 업체의 탭을 닫고 협력업체 목록으로 돌아간다.
+   */
+  const confirmDelete = async () => {
+    const fileCount = (await fetchSupplierFiles(id, 0)).totalElements
+    modal.confirm({
+      title: '이 협력업체를 삭제하시겠습니까?',
+      content: fileCount > 0 ? `업체에 올린 자료 ${fileCount}개도 함께 삭제됩니다.` : '삭제하면 목록에서 사라집니다.',
+      okText: '삭제', okButtonProps: { danger: true }, cancelText: '취소',
+      onOk: async () => {
+        try {
+          await deleteSupplier(id)
+          await Promise.all(['suppliers', 'dashboard'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+          message.success('협력업체를 삭제했습니다.')
+          closeTab(`/suppliers/${id}`)
+          navigate('/suppliers')
+        } catch (e) {
+          message.error(toProblem(e).detail)
+        }
+      },
+    })
+  }
 
   if (isLoading) {
     return <Card><Skeleton active /></Card>
@@ -83,6 +113,7 @@ export function SupplierDetailPage() {
             <Statistic title="만료·임박(90일)" value={data.expiringCount} suffix="건"
               styles={{ content: { color: data.expiringCount > 0 ? '#cf1322' : undefined } }} />
             {canEdit && <Button icon={<EditOutlined />} onClick={() => setEditOpen(true)}>기본정보 수정</Button>}
+            {canEdit && <Button danger icon={<DeleteOutlined />} onClick={confirmDelete}>삭제</Button>}
           </Flex>
         </Flex>
       </Card>
