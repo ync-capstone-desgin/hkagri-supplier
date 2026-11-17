@@ -12,6 +12,9 @@ public interface ChangeLogRepository extends JpaRepository<ChangeLog, Long> {
     /** 한 업체와 그 업체의 계약·인증 이력을 최신순으로 조회한다. (업체 상세의 변경 이력 탭) */
     Page<ChangeLog> findBySupplierIdOrderByCreatedAtDescIdDesc(Long supplierId, Pageable pageable);
 
+    /** 같은 대상에 이 기록보다 나중 기록이 있는지. 삭제 뒤에는 되살리기 말고 남는 기록이 없다. (#72) */
+    boolean existsByTargetTypeAndTargetIdAndIdGreaterThan(ChangeTarget targetType, Long targetId, Long id);
+
     /**
      * 전체 이력을 최신순으로 검색한다. (관리자용)
      * 검색어는 업체명·대상 이름·작업자 아이디·작업자 이름에 부분 일치, 대상 종류는 null이면 전체다.

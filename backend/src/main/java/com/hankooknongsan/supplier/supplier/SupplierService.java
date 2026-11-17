@@ -13,6 +13,7 @@ import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
+import com.hankooknongsan.supplier.common.SupplierRestoredEvent;
 import com.hankooknongsan.supplier.history.ChangeAction;
 import com.hankooknongsan.supplier.history.ChangeLogService;
 import com.hankooknongsan.supplier.history.ChangeTarget;
@@ -114,6 +115,18 @@ public class SupplierService {
         suppliers.flush();
         log(s, ChangeAction.DELETE, Map.of(), Map.of());
         events.publishEvent(new SupplierDeletedEvent(id, actor));
+    }
+
+    /** 삭제한 협력업체를 되살린다 (#72, 관리자 전용). 삭제할 때 함께 지워진 일반 자료도 되살린다. */
+    @Transactional
+    public void restore(Long id) {
+        if (suppliers.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 협력업체");
+        }
+        // 자료는 업체의 지운 시각과 비교해 되살리므로 지운 표시를 지우기 전에 알린다.
+        events.publishEvent(new SupplierRestoredEvent(id));
+        suppliers.undelete(id);
+        log(find(id), ChangeAction.RESTORE, Map.of(), Map.of());
     }
 
     /** 협력업체의 변경 이력을 남긴다 (#45). */

@@ -3,6 +3,7 @@ package com.hankooknongsan.supplier.supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -187,5 +188,70 @@ class DeleteApiTest {
         mvc.perform(delete("/api/contracts/1")).andExpect(status().isForbidden());
         mvc.perform(delete("/api/certifications/1")).andExpect(status().isForbidden());
         mvc.perform(get("/api/suppliers/" + supplierId)).andExpect(status().isOk());
+    }
+
+    /** 관리자 권한으로 되살리기를 요청한다. */
+    ResultActions restore(String path) throws Exception {
+        return mvc.perform(post(path + "/restore").with(user("admin").roles("ADMIN")));
+    }
+
+    /** 갱신 건을 되살리면 함께 지워진 첨부가 돌아오고 이전 계약은 다시 갱신완료 이력이 된다. 담당자는 되살릴 수 없다. (#72) */
+    @Test
+    void restoredContractBringsBackFilesAndPreviousBecomesHistoryAgain() throws Exception {
+        long oldId = contract("/api/contracts");
+        long newId = contract("/api/contracts/" + oldId + "/renew");
+        long fileId = upload("contractId", newId);
+        long earlierFileId = upload("contractId", newId);
+        mvc.perform(delete("/api/contracts/" + newId)).andExpect(status().isNoContent());
+        // 계약보다 먼저 따로 지운 파일은 되살리지 않아야 한다.
+        jdbc.update("update stored_file set deleted_at = '2000-01-01' where id = ?", earlierFileId);
+        mvc.perform(get("/api/suppliers/{id}/changes", supplierId))
+                .andExpect(jsonPath("$.content[?(@.action == 'DELETE')].restorable").value(true));
+
+        mvc.perform(post("/api/contracts/" + newId + "/restore")).andExpect(status().isForbidden());
+        restore("/api/contracts/" + newId).andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/contracts/" + newId)).andExpect(jsonPath("$.active").value(true));
+        mvc.perform(get("/api/contracts/" + oldId)).andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.renewalStatus").value("DONE"));
+        assertThat(files.findByIdAndDeletedAtIsNull(fileId)).isPresent();
+        assertThat(files.findByIdAndDeletedAtIsNull(earlierFileId)).isEmpty();
+        mvc.perform(get("/api/suppliers/{id}/changes", supplierId))
+                .andExpect(jsonPath("$.content[0].action").value("RESTORE"))
+                .andExpect(jsonPath("$.content[0].actor").value("admin"))
+                .andExpect(jsonPath("$.content[?(@.action == 'DELETE')].restorable").value(false));
+        restore("/api/contracts/" + newId).andExpect(status().isNotFound());
+    }
+
+    /** 이전 계약이 그 사이 다시 갱신되었으면 현재 계약이 둘이 되지 않도록 되살리기를 막는다. (#72) */
+    @Test
+    void restoreIsBlockedWhenPreviousWasRenewedAgain() throws Exception {
+        long oldId = contract("/api/contracts");
+        long newId = contract("/api/contracts/" + oldId + "/renew");
+        mvc.perform(delete("/api/contracts/" + newId)).andExpect(status().isNoContent());
+        contract("/api/contracts/" + oldId + "/renew");
+
+        restore("/api/contracts/" + newId).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail", containsString("이전 계약")));
+        mvc.perform(get("/api/contracts/" + newId)).andExpect(status().isNotFound());
+    }
+
+    /** 협력업체가 삭제된 상태면 그 업체의 인증은 되살릴 수 없고, 업체를 되살리면 자료와 함께 돌아온 뒤 인증도 되살릴 수 있다. (#72) */
+    @Test
+    void supplierMustBeRestoredBeforeItsCertification() throws Exception {
+        long certificationId = certification("/api/certifications");
+        long fileId = upload(null, null);
+        mvc.perform(delete("/api/certifications/" + certificationId)).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/suppliers/" + supplierId)).andExpect(status().isNoContent());
+
+        restore("/api/certifications/" + certificationId).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail", containsString("협력업체를 먼저")));
+        restore("/api/suppliers/" + supplierId).andExpect(status().isNoContent());
+        mvc.perform(get("/api/suppliers/" + supplierId)).andExpect(status().isOk());
+        assertThat(files.findByIdAndDeletedAtIsNull(fileId)).isPresent();
+
+        restore("/api/certifications/" + certificationId).andExpect(status().isNoContent());
+        mvc.perform(get("/api/certifications/" + certificationId)).andExpect(jsonPath("$.active").value(true));
+        mvc.perform(get("/api/suppliers/" + supplierId)).andExpect(jsonPath("$.certCount").value(1));
     }
 }

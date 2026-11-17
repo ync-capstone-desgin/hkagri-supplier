@@ -130,4 +130,28 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
         Long getId();
         long getCount();
     }
+
+    /**
+     * 계약을 삭제할 때 함께 지워진 첨부를 되살린다 (#72). 계약보다 먼저 따로 지운 파일은 그대로 둔다.
+     * 계약의 지운 시각과 비교하므로 계약의 지운 표시를 지우기 전에 실행해야 한다.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            update stored_file f set deleted_at = null, deleted_by = null
+              from contract t where f.contract_id = t.id and t.id = :id and f.deleted_at >= t.deleted_at""", nativeQuery = true)
+    int undeleteWithContract(@Param("id") Long id);
+
+    /** 인증을 삭제할 때 함께 지워진 첨부를 되살린다 (#72). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            update stored_file f set deleted_at = null, deleted_by = null
+              from certification t where f.certification_id = t.id and t.id = :id and f.deleted_at >= t.deleted_at""", nativeQuery = true)
+    int undeleteWithCertification(@Param("id") Long id);
+
+    /** 협력업체를 삭제할 때 함께 지워진 일반 자료를 되살린다 (#72). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            update stored_file f set deleted_at = null, deleted_by = null
+              from supplier t where f.supplier_id = t.id and t.id = :id and f.deleted_at >= t.deleted_at""", nativeQuery = true)
+    int undeleteWithSupplier(@Param("id") Long id);
 }

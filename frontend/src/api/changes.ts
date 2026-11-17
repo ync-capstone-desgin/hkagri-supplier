@@ -20,12 +20,14 @@ export interface ChangeItem {
   supplierId: number
   supplierName: string
   targetName: string
-  action: 'CREATE' | 'UPDATE' | 'RENEW' | 'STATUS' | 'DELETE'
+  action: 'CREATE' | 'UPDATE' | 'RENEW' | 'STATUS' | 'DELETE' | 'RESTORE'
   actionLabel: string
   changes: FieldChange[]
   actor: string
   actorName: string
   createdAt: string
+  /** 아직 되살리지 않은 삭제 기록이면 true */
+  restorable: boolean
 }
 
 /** 한 업체와 그 업체의 계약·인증 변경 이력을 최신순으로 조회한다. */
@@ -38,4 +40,12 @@ export async function searchChanges(search: { targetType?: ChangeTarget; keyword
   return (await api.get('/admin/changes', {
     params: { targetType: search.targetType, keyword: search.keyword?.trim() || undefined, page, size: 20 },
   })).data
+}
+
+/** 대상 종류별 API 주소 */
+const TARGET_PATH: Record<ChangeTarget, string> = { SUPPLIER: 'suppliers', CONTRACT: 'contracts', CERTIFICATION: 'certifications' }
+
+/** 삭제한 협력업체·계약·인증을 되살린다. (관리자 전용) */
+export async function restoreTarget(targetType: ChangeTarget, targetId: number): Promise<void> {
+  await api.post(`/${TARGET_PATH[targetType]}/${targetId}/restore`)
 }

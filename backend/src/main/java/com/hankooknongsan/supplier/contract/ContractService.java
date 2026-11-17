@@ -23,6 +23,7 @@ import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
 import com.hankooknongsan.supplier.common.RenewalClosedEvent;
 import com.hankooknongsan.supplier.common.TargetDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetRestoredEvent;
 import com.hankooknongsan.supplier.common.TargetType;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
@@ -143,6 +144,34 @@ public class ContractService {
         contracts.flush();
         log(target, ChangeAction.DELETE, Map.of(), Map.of());
         events.publishEvent(new TargetDeletedEvent(TargetType.CONTRACT, id, actor));
+    }
+
+    /**
+     * 삭제한 계약을 되살린다 (#72, 관리자 전용). 삭제할 때 함께 지워진 첨부도 되살린다.
+     * 갱신으로 등록했던 건이면, 삭제 때 다시 현재 건이 됐던 이전 계약을 "갱신완료" 이력으로 돌려놓는다.
+     * 협력업체가 삭제된 상태이거나 이전 계약이 그 사이 다시 갱신·삭제되었으면 409로 막는다.
+     */
+    @Transactional
+    public void restore(Long id) {
+        if (contracts.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 계약");
+        }
+        if (contracts.countDeletedSupplier(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT, "협력업체가 삭제된 상태입니다. 협력업체를 먼저 되살려 주세요.");
+        }
+        if (contracts.countUnavailablePrev(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "이전 계약이 그 사이 다시 갱신되었거나 삭제되어 되살릴 수 없습니다. 이전 계약을 현재 계약으로 돌려놓은 뒤 다시 시도해 주세요.");
+        }
+        // 파일은 계약의 지운 시각과 비교해 되살리므로 지운 표시를 지우기 전에 알린다.
+        events.publishEvent(new TargetRestoredEvent(TargetType.CONTRACT, id));
+        contracts.undelete(id);
+        Contract target = find(id);
+        if (target.getPrev() != null) {
+            target.getPrev().markRenewed();
+            events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, target.getPrev().getId()));
+        }
+        log(target, ChangeAction.RESTORE, Map.of(), Map.of());
     }
 
     /** 계약의 변경 이력을 남긴다 (#45). */
