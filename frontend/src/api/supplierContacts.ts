@@ -59,6 +59,11 @@ export async function createSupplierNote(supplierId: number, contactDate: string
   return (await api.post(`/suppliers/${supplierId}/notes`, { contactDate, content })).data
 }
 
+/** 소통 메모의 날짜와 내용을 고친다. 작성자 본인과 관리자만 할 수 있다. */
+export async function updateSupplierNote(supplierId: number, noteId: number, contactDate: string, content: string): Promise<SupplierNote> {
+  return (await api.put(`/suppliers/${supplierId}/notes/${noteId}`, { contactDate, content })).data
+}
+
 /** 소통 메모를 삭제한다. 작성자 본인과 관리자만 할 수 있다. */
 export async function deleteSupplierNote(supplierId: number, noteId: number): Promise<void> {
   await api.delete(`/suppliers/${supplierId}/notes/${noteId}`)

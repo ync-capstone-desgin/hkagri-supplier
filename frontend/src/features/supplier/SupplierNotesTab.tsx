@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { Alert, App, Button, Card, DatePicker, Empty, Flex, Form, Input, Pagination, Spin, Typography } from 'antd'
-import { DeleteOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Card, DatePicker, Empty, Flex, Form, Input, Modal, Pagination, Spin, Typography } from 'antd'
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { toProblem } from '../../api/client'
-import { createSupplierNote, deleteSupplierNote, fetchSupplierNotes, type SupplierNote } from '../../api/supplierContacts'
+import { createSupplierNote, deleteSupplierNote, fetchSupplierNotes, updateSupplierNote, type SupplierNote } from '../../api/supplierContacts'
 import { useAuth } from '../../app/AuthContext'
 import { formatDateTime } from '../../components/format'
 
 /**
  * 업체 상세의 메모 탭 (#49). 업체와 통화·메일로 주고받은 내용을 남겨, 담당자가 바뀌어도 이어받을 수 있게 한다.
- * 소통한 날짜가 최근인 순으로 보여 준다. 메모는 고칠 수 없고, 작성자 본인과 관리자만 지울 수 있다.
+ * 소통한 날짜가 최근인 순으로 보여 준다. 작성자 본인과 관리자만 고치거나(#82) 지울 수 있다.
  */
 export function SupplierNotesTab({ supplierId }: { supplierId: number }) {
   const { canEdit } = useAuth()
@@ -33,6 +33,27 @@ export function SupplierNotesTab({ supplierId }: { supplierId: number }) {
     } catch (e) {
       const problem = toProblem(e)
       if (problem.errors?.length) form.setFields(problem.errors.map((f) => ({ name: f.field as 'contactDate' | 'content', errors: [f.message] })))
+      else message.error(problem.detail)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /** 고치는 중인 메모. 없으면 수정 창을 닫는다. */
+  const [editing, setEditing] = useState<SupplierNote>()
+  const [editForm] = Form.useForm<{ contactDate: Dayjs; content: string }>()
+
+  /** 고친 날짜와 내용을 저장하고 수정 창을 닫는다. 실패하면 창을 유지한다. */
+  const saveEdit = async ({ contactDate, content }: { contactDate: Dayjs; content: string }) => {
+    setSaving(true)
+    try {
+      await updateSupplierNote(supplierId, editing!.id, contactDate.format('YYYY-MM-DD'), content)
+      setEditing(undefined)
+      await queryClient.invalidateQueries({ queryKey: ['supplier-notes', supplierId] })
+      message.success('메모를 수정했습니다.')
+    } catch (e) {
+      const problem = toProblem(e)
+      if (problem.errors?.length) editForm.setFields(problem.errors.map((f) => ({ name: f.field as 'contactDate' | 'content', errors: [f.message] })))
       else message.error(problem.detail)
     } finally {
       setSaving(false)
@@ -89,7 +110,10 @@ export function SupplierNotesTab({ supplierId }: { supplierId: number }) {
                   <Typography.Paragraph style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{note.content}</Typography.Paragraph>
                 </div>
                 {note.deletable && canEdit && (
-                  <Button size="small" danger icon={<DeleteOutlined />} aria-label={`${note.contactDate} 메모 삭제`} onClick={() => confirmDelete(note)}>삭제</Button>
+                  <Flex gap={4}>
+                    <Button size="small" icon={<EditOutlined />} aria-label={`${note.contactDate} 메모 수정`} onClick={() => setEditing(note)}>수정</Button>
+                    <Button size="small" danger icon={<DeleteOutlined />} aria-label={`${note.contactDate} 메모 삭제`} onClick={() => confirmDelete(note)}>삭제</Button>
+                  </Flex>
                 )}
               </Flex>
             </Card>
@@ -100,6 +124,20 @@ export function SupplierNotesTab({ supplierId }: { supplierId: number }) {
           )}
         </Flex>
       </Spin>
+      <Modal open={!!editing} title="메모 수정" okText="저장" cancelText="취소" destroyOnHidden confirmLoading={saving}
+        onOk={() => editForm.submit()} onCancel={() => setEditing(undefined)}>
+        {editing && (
+          <Form form={editForm} layout="vertical" onFinish={saveEdit} disabled={saving} preserve={false}
+            initialValues={{ contactDate: dayjs(editing.contactDate), content: editing.content }}>
+            <Form.Item name="contactDate" label="소통한 날짜" rules={[{ required: true, message: '소통한 날짜를 선택해 주세요.' }]}>
+              <DatePicker allowClear={false} disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
+            </Form.Item>
+            <Form.Item name="content" label="내용" rules={[{ required: true, whitespace: true, message: '내용을 입력해 주세요.' }]}>
+              <Input.TextArea maxLength={2000} showCount autoSize={{ minRows: 3, maxRows: 10 }} />
+            </Form.Item>
+          </Form>
+        )}
+      </Modal>
     </Flex>
   )
 }

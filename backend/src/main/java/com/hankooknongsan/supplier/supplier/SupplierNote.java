@@ -53,4 +53,10 @@ public class SupplierNote extends DeletableEntity {
         this.content = content;
         this.authorName = authorName;
     }
+
+    /** 소통한 날짜와 내용을 고친다 (#82). 작성자는 바뀌지 않는다. */
+    public void update(LocalDate contactDate, String content) {
+        this.contactDate = contactDate;
+        this.content = content;
+    }
 }
