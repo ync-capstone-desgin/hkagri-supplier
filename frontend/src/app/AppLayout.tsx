@@ -76,9 +76,6 @@ export function AppLayout() {
         <Typography.Text className="app-brand" strong>
           협력업체 통합관리
         </Typography.Text>
-        <Tag className="app-demo-tag" style={{ marginInlineStart: 4 }}>
-          PoC
-        </Tag>
         <div className="app-header-spacer" />
         <div className="app-clock"><ClockIndicator /></div>
         <NotificationBell mobile={mobile} />
