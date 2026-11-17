@@ -1,7 +1,9 @@
 package com.hankooknongsan.supplier.contract;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
@@ -10,6 +12,9 @@ import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.RenewalStatus;
+import com.hankooknongsan.supplier.history.ChangeAction;
+import com.hankooknongsan.supplier.history.ChangeLogService;
+import com.hankooknongsan.supplier.history.ChangeTarget;
 import com.hankooknongsan.supplier.contract.ContractDtos.ContractItem;
 import com.hankooknongsan.supplier.contract.ContractDtos.ContractRequest;
 import com.hankooknongsan.supplier.contract.ContractDtos.Saved;
@@ -39,6 +44,7 @@ public class ContractService {
     private final ExpiryPolicy policy;
     private final ApplicationEventPublisher events;
     private final AppClock clock;
+    private final ChangeLogService history;
 
     /** 조건에 맞는 계약 목록을 조회한다. */
     public PageResponse<ContractItem> search(Long supplierId, String keyword, Long ownerId,
@@ -58,6 +64,7 @@ public class ContractService {
         Contract c = new Contract(supplierService.find(req.supplierId()));
         List<String> warnings = apply(c, req, null);
         contracts.save(c);
+        log(c, ChangeAction.CREATE, Map.of(), snapshot(c));
         return new Saved(toItem(c), warnings);
     }
 
@@ -65,8 +72,10 @@ public class ContractService {
     @Transactional
     public Saved update(Long id, ContractRequest req) {
         Contract c = find(id);
+        Map<String, String> before = snapshot(c);
         List<String> warnings = apply(c, req, id);
         contracts.flush();
+        log(c, ChangeAction.UPDATE, before, snapshot(c));
         return new Saved(toItem(c), warnings);
     }
 
@@ -83,7 +92,9 @@ public class ContractService {
         if (!c.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 계약은 처리상태를 바꿀 수 없습니다.");
         }
+        Map<String, String> before = Map.of("갱신 처리상태", c.getRenewalStatus().label());
         c.changeRenewalStatus(status);
+        log(c, ChangeAction.STATUS, before, Map.of("갱신 처리상태", status.label()));
         if (status.closed()) {
             events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, id));
         }
@@ -102,6 +113,7 @@ public class ContractService {
         if (!old.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 계약입니다.");
         }
+        Map<String, String> before = snapshot(old);
         old.markRenewed();
         events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, old.getId()));
         contracts.flush();
@@ -109,6 +121,7 @@ public class ContractService {
         List<String> warnings = apply(renewed, req, null);
         renewed.linkPrevious(old);
         contracts.save(renewed);
+        log(renewed, ChangeAction.RENEW, before, snapshot(renewed));
         return new Saved(toItem(renewed), warnings);
     }
 
@@ -128,7 +141,29 @@ public class ContractService {
             target.getPrev().restore();
         }
         contracts.flush();
+        log(target, ChangeAction.DELETE, Map.of(), Map.of());
         events.publishEvent(new TargetDeletedEvent(TargetType.CONTRACT, id, actor));
+    }
+
+    /** 계약의 변경 이력을 남긴다 (#45). */
+    private void log(Contract c, ChangeAction action, Map<String, String> before, Map<String, String> after) {
+        history.record(ChangeTarget.CONTRACT, c.getId(), c.getSupplier().getId(), c.getSupplier().getName(),
+                c.getTitle(), action, before, after);
+    }
+
+    /** 변경 이력 비교용으로 계약의 현재 값을 화면 항목 이름과 함께 뽑는다. */
+    private static Map<String, String> snapshot(Contract c) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("업체", c.getSupplier().getName());
+        m.put("계약번호", c.getContractNumber() == null || c.getContractNumber().isEmpty() ? null : c.getContractNumber());
+        m.put("계약명", c.getTitle());
+        m.put("시작일", String.valueOf(c.getStartDate()));
+        m.put("종료일", c.getEndDate() == null ? "무기한" : c.getEndDate().toString());
+        m.put("자동연장", c.isAutoRenew() ? "예" : "아니오");
+        m.put("담당자", c.getOwner() == null ? null : c.getOwner().getName());
+        m.put("문서 링크", c.getDocumentUrl());
+        m.put("비고", c.getMemo());
+        return m;
     }
 
     /** ID로 계약 엔티티를 찾는다. */

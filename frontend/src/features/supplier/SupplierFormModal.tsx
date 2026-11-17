@@ -66,6 +66,7 @@ export function SupplierFormModal({ open, supplier, onClose }: {
     try {
       const saved = isEdit ? await updateSupplier(supplier.id, values) : await createSupplier(values)
       await queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      await queryClient.invalidateQueries({ queryKey: ['changes'] })
       queryClient.setQueryData(['supplier', saved.id], saved)
       message.success(isEdit ? '수정했습니다.' : `${saved.name}(${saved.code})을(를) 등록했습니다.`)
       onClose()

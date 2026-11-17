@@ -39,7 +39,7 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
   const handleStatusChange = async (row: ContractItem, status: RenewalStatus) => {
     try {
       await changeContractRenewalStatus(row.id, status)
-      await Promise.all(['contracts', 'expiries', 'dashboard'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
+      await Promise.all(['contracts', 'expiries', 'dashboard', 'changes'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
       message.success(`${row.contractNumber || row.title} 처리상태를 변경했습니다.`)
     } catch (e) {
       message.error(toProblem(e).detail)
@@ -55,7 +55,7 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
       onOk: async () => {
         try {
           await deleteContract(row.id)
-          await Promise.all(['contracts', 'expiries', 'dashboard', 'supplier', 'suppliers', 'supplier-files', 'notifications']
+          await Promise.all(['contracts', 'expiries', 'dashboard', 'supplier', 'suppliers', 'supplier-files', 'notifications', 'changes']
             .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
           message.success('계약을 삭제했습니다.')
         } catch (e) {
