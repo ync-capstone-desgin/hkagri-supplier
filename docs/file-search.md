@@ -30,7 +30,7 @@
 
 ## API
 
-`GET /api/files/search?keyword=&page=0&size=20` — 로그인 사용자. `{content, page, size, totalElements}`, 최신순.
+`GET /api/files/search?keyword=&categoryId=&page=0&size=20` — 로그인 사용자. `categoryId`는 [자료 종류](file-categories.md)로 걸러 볼 때 쓴다. `{content, page, size, totalElements}`, 최신순.
 
 ```json
 {"file": {"id": 31, "originalName": "scan001.pdf", "contentType": "application/pdf", "size": 12106,

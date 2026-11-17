@@ -22,19 +22,21 @@ public class SupplierFileService {
     private final SupplierRepository suppliers;
     private final ContractRepository contracts;
     private final CertificationRepository certifications;
+    private final FileCategoryService categories;
 
-    /** 업체 존재와 페이지 범위를 검사하고 최신 자료부터 반환한다. */
-    public PageResponse<SupplierFile> list(Long supplierId, int page, int size) {
+    /** 업체 존재와 페이지 범위를 검사하고 최신 자료부터 반환한다. 종류를 주면 그 종류의 자료만 반환한다. */
+    public PageResponse<SupplierFile> list(Long supplierId, Long categoryId, int page, int size) {
         if (!suppliers.existsById(supplierId)) throw BusinessException.notFound("협력업체");
         if (page < 0 || size < 1 || size > 100) {
             throw BusinessException.invalid("page", "페이지는 0 이상, 페이지 크기는 1~100이어야 합니다.");
         }
-        return PageResponse.of(files.findForSupplier(supplierId, PageRequest.of(page, size)), SupplierFile::of);
+        return PageResponse.of(files.findForSupplier(supplierId, categoryId, PageRequest.of(page, size)), SupplierFile::of);
     }
 
-    /** 업체에 파일을 올린다. 계약·인증 연결은 같은 업체의 건 하나만 허용하며 저장과 연결은 함께 커밋한다. */
+    /** 업체에 파일을 올린다. 계약·인증 연결은 같은 업체의 건 하나만 허용하며 저장과 연결은 함께 커밋한다. 자료 종류는 선택이다. */
     @Transactional
-    public SupplierFile upload(Long supplierId, MultipartFile file, Long contractId, Long certificationId) {
+    public SupplierFile upload(Long supplierId, MultipartFile file, Long contractId, Long certificationId,
+                               Long categoryId) {
         var supplier = suppliers.findById(supplierId).orElseThrow(() -> BusinessException.notFound("협력업체"));
         if (contractId != null && certificationId != null) {
             throw BusinessException.invalid("contractId", "계약과 인증 중 하나만 연결해 주세요.");
@@ -49,10 +51,21 @@ public class SupplierFileService {
         if (certification != null && !certification.getSupplier().getId().equals(supplierId)) {
             throw BusinessException.invalid("certificationId", "이 업체의 인증만 연결할 수 있습니다.");
         }
+        var category = categories.forAssign(categoryId);
         var info = fileService.upload(file);
         var saved = files.findById(info.id()).orElseThrow();
         saved.attachTo(supplier, contract, certification);
+        saved.categorize(category);
         files.flush();
         return SupplierFile.of(saved);
+    }
+
+    /** 이미 올린 파일의 자료 종류를 바꾸거나(값) 지운다(null). 삭제된 파일은 404. */
+    @Transactional
+    public SupplierFile categorize(Long fileId, Long categoryId) {
+        var file = files.findByIdAndDeletedAtIsNull(fileId).orElseThrow(() -> BusinessException.notFound("첨부파일"));
+        file.categorize(categories.forAssign(categoryId));
+        files.flush();
+        return SupplierFile.of(file);
     }
 }

@@ -109,9 +109,9 @@ public class FileService {
         return PageResponse.of(files.findByDeletedAtIsNotNullOrderByDeletedAtDesc(pageable), DeletedFile::of);
     }
 
-    /** 업체 자료·계약·인증 첨부·양식 자료실 파일을 검색어로 한 번에 찾는다 (#53). */
-    public PageResponse<FileSearchItem> search(String keyword, Pageable pageable) {
-        return PageResponse.of(files.search(keyword == null ? "" : keyword.trim(), pageable), FileSearchItem::of);
+    /** 업체 자료·계약·인증 첨부·양식 자료실 파일을 검색어와 자료 종류로 한 번에 찾는다 (#53, #54). */
+    public PageResponse<FileSearchItem> search(String keyword, Long categoryId, Pageable pageable) {
+        return PageResponse.of(files.search(keyword == null ? "" : keyword.trim(), categoryId, pageable), FileSearchItem::of);
     }
 
     /** 파일 정보를 조회한다. 없으면 404. */
