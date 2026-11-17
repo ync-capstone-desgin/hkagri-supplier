@@ -105,6 +105,8 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 
 | 문서 | 내용 |
 |---|---|
+| [API 명세](docs/api.md) | 기능별 경로·권한, 요청·응답 예시와 오류 형식 |
+| [ERD와 테이블 정의서](docs/erd.md) | 업무별 테이블 관계, 컬럼·기본값·제약 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 협업 규칙과 따라 하기 (이슈·브랜치·커밋·PR·리뷰) |
 | [docs/user-guide.md](docs/user-guide.md) | 메뉴별 사용 설명서 (스크린샷 포함) |
 | [docs/forms-api.md](docs/forms-api.md) | 양식 자료실 API·첨부·권한·DB 적용 순서 |
