@@ -36,12 +36,17 @@ public final class FileCategoryDtos {
      * 한 업체의 필수 서류 한 줄 (#47).
      *
      * @param fileCount 그 업체에 이 종류로 올라온 파일 수. 0이면 누락이다.
+     * @param exempt    이 업체에는 해당하지 않아 점검에서 뺐는지 (#85). true면 파일이 없어도 누락이 아니다.
      */
-    public record RequiredDocument(Long categoryId, String name, long fileCount) {
+    public record RequiredDocument(Long categoryId, String name, long fileCount, boolean exempt) {
         /** 파일이 하나라도 있으면 제출한 것으로 본다. */
         public boolean isSubmitted() {
             return fileCount > 0;
         }
+    }
+
+    /** 필수 서류를 이 업체에서 해당 없음으로 빼거나 되돌리는 요청 (#85) */
+    public record ExemptRequest(@NotNull(message = "해당 없음 여부를 선택해 주세요.") Boolean exempt) {
     }
 
     /** 파일의 종류 변경 요청. categoryId가 null이면 종류를 지운다. */

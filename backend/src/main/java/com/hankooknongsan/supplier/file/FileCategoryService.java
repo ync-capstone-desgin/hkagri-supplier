@@ -3,9 +3,12 @@ package com.hankooknongsan.supplier.file;
 import java.util.List;
 import java.util.Locale;
 
+import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
+import com.hankooknongsan.supplier.common.SupplierPurgedEvent;
 import com.hankooknongsan.supplier.file.FileCategoryDtos.CategoryItem;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class FileCategoryService {
 
     private final FileCategoryRepository categories;
+    private final DocExemptionRepository exemptions;
+    private final AppClock clock;
 
     /** 전체 종류를 표시 순서대로 조회한다. 화면이 사용 중지한 종류의 이름도 보여 줄 수 있게 모두 준다. */
     public List<CategoryItem> list() {
@@ -64,7 +69,36 @@ public class FileCategoryService {
     /** 한 업체의 필수 서류별 제출 여부를 조회한다 (#47). 필수 종류가 없으면 빈 목록이다. */
     public List<FileCategoryDtos.RequiredDocument> requiredDocuments(Long supplierId) {
         return categories.requiredDocuments(supplierId).stream()
-                .map(r -> new FileCategoryDtos.RequiredDocument(r.getCategoryId(), r.getName(), r.getFileCount())).toList();
+                .map(r -> new FileCategoryDtos.RequiredDocument(r.getCategoryId(), r.getName(), r.getFileCount(),
+                        r.getExemptCount() > 0)).toList();
+    }
+
+    /**
+     * 필수 서류 하나를 이 업체에서 해당 없음으로 빼거나 되돌린다 (#85).
+     * 뺀 종류는 그 업체의 누락 건수와 누락 업체 목록에서 빠진다. 이미 그 상태면 아무것도 하지 않는다.
+     */
+    @Transactional
+    public List<FileCategoryDtos.RequiredDocument> changeExempt(Long supplierId, Long categoryId, boolean exempt, String actor) {
+        if (categories.countLiveSupplier(supplierId) == 0) {
+            throw BusinessException.notFound("협력업체");
+        }
+        FileCategory category = find(categoryId);
+        if (!exempt) {
+            exemptions.deleteOne(supplierId, categoryId);
+        } else if (!exemptions.existsBySupplierIdAndCategoryId(supplierId, categoryId)) {
+            if (!category.isRequired()) {
+                throw BusinessException.invalid("categoryId", "필수 서류가 아닌 종류입니다.");
+            }
+            exemptions.save(new DocExemption(supplierId, categoryId, actor, clock.now()));
+        }
+        return requiredDocuments(supplierId);
+    }
+
+    /** 협력업체를 영구삭제하면 그 업체의 예외도 지운다 (#77, #85). */
+    @EventListener
+    @Transactional
+    public void onSupplierPurged(SupplierPurgedEvent event) {
+        exemptions.deleteBySupplier(event.supplierId());
     }
 
     /** 파일에 붙일 종류를 찾는다. null이면 종류 없음, 사용 중지한 종류는 새로 붙일 수 없다. */

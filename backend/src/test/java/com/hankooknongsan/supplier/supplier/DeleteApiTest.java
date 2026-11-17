@@ -311,6 +311,9 @@ class DeleteApiTest {
         long fileId = upload(null, null);
         mvc.perform(post("/api/suppliers/{id}/notes", supplierId).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"content\":\"영구삭제 테스트 메모\",\"contactDate\":\"2026-01-01\"}")).andExpect(status().isCreated());
+        // 필수 서류 예외(#85)가 있어도 업체를 영구삭제할 수 있어야 한다.
+        jdbc.update("insert into doc_exemption (supplier_id, category_id, created_at, created_by) "
+                + "select ?, min(id), now(), 'manager1' from file_category", supplierId);
         mvc.perform(delete("/api/contracts/" + contractId)).andExpect(status().isNoContent());
         mvc.perform(delete("/api/suppliers/" + supplierId)).andExpect(status().isNoContent());
 

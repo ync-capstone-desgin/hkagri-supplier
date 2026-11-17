@@ -21,7 +21,7 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
      * 인증 종류는 해당 인증을 유효하게 보유한 업체만 남긴다.
      * 빈 문자열이거나 null인 조건은 적용하지 않는다.
      * certExpired가 true면 필수 인증(#46)의 현재 인증이 오늘 기준으로 만료된 업체만 남긴다.
-     * missingDocs가 true면 필수 서류(#47)가 하나라도 빠진 업체만 남긴다. 자료 종류·파일은 JPQL 엔티티 이름으로만 참조한다.
+     * missingDocs가 true면 필수 서류(#47)가 하나라도 빠진 업체만 남긴다. 그 업체에서 해당 없음으로 뺀 종류(#85)는 세지 않는다. 자료 종류·파일은 JPQL 엔티티 이름으로만 참조한다.
      */
     @EntityGraph(attributePaths = "owner")
     @Query("""
@@ -34,7 +34,9 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
               and (:certExpired = false or exists (select 1 from Certification x where x.supplier = s and x.active = true and x.certType.required = true and x.expiryDate < :today))
               and (:missingDocs = false or exists (
                      select 1 from FileCategory fc
-                     where fc.required = true and fc.active = true and not exists (
+                     where fc.required = true and fc.active = true
+                       and not exists (select 1 from DocExemption e where e.supplierId = s.id and e.categoryId = fc.id)
+                       and not exists (
                          select 1 from StoredFile f left join f.contract fct left join f.certification fx
                          where f.category = fc and f.deletedAt is null
                            and (f.supplier = s or fct.supplier = s or fx.supplier = s))))
@@ -65,7 +67,7 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
         /** 만료된 필수 인증 수 (#46). 0보다 크면 "인증 만료"로 표시한다. */
         long getExpiredRequiredCertCount();
 
-        /** 빠진 필수 서류 수 (#47). 필수 종류가 없으면 0 */
+        /** 빠진 필수 서류 수 (#47). 필수 종류가 없으면 0. 해당 없음으로 뺀 종류(#85)는 세지 않는다. */
         long getMissingDocCount();
 
         /** 만료·임박 건수 합계 (계약 + 인증) */
@@ -88,7 +90,9 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
                      where x.supplier = s and x.active = true and x.expiryDate <= :horizon) as expiringCertCount,
                    (select count(x) from Certification x where x.supplier = s and x.active = true and x.certType.required = true and x.expiryDate < :today) as expiredRequiredCertCount,
                    (select count(fc) from FileCategory fc
-                     where fc.required = true and fc.active = true and not exists (
+                     where fc.required = true and fc.active = true
+                       and not exists (select 1 from DocExemption e where e.supplierId = s.id and e.categoryId = fc.id)
+                       and not exists (
                          select 1 from StoredFile f left join f.contract fct left join f.certification fx
                          where f.category = fc and f.deletedAt is null
                            and (f.supplier = s or fct.supplier = s or fx.supplier = s))) as missingDocCount

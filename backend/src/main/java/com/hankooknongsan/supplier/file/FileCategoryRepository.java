@@ -22,6 +22,9 @@ public interface FileCategoryRepository extends JpaRepository<FileCategory, Long
         Long getCategoryId();
         String getName();
         long getFileCount();
+
+        /** 이 업체에서 해당 없음으로 뺐으면 1, 아니면 0 (#85) */
+        long getExemptCount();
     }
 
     /**
@@ -32,11 +35,16 @@ public interface FileCategoryRepository extends JpaRepository<FileCategory, Long
             select fc.id as categoryId, fc.name as name,
                    (select count(f) from StoredFile f left join f.contract fct left join f.certification fx
                      where f.category = fc and f.deletedAt is null
-                       and (f.supplier.id = :supplierId or fct.supplier.id = :supplierId or fx.supplier.id = :supplierId)) as fileCount
+                       and (f.supplier.id = :supplierId or fct.supplier.id = :supplierId or fx.supplier.id = :supplierId)) as fileCount,
+                   (select count(e) from DocExemption e where e.supplierId = :supplierId and e.categoryId = fc.id) as exemptCount
             from FileCategory fc where fc.required = true and fc.active = true
             order by fc.sortOrder, fc.id
             """)
     List<RequiredRow> requiredDocuments(Long supplierId);
+
+    /** 삭제되지 않은 협력업체인지 센다. 업체는 JPQL 엔티티 이름으로만 참조한다. (#85) */
+    @Query("select count(s) from Supplier s where s.id = :supplierId")
+    long countLiveSupplier(Long supplierId);
 
     /** 마지막 표시 순서 다음 값을 구한다. */
     @Query("select coalesce(max(c.sortOrder), 0) + 1 from FileCategory c")
