@@ -144,7 +144,7 @@ erDiagram
 | `auto_renew` | `boolean` | 예 | — | 자동 갱신 여부 |
 | `renewal_status` | `varchar(20)` | 예 | — | 갱신 처리상태 |
 | `owner_id` | `bigint` | 아니오 | — | 사내 담당자 · FK → `app_user.id` |
-| `prev_id` | `bigint` | 아니오 | — | 갱신 전 계약 또는 인증 · FK → `contract.id` |
+| `prev_id` | `bigint` | 아니오 | — | 갱신 전 계약 · FK → `contract.id` |
 | `active` | `boolean` | 예 | — | 사용 또는 현재 유효 여부 |
 | `document_url` | `varchar(500)` | 아니오 | — | 참조 문서 링크 |
 | `memo` | `varchar(1000)` | 아니오 | — | 비고 |
@@ -178,7 +178,7 @@ erDiagram
 | `expiry_date` | `date` | 아니오 | — | 만료일 |
 | `renewal_status` | `varchar(20)` | 예 | — | 갱신 처리상태 |
 | `owner_id` | `bigint` | 아니오 | — | 사내 담당자 · FK → `app_user.id` |
-| `prev_id` | `bigint` | 아니오 | — | 갱신 전 계약 또는 인증 · FK → `certification.id` |
+| `prev_id` | `bigint` | 아니오 | — | 갱신 전 인증 · FK → `certification.id` |
 | `active` | `boolean` | 예 | — | 사용 또는 현재 유효 여부 |
 | `document_url` | `varchar(500)` | 아니오 | — | 참조 문서 링크 |
 | `memo` | `varchar(1000)` | 아니오 | — | 비고 |
