@@ -17,7 +17,9 @@ import { CertificationGrid } from '../certification/CertificationGrid'
 import { ContractFormModal } from '../contract/ContractFormModal'
 import { ContractGrid } from '../contract/ContractGrid'
 import { SupplierFormModal } from './SupplierFormModal'
+import { SupplierContactsTab } from './SupplierContactsTab'
 import { SupplierFilesTab } from './SupplierFilesTab'
+import { SupplierNotesTab } from './SupplierNotesTab'
 import { SupplierChangesTab } from '../history/SupplierChangesTab'
 
 /** 탭 안 목록 위의 도구 줄: 왼쪽에 "이전 이력 포함", 오른쪽에 등록 버튼 */
@@ -37,7 +39,7 @@ function TabToolbar({ includeInactive, onToggle, addLabel, onAdd }: {
 
 /**
  * 협력업체 상세 화면 (FR-003, FR-004).
- * 상단에 업체 요약과 [수정] 버튼, 아래 탭에 기본정보·계약·인증·자료를 둔다.
+ * 상단에 업체 요약과 [수정] 버튼, 아래 탭에 기본정보·계약·인증·담당자·메모·자료·변경 이력을 둔다.
  * 계약·인증 탭에서는 이 업체의 자료만 보이며(VT-007), 업체가 미리 선택된 상태로 등록할 수 있다.
  */
 export function SupplierDetailPage() {
@@ -169,6 +171,8 @@ export function SupplierDetailPage() {
                 </>
               ),
             },
+            { key: 'contacts', label: '담당자', children: <SupplierContactsTab key={id} supplierId={id} /> },
+            { key: 'notes', label: '메모', children: <SupplierNotesTab key={id} supplierId={id} /> },
             { key: 'files', label: '자료', children: <SupplierFilesTab key={id} supplierId={id} /> },
             { key: 'changes', label: '변경 이력', children: <SupplierChangesTab key={id} supplierId={id} /> },
           ]}
