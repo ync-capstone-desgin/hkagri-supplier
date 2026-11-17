@@ -59,6 +59,7 @@ export function LoginPage() {
           <Form.Item name="password" label="비밀번호" rules={[{ required: true, message: '비밀번호를 입력해 주세요.' }]}>
             <Input.Password prefix={<LockOutlined />} size="large" autoComplete="current-password" />
           </Form.Item>
+          <div style={{ textAlign: 'right', marginTop: -12, marginBottom: 16 }}><Link to="/forgot-password">비밀번호 찾기</Link></div>
           <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
             로그인
           </Button>

@@ -20,6 +20,9 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     /** 이메일은 대소문자를 구분하지 않고 중복을 확인한다. */
     boolean existsByEmailIgnoreCase(String email);
 
+    /** 비밀번호 찾기에서 아이디 대신 이메일로도 계정을 찾을 수 있게 한다. */
+    Optional<AppUser> findByEmailIgnoreCase(String email);
+
     /** 본인을 제외하고 이메일 중복을 확인한다. (마이페이지에서 내 정보 수정용) */
     boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
 
