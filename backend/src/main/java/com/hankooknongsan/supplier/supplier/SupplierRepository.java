@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -110,4 +111,13 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
 
     /** 거래상태별 업체 수를 센다. (대시보드용) */
     long countByStatus(SupplierStatus status);
+
+    /** 삭제된 협력업체인지 확인한다. 삭제된 행은 일반 조회에서 빠지므로 표를 직접 센다. (#72 되살리기) */
+    @Query(value = "select count(*) from supplier where id = :id and deleted_at is not null", nativeQuery = true)
+    long countDeleted(@Param("id") Long id);
+
+    /** 지운 표시를 지운다. 되살린 건수를 돌려준다. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "update supplier set deleted_at = null, deleted_by = null where id = :id and deleted_at is not null", nativeQuery = true)
+    int undelete(@Param("id") Long id);
 }

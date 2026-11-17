@@ -123,4 +123,11 @@ public class CertificationController {
     public void delete(@PathVariable Long id, Authentication auth) {
         service.delete(id, auth.getName());
     }
+
+    /** 삭제한 인증을 되살린다. 관리자만 할 수 있다 (보안 설정의 restore 규칙). */
+    @PostMapping("/api/certifications/{id}/restore")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restore(@PathVariable Long id) {
+        service.restore(id);
+    }
 }

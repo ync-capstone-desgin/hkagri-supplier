@@ -1,12 +1,15 @@
-import { Table, Tag, Typography } from 'antd'
+import { App, Button, Popconfirm, Table, Tag, Typography } from 'antd'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
-import type { ChangeItem, FieldChange } from '../../api/changes'
+import { restoreTarget, type ChangeItem, type FieldChange } from '../../api/changes'
+import { toProblem } from '../../api/client'
+import { useAuth } from '../../app/AuthContext'
 import type { PageResponse } from '../../api/types'
 import { formatDateTime } from '../../components/format'
 
 /** 작업 종류별 태그 색 */
 const ACTION_COLOR: Record<ChangeItem['action'], string> = {
-  CREATE: 'green', UPDATE: 'blue', RENEW: 'cyan', STATUS: 'gold', DELETE: 'red',
+  CREATE: 'green', UPDATE: 'blue', RENEW: 'cyan', STATUS: 'gold', DELETE: 'red', RESTORE: 'purple',
 }
 
 /** 바뀐 항목 한 줄: "종료일: 2026-12-31 → 2027-12-31". 등록처럼 이전 값이 없으면 바뀐 값만 보여 준다. */
@@ -23,6 +26,7 @@ function ChangeLine({ change }: { change: FieldChange }) {
 /**
  * 변경 이력 표 (#45). 업체 상세의 변경 이력 탭과 관리자용 전체 이력 화면에서 함께 쓴다.
  * 누가 언제 어떤 대상에 무엇을 했는지와, 항목별로 무엇이 무엇으로 바뀌었는지를 보여 준다.
+ * 관리자에게는 아직 되살리지 않은 삭제 기록 옆에 되살리기 버튼을 보여 준다 (#72).
  */
 export function ChangeLogTable({ data, loading, page, onPageChange, showSupplier = false }: {
   data: PageResponse<ChangeItem> | undefined
@@ -33,8 +37,21 @@ export function ChangeLogTable({ data, loading, page, onPageChange, showSupplier
   showSupplier?: boolean
 }) {
   const navigate = useNavigate()
+  const { me } = useAuth()
+  const { message } = App.useApp()
+  const queryClient = useQueryClient()
+
+  /** 삭제한 대상을 되살리고, 목록·건수·이력이 모두 달라지므로 받아 둔 데이터를 전부 새로 받는다. */
+  const restore = async (row: ChangeItem) => {
+    try {
+      await restoreTarget(row.targetType, row.targetId)
+      message.success(`${row.targetLabel} "${row.targetName}"을(를) 되살렸습니다.`)
+      await queryClient.invalidateQueries()
+    } catch (cause) { message.error(toProblem(cause).detail) }
+  }
+
   return (
-    <Table<ChangeItem> rowKey="id" dataSource={data?.content} loading={loading} size="small" scroll={{ x: 900 }}
+    <Table<ChangeItem> rowKey="id" dataSource={data?.content} loading={loading} size="small" scroll={{ x: 1000 }}
       locale={{ emptyText: '변경 이력이 없습니다.' }}
       pagination={{ current: page + 1, pageSize: 20, total: data?.totalElements ?? 0, showSizeChanger: false, onChange: (next) => onPageChange(next - 1) }}
       columns={[
@@ -49,6 +66,14 @@ export function ChangeLogTable({ data, loading, page, onPageChange, showSupplier
         { title: '변경 내용', render: (_, row) => row.changes.length > 0
           ? row.changes.map((change) => <ChangeLine key={change.label} change={change} />)
           : <Typography.Text type="secondary">-</Typography.Text> },
+        ...(me?.role === 'ADMIN' ? [{
+          title: '되살리기', width: 110,
+          render: (_: unknown, row: ChangeItem) => row.restorable && (
+            <Popconfirm title="되살리시겠습니까?" description="함께 지워진 첨부 파일도 다시 보입니다." okText="되살리기" cancelText="취소" onConfirm={() => restore(row)}>
+              <Button size="small" aria-label={`되살리기: ${row.targetName}`}>되살리기</Button>
+            </Popconfirm>
+          ),
+        }] : []),
       ]} />
   )
 }

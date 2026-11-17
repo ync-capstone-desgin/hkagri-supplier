@@ -76,6 +76,8 @@ public class ChangeLogService {
         });
         return new ChangeItem(h.getId(), h.getTargetType(), h.getTargetType().label(), h.getTargetId(),
                 h.getSupplierId(), h.getSupplierName(), h.getTargetName(), h.getAction(), h.getAction().label(),
-                changes, h.getActor(), h.getActorName(), h.getCreatedAt());
+                changes, h.getActor(), h.getActorName(), h.getCreatedAt(),
+                h.getAction() == ChangeAction.DELETE
+                        && !logs.existsByTargetTypeAndTargetIdAndIdGreaterThan(h.getTargetType(), h.getTargetId(), h.getId()));
     }
 }

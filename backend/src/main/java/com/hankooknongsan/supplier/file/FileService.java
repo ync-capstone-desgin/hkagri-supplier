@@ -11,7 +11,9 @@ import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
+import com.hankooknongsan.supplier.common.SupplierRestoredEvent;
 import com.hankooknongsan.supplier.common.TargetDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetRestoredEvent;
 import com.hankooknongsan.supplier.common.TargetType;
 import com.hankooknongsan.supplier.file.FileDtos.DeletedFile;
 import com.hankooknongsan.supplier.file.FileDtos.Download;
@@ -62,6 +64,24 @@ public class FileService {
     @Transactional
     public void onSupplierDeleted(SupplierDeletedEvent event) {
         deleteAll(files.findBySupplierIdAndDeletedAtIsNull(event.supplierId()), event.deletedBy());
+    }
+
+    /** 계약·인증을 되살리면 삭제할 때 함께 지워진 첨부도 되살린다 (#72). */
+    @EventListener
+    @Transactional
+    public void onTargetRestored(TargetRestoredEvent event) {
+        if (event.targetType() == TargetType.CONTRACT) {
+            files.undeleteWithContract(event.targetId());
+        } else {
+            files.undeleteWithCertification(event.targetId());
+        }
+    }
+
+    /** 협력업체를 되살리면 삭제할 때 함께 지워진 일반 자료도 되살린다 (#72). */
+    @EventListener
+    @Transactional
+    public void onSupplierRestored(SupplierRestoredEvent event) {
+        files.undeleteWithSupplier(event.supplierId());
     }
 
     /** 여러 파일에 지운 표시를 남긴다. 삭제 쿼리가 조회 결과를 비우므로 ID를 먼저 꺼내 둔다. */

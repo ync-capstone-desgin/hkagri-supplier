@@ -19,9 +19,13 @@ public final class ChangeLogDtos {
     public record FieldChange(String label, String before, String after) {
     }
 
-    /** 변경 이력 한 줄. 종류·작업은 화면에 바로 쓰도록 한글 이름도 함께 준다. */
+    /**
+     * 변경 이력 한 줄. 종류·작업은 화면에 바로 쓰도록 한글 이름도 함께 준다.
+     * restorable은 아직 되살리지 않은 삭제 기록일 때 true다 (#72).
+     */
     public record ChangeItem(Long id, ChangeTarget targetType, String targetLabel, Long targetId, Long supplierId,
                              String supplierName, String targetName, ChangeAction action, String actionLabel,
-                             List<FieldChange> changes, String actor, String actorName, LocalDateTime createdAt) {
+                             List<FieldChange> changes, String actor, String actorName, LocalDateTime createdAt,
+                             boolean restorable) {
     }
 }

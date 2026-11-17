@@ -6,7 +6,8 @@ public enum ChangeAction {
     UPDATE("수정"),
     RENEW("갱신"),
     STATUS("처리상태 변경"),
-    DELETE("삭제");
+    DELETE("삭제"),
+    RESTORE("되살리기");
 
     private final String label;
 
