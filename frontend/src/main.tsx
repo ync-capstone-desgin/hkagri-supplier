@@ -26,6 +26,7 @@ import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { UserManagementPage } from './features/users/UserManagementPage'
 import { ChangeLogPage } from './features/history/ChangeLogPage'
+import { FileSearchPage } from './features/files/FileSearchPage'
 import { FormsPage } from './features/forms/FormsPage'
 import './index.css'
 
@@ -72,6 +73,7 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/certifications" element={<CertificationListPage />} />
                   <Route path="/forms" element={<FormsPage />} />
                   <Route path="/forms/folders/:folderId" element={<FormsPage />} />
+                  <Route path="/files" element={<FileSearchPage />} />
                   <Route path="/expiries" element={<ExpiryListPage />} />
                   <Route path="/expiry-calendar" element={<ExpiryCalendarPage />} />
                   <Route path="/renewal-board" element={<RenewalBoardPage />} />

@@ -6,6 +6,7 @@ import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.file.FileDtos.DeletedFile;
 import com.hankooknongsan.supplier.file.FileDtos.Download;
 import com.hankooknongsan.supplier.file.FileDtos.FileInfo;
+import com.hankooknongsan.supplier.file.FileDtos.FileSearchItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +41,14 @@ public class FileController {
     @ResponseStatus(HttpStatus.CREATED)
     public FileInfo upload(@RequestParam("file") MultipartFile file) {
         return service.upload(file);
+    }
+
+    /** 전체 자료를 검색한다. 로그인한 모든 사용자가 쓸 수 있다. 검색어가 없으면 최신순 전체다. */
+    @GetMapping("/api/files/search")
+    public PageResponse<FileSearchItem> search(@RequestParam(required = false) String keyword,
+                                               @RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "20") int size) {
+        return service.search(keyword, PageRequest.of(page, size));
     }
 
     /** 파일 정보(이름·크기·올린 사람)를 조회한다. */
