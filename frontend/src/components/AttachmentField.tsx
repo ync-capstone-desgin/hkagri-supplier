@@ -3,13 +3,7 @@ import { DeleteOutlined, DownloadOutlined, InboxOutlined } from '@ant-design/ico
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { deleteStoredFile, downloadStoredFile, uploadSupplierFile, type FileInfo } from '../api/files'
 import { toProblem } from '../api/client'
-
-/** 파일 크기를 화면에서 읽기 쉬운 단위로 표시한다. */
-function fileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
+import { fileSize } from './format'
 
 /** 첨부로 올릴 수 있는 파일 형식 (서버의 파일 규칙과 같다) */
 const ACCEPT = '.pdf,.jpg,.jpeg,.png,.gif,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx'

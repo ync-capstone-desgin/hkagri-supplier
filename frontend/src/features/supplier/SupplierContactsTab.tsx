@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, App, Button, Flex, Form, Input, Modal, Table, Typography } from 'antd'
+import { Alert, App, Button, Flex, Form, Input, Modal, Typography } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toProblem } from '../../api/client'
@@ -8,6 +8,7 @@ import {
   type SupplierContact, type SupplierContactRequest,
 } from '../../api/supplierContacts'
 import { useAuth } from '../../app/AuthContext'
+import { ResponsiveTable } from '../../components/ResponsiveTable'
 
 /**
  * 업체 상세의 담당자 탭 (#49).
@@ -80,7 +81,7 @@ export function SupplierContactsTab({ supplierId }: { supplierId: number }) {
         {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>담당자 추가</Button>}
       </Flex>
       {contacts.isError && <Alert type="error" showIcon title={toProblem(contacts.error).detail} />}
-      <Table<SupplierContact> rowKey="id" size="small" dataSource={contacts.data} loading={contacts.isLoading} pagination={false}
+      <ResponsiveTable<SupplierContact> rowKey="id" size="small" dataSource={contacts.data} loading={contacts.isLoading} pagination={false}
         scroll={{ x: 760 }} locale={{ emptyText: '등록된 담당자가 없습니다.' }}
         columns={[
           { title: '이름', dataIndex: 'name', width: 140 },
