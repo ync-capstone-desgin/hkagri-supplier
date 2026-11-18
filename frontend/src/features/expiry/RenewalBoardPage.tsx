@@ -1,11 +1,12 @@
 import { useMemo, useState, type DragEvent } from 'react'
-import { Badge, Button, Empty, Flex, Segmented, Select, Space, Tag, Typography } from 'antd'
+import { Badge, Button, Empty, Flex, Grid, Segmented, Select, Space, Tag, Typography } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { findRenewalBoard } from '../../api/expiries'
 import type { ExpiryItem, RenewalStatus, TargetType } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
 import { DdayBadge } from '../../components/DdayBadge'
+import { RenewalStatusSelect } from '../../components/RenewalStatusTag'
 import { useCodes } from '../../hooks/useCodes'
 import { useOwnerOptions } from '../../hooks/useOptions'
 import { usePersistedState } from '../../hooks/usePersistedState'
@@ -38,6 +39,7 @@ const cardKey = (i: ExpiryItem) => `${i.targetType}-${i.targetId}`
 export function RenewalBoardPage() {
   const navigate = useNavigate()
   const { canEdit, me } = useAuth()
+  const mobile = Grid.useBreakpoint().md === false
   const { options, label } = useCodes()
   const ownerOptions = useOwnerOptions()
   const { changeStatus, renew, modals } = useExpiryActions()
@@ -65,12 +67,20 @@ export function RenewalBoardPage() {
   /** 카드를 끌 수 있는지: 수정 권한이 있고, 이미 갱신 완료된 이력 카드가 아니어야 한다. */
   const canDrag = (item: ExpiryItem) => canEdit && item.renewalStatus !== 'DONE'
 
-  /** 카드를 다른 칸에 놓았을 때 처리한다. 완료 칸이면 갱신 창을 열고, 그 밖의 칸이면 처리상태를 바꾼다. */
-  const handleDrop = async (status: RenewalStatus) => {
+  /** 끌던 카드를 다른 칸에 놓았을 때 그 칸으로 옮긴다. */
+  const handleDrop = (status: RenewalStatus) => {
     const item = dragging
     setDragging(undefined)
     setOverColumn(undefined)
-    if (!item || item.renewalStatus === status) return
+    if (item) void moveTo(item, status)
+  }
+
+  /**
+   * 카드를 다른 칸으로 옮긴다. 완료 칸이면 갱신 창을 열고, 그 밖의 칸이면 처리상태를 바꾼다.
+   * PC에서는 끌어다 놓기, 휴대폰에서는 카드의 처리상태 선택상자가 이 함수를 부른다 (휴대폰은 끌어다 놓기가 안 된다).
+   */
+  const moveTo = async (item: ExpiryItem, status: RenewalStatus) => {
+    if (item.renewalStatus === status) return
     if (status === 'DONE') {
       renew(item)
       return
@@ -95,7 +105,7 @@ export function RenewalBoardPage() {
         <Typography.Text>
           조치 대상 <b className="num">{total}</b>건
           <Typography.Text type="secondary" style={{ marginInlineStart: 8, fontSize: 12 }}>
-            이미 만료됐거나 90일 안에 만료되는 계약·인증 · {canEdit ? '카드를 끌어 다른 칸에 놓으면 처리상태가 바뀝니다.' : '조회 전용입니다.'}
+            이미 만료됐거나 90일 안에 만료되는 계약·인증 · {!canEdit ? '조회 전용입니다.' : mobile ? '카드의 처리상태를 바꾸면 칸이 옮겨집니다.' : '카드를 끌어 다른 칸에 놓으면 처리상태가 바뀝니다.'}
           </Typography.Text>
         </Typography.Text>
         <Space wrap>
@@ -163,6 +173,11 @@ export function RenewalBoardPage() {
                       <span className="num">만료 {i.expiryDate}</span>
                       <span>담당 {i.ownerName ?? '미지정'}</span>
                     </Flex>
+                    {mobile && canDrag(i) && (
+                      <div style={{ marginTop: 6 }}>
+                        <RenewalStatusSelect value={i.renewalStatus} onChange={(status) => void moveTo(i, status)} />
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>

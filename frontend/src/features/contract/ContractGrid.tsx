@@ -122,9 +122,47 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
     } as ColDef<ContractItem>] : []),
   ], [showSupplier, canEdit, navigate, counts.data])
 
+  /** 휴대폰 카드 한 장: D-day·업체명, 계약명·번호, 기간·담당자, 갱신 처리와 작업 버튼 순으로 보여준다. */
+  const renderCard = (row: ContractItem) => (
+    <>
+      <Flex align="center" gap={6} wrap>
+        {row.active ? <DdayBadge daysLeft={row.daysLeft} status={row.expiryStatus} /> : <Tag>이전</Tag>}
+        {showSupplier && (
+          <Typography.Link strong onClick={() => navigate(`/suppliers/${row.supplierId}`)}>{row.supplierName}</Typography.Link>
+        )}
+      </Flex>
+      <div style={{ margin: '6px 0' }}>
+        {row.title}
+        {row.documentUrl && (
+          <a href={row.documentUrl} target="_blank" rel="noreferrer" aria-label="계약서 열기" style={{ marginInlineStart: 6 }}><LinkOutlined /></a>
+        )}
+        <span style={{ marginInlineStart: 6 }}>
+          <AttachmentIcon count={counts.data?.[row.id] ?? 0} fetchFiles={() => fetchContractFiles(row.id)} />
+        </span>
+        <Typography.Text type="secondary" className="num" style={{ marginInlineStart: 6, fontSize: 12 }}>{row.contractNumber}</Typography.Text>
+      </div>
+      <Typography.Text type="secondary" className="num" style={{ display: 'block', marginBottom: 6, fontSize: 12 }}>
+        {row.startDate} ~ {row.endDate ?? '무기한'}{row.autoRenew && ' · 자동연장'} · 담당 {row.ownerName ?? '미지정'}
+      </Typography.Text>
+      <Flex align="center" gap={4} wrap>
+        {canEdit && row.active
+          ? <RenewalStatusSelect value={row.renewalStatus} onChange={(s) => handleStatusChange(row, s)} />
+          : <RenewalStatusTag status={row.renewalStatus} />}
+        {canEdit && row.active && (
+          <>
+            <Button size="small" icon={<EditOutlined />} onClick={() => setModal({ mode: 'edit', contract: row })}>수정</Button>
+            <Button size="small" icon={<SyncOutlined />} onClick={() => setModal({ mode: 'renew', contract: row })}>갱신</Button>
+            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => confirmDelete(row)}>삭제</Button>
+          </>
+        )}
+      </Flex>
+    </>
+  )
+
   return (
     <>
       <DataGrid rows={rows} columns={columns} loading={loading} height={height}
+        renderCard={renderCard} cardClassName={(row) => (row.active ? undefined : 'row-inactive')}
         rowClassRules={{ 'row-inactive': (p) => p.data?.active === false }}
         onRowDoubleClick={canEdit ? (row) => row.active && setModal({ mode: 'edit', contract: row }) : undefined} />
       <ContractFormModal open={!!modal} mode={modal?.mode ?? 'edit'} contract={modal?.contract} onClose={() => setModal(undefined)} />

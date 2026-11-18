@@ -109,6 +109,26 @@ export function SupplierListPage() {
     [navigate],
   )
 
+  /** 휴대폰 카드 한 장: 업체명·거래상태, 코드·담당자, 계약·인증·만료 임박·서류 누락 건수 순으로 보여준다. */
+  const renderCard = (row: SupplierListItem) => (
+    <>
+      <Flex align="center" gap={6} wrap>
+        <Typography.Link strong onClick={() => navigate(`/suppliers/${row.id}`)}>{row.name}</Typography.Link>
+        <SupplierStatusTag status={row.status} />
+        {row.expiredRequiredCertCount > 0 && <Tag color="red">인증 만료</Tag>}
+      </Flex>
+      <Typography.Text type="secondary" style={{ display: 'block', margin: '4px 0', fontSize: 12 }}>
+        <span className="num">{row.code}</span> · 업체 담당 {row.contactName ?? '-'} · 내부 담당 {row.ownerName ?? '미지정'}
+      </Typography.Text>
+      <Flex gap={12} wrap className="num">
+        <span>계약 {row.contractCount}</span>
+        <span>인증 {row.certCount}</span>
+        <Typography.Text type={row.expiringCount > 0 ? 'danger' : 'secondary'} strong={row.expiringCount > 0}>만료·임박 {row.expiringCount}</Typography.Text>
+        <Typography.Text type={row.missingDocCount > 0 ? 'danger' : 'secondary'} strong={row.missingDocCount > 0}>서류 누락 {row.missingDocCount}</Typography.Text>
+      </Flex>
+    </>
+  )
+
   /** 입력한 조건으로 조회한다. */
   const handleSearch = () => setSearch({ ...draft })
 
@@ -170,10 +190,10 @@ export function SupplierListPage() {
         </Checkbox>
       </SearchPanel>
 
-      <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+      <Flex justify="space-between" align="center" wrap gap={8} style={{ marginBottom: 8 }}>
         <Typography.Text>
           총 <b className="num">{data?.totalElements ?? 0}</b>건
-          <Typography.Text type="secondary" style={{ marginInlineStart: 12, fontSize: 12 }}>
+          <Typography.Text type="secondary" className="pc-only" style={{ marginInlineStart: 12, fontSize: 12 }}>
             행을 더블클릭하면 상세 화면이 새 탭으로 열립니다.
           </Typography.Text>
         </Typography.Text>
@@ -194,6 +214,8 @@ export function SupplierListPage() {
         columns={columns}
         loading={isFetching && !data}
         onRowDoubleClick={(row) => navigate(`/suppliers/${row.id}`)}
+        renderCard={renderCard}
+        onCardClick={(row) => navigate(`/suppliers/${row.id}`)}
       />
 
       <SupplierFormModal open={formOpen} onClose={() => setFormOpen(false)} />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, App, Button, Flex, Popconfirm, Select, Table, Tag, Typography, Upload } from 'antd'
+import { Alert, App, Button, Flex, Popconfirm, Select, Tag, Typography, Upload } from 'antd'
 import { DeleteOutlined, DownloadOutlined, InboxOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { searchContracts } from '../../api/contracts'
@@ -7,15 +7,9 @@ import { searchCertifications } from '../../api/certifications'
 import { changeDocumentExempt, changeFileCategory, deleteStoredFile, downloadStoredFile, fetchRequiredDocuments, fetchSupplierFiles, uploadSupplierFile, type RequiredDocument, type SupplierFile } from '../../api/files'
 import { toProblem } from '../../api/client'
 import { useAuth } from '../../app/AuthContext'
-import { formatDateTime } from '../../components/format'
+import { fileSize, formatDateTime } from '../../components/format'
 import { useFileCategories } from '../../hooks/useFileCategories'
-
-/** 파일 크기를 화면에서 읽기 쉬운 단위로 표시한다. */
-function fileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
+import { ResponsiveTable } from '../../components/ResponsiveTable'
 
 /** 업체 자료 목록과 다중 업로드. 조회자는 목록·다운로드만 이용한다. */
 export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
@@ -164,9 +158,9 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
           <p className="ant-upload-hint">여러 파일을 한 번에 선택할 수 있습니다. PDF·이미지·한글·오피스 문서, 기본 파일당 20MB</p>
         </Upload.Dragger>
       </>}
-      <Flex justify="space-between" align="center">
+      <Flex justify="space-between" align="center" wrap gap={8}>
         <Flex align="center" gap={12}>
-          <Typography.Text>자료 {files.data?.totalElements ?? 0}개</Typography.Text>
+          <Typography.Text style={{ whiteSpace: 'nowrap' }}>자료 {files.data?.totalElements ?? 0}개</Typography.Text>
           <Select allowClear aria-label="자료 종류로 걸러 보기" placeholder="자료 종류 전체" style={{ width: 180 }} options={categories.options}
             value={filterCategory} onChange={(value) => { setFilterCategory(value); setPage(0) }} />
         </Flex>
@@ -174,7 +168,7 @@ export function SupplierFilesTab({ supplierId }: { supplierId: number }) {
           loading={files.isFetching || (canEdit && (contracts.isFetching || certs.isFetching))}>새로고침</Button>
       </Flex>
       {files.isError && <Alert type="error" showIcon title={toProblem(files.error).detail} />}
-      <Table<SupplierFile> rowKey={(row) => row.file.id} dataSource={files.data?.content} loading={files.isLoading} size="small"
+      <ResponsiveTable<SupplierFile> rowKey={(row) => row.file.id} dataSource={files.data?.content} loading={files.isLoading} size="small"
         scroll={{ x: 1070 }} locale={{ emptyText: filterCategory ? '이 종류의 자료가 없습니다.' : '등록된 자료가 없습니다.' }}
         pagination={{ current: page + 1, pageSize: 20, total: files.data?.totalElements ?? 0, showSizeChanger: false, onChange: (next) => setPage(next - 1) }}
         columns={[

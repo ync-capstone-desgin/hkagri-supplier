@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, App, Button, Card, Checkbox, Flex, Select, Space, Switch, Table, Tag, Typography } from 'antd'
+import { Alert, App, Button, Card, Checkbox, Flex, Select, Space, Switch, Tag, Typography } from 'antd'
 import { MailOutlined, PlayCircleOutlined, SaveOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
@@ -11,6 +11,7 @@ import { useAuth } from '../../app/AuthContext'
 import { DataGrid } from '../../components/DataGrid'
 import { formatDateTime } from '../../components/format'
 import { useCodes } from '../../hooks/useCodes'
+import { ResponsiveTable } from '../../components/ResponsiveTable'
 
 /** 알림 기준 한 줄을 화면에서 고치는 동안의 값 */
 interface RuleDraft {
@@ -18,6 +19,9 @@ interface RuleDraft {
   channels: Channel[]
   enabled: boolean
 }
+
+/** "며칠 전" 입력칸을 눌렀을 때 고를 수 있게 보여 주는 보기. 다 지운 뒤에도 다시 고를 수 있다. 여기 없는 날짜는 직접 입력한다. */
+const DAY_CHOICES = [90, 60, 30, 14, 7, 3, 1]
 
 /** 기준일 입력값(문자열 태그)을 0~365 사이의 숫자로 정리한다. 잘못된 값은 버린다. */
 function toDays(values: (string | number)[]): number[] {
@@ -105,7 +109,7 @@ export function SettingsPage() {
   return (
     <Flex vertical gap={12}>
       <Card size="small" title="알림 기준" extra={!isAdmin && <Tag>관리자만 변경할 수 있습니다</Tag>}>
-        <Table<NotificationRule>
+        <ResponsiveTable<NotificationRule>
           rowKey="id"
           size="middle"
           pagination={false}
@@ -115,10 +119,11 @@ export function SettingsPage() {
             {
               title: '만료 며칠 전에 알릴까요?', key: 'days',
               render: (_, r) => (
-                <Select mode="tags" style={{ minWidth: 220 }} disabled={!isAdmin} value={drafts[r.id]?.days.map(String)}
+                <Select mode="tags" style={{ minWidth: 'min(220px, 100%)' }} disabled={!isAdmin} value={drafts[r.id]?.days.map(String)}
                   tokenSeparators={[',', ' ']} placeholder="예: 90, 30, 7"
                   onChange={(v) => setDrafts({ ...drafts, [r.id]: { ...drafts[r.id], days: toDays(v) } })}
-                  tagRender={({ label: l, closable, onClose }) => <Tag closable={closable} onClose={onClose} style={{ marginInlineEnd: 4 }}>{l}일 전</Tag>} />
+                  options={DAY_CHOICES.map((d) => ({ value: String(d), label: `${d}일 전` }))}
+                  tagRender={({ value, closable, onClose }) => <Tag closable={closable} onClose={onClose} style={{ marginInlineEnd: 4 }}>{value}일 전</Tag>} />
               ),
             },
             {
@@ -160,7 +165,26 @@ export function SettingsPage() {
 
       {isAdmin && (
         <Card size="small" title="발송 이력 (최근 200건)" extra={<Typography.Text type="secondary" style={{ fontSize: 12 }}>10초마다 자동 새로고침</Typography.Text>}>
-          <DataGrid rows={deliveries} columns={columns} height={420} />
+          <DataGrid rows={deliveries} columns={columns} height={420}
+            renderCard={(d) => (
+              // 휴대폰 카드: 상태·채널·수신자, 알림 제목, 생성·발송 시각, 실패했으면 횟수와 사유
+              <>
+                <Flex align="center" gap={6} wrap>
+                  <Tag color={d.status === 'SENT' ? 'success' : d.status === 'FAILED' ? 'error' : 'warning'}>{label('deliveryStatus', d.status)}</Tag>
+                  <Tag>{label('channel', d.channel)}</Tag>
+                  <Typography.Text strong>{d.recipientName}</Typography.Text>
+                </Flex>
+                <div style={{ margin: '6px 0', overflowWrap: 'anywhere' }}>{d.title}</div>
+                <Typography.Text type="secondary" className="num" style={{ fontSize: 12 }}>
+                  생성 {formatDateTime(d.createdAt)}{d.sentAt && ` · 발송 ${formatDateTime(d.sentAt)}`}
+                </Typography.Text>
+                {(d.retryCount > 0 || d.lastError) && (
+                  <Typography.Text type="danger" style={{ display: 'block', fontSize: 12, overflowWrap: 'anywhere' }}>
+                    실패 {d.retryCount}회{d.lastError && ` · ${d.lastError}`}
+                  </Typography.Text>
+                )}
+              </>
+            )} />
         </Card>
       )}
     </Flex>

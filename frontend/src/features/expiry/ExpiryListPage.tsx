@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { App, Badge, Button, Flex, Segmented, Select, Tag, Typography } from 'antd'
+import { App, Badge, Button, Flex, Grid, Segmented, Select, Tag, Typography } from 'antd'
 import { DownloadOutlined, SyncOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
@@ -8,6 +8,7 @@ import { fetchDashboard } from '../../api/dashboard'
 import { downloadExpiryExcel, findExpiries } from '../../api/expiries'
 import type { ExpiryItem, ExpiryPeriod, ExpirySearch, TargetType } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
+import { ChipTabs } from '../../components/ChipTabs'
 import { DataGrid } from '../../components/DataGrid'
 import { DdayBadge } from '../../components/DdayBadge'
 import { RenewalStatusSelect, RenewalStatusTag } from '../../components/RenewalStatusTag'
@@ -15,6 +16,7 @@ import { SearchField, SearchPanel } from '../../components/SearchPanel'
 import { useCodes } from '../../hooks/useCodes'
 import { useOwnerOptions } from '../../hooks/useOptions'
 import { usePersistedState } from '../../hooks/usePersistedState'
+import { ExpiryCard } from './ExpiryCard'
 import { useExpiryActions } from './useExpiryActions'
 
 /** 기간 칩 순서와, 대시보드 요약에서 각 칩의 건수를 꺼내는 방법 */
@@ -40,6 +42,7 @@ export function ExpiryListPage() {
   const { message } = App.useApp()
   const queryClient = useQueryClient()
   const { canEdit, me } = useAuth()
+  const mobile = Grid.useBreakpoint().md === false
   const { options, label } = useCodes()
   const ownerOptions = useOwnerOptions()
   const [params, setParams] = useSearchParams()
@@ -94,25 +97,26 @@ export function ExpiryListPage() {
   // handleStatusChange·handleRenew는 매번 새로 만들어지지만 안에서 쓰는 값이 바뀌지 않으므로 의존성에서 뺀다.
   ], [canEdit, label, navigate])
 
+  /** 기간 칩: 색 점 + 이름 + 건수. 선택한 칩만 건수 배지에 긴급도 색을 쓴다. */
+  const periodOptions = PERIODS.map((p) => ({
+    value: p.value,
+    label: (
+      <Flex align="center" gap={6} style={{ padding: '0 4px' }}>
+        <span style={{ width: 8, height: 8, borderRadius: 4, background: p.color, display: 'inline-block' }} />
+        {p.label}
+        <Badge count={summary ? p.count(summary) : 0} showZero overflowCount={999}
+          color={search.period === p.value ? p.color : '#bfbfbf'} />
+      </Flex>
+    ),
+  }))
+
   return (
     <>
       <Flex align="center" gap={12} wrap style={{ marginBottom: 12 }}>
-        <Segmented<ExpiryPeriod>
-          size="large"
-          value={search.period}
-          onChange={(period) => setSearch({ ...search, period })}
-          options={PERIODS.map((p) => ({
-            value: p.value,
-            label: (
-              <Flex align="center" gap={6} style={{ padding: '0 4px' }}>
-                <span style={{ width: 8, height: 8, borderRadius: 4, background: p.color, display: 'inline-block' }} />
-                {p.label}
-                <Badge count={summary ? p.count(summary) : 0} showZero overflowCount={999}
-                  color={search.period === p.value ? p.color : '#bfbfbf'} />
-              </Flex>
-            ),
-          }))}
-        />
+        {/* 휴대폰에서는 칩 5개가 한 줄에 안 들어가므로 여러 줄로 놓을 수 있는 단추 묶음을 쓴다. */}
+        {mobile
+          ? <ChipTabs value={search.period} onChange={(period) => setSearch({ ...search, period })} options={periodOptions} />
+          : <Segmented<ExpiryPeriod> size="large" value={search.period} onChange={(period) => setSearch({ ...search, period })} options={periodOptions} />}
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
           기준일 {summary?.today ?? '-'} · 7·30·90일은 오늘부터 해당 일수 안에 만료되는 항목입니다.
         </Typography.Text>
@@ -139,7 +143,7 @@ export function ExpiryListPage() {
         )}
       </SearchPanel>
 
-      <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+      <Flex justify="space-between" align="center" wrap gap={8} style={{ marginBottom: 8 }}>
         <Typography.Text>
           <b>{PERIODS.find((p) => p.value === search.period)?.label}</b> 총 <b className="num">{data?.length ?? 0}</b>건
           <Typography.Text type="secondary" style={{ marginInlineStart: 12, fontSize: 12 }}>
@@ -151,7 +155,8 @@ export function ExpiryListPage() {
         </Button>
       </Flex>
 
-      <DataGrid rows={data} columns={columns} loading={isFetching && !data} rowId={rowKey} />
+      <DataGrid rows={data} columns={columns} loading={isFetching && !data} rowId={rowKey}
+        renderCard={(item) => <ExpiryCard item={item} canEdit={canEdit} showDate onChangeStatus={handleStatusChange} onRenew={handleRenew} />} />
 
       {modals}
     </>

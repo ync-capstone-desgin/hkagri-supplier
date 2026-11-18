@@ -1,4 +1,4 @@
-import { App, Button, Flex, Popconfirm, Table, Tag, Typography } from 'antd'
+import { App, Button, Flex, Popconfirm, Tag, Typography } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { fetchPurgeFileCount, purgeTarget, restoreTarget, type ChangeItem, type FieldChange } from '../../api/changes'
@@ -6,6 +6,7 @@ import { toProblem } from '../../api/client'
 import { useAuth } from '../../app/AuthContext'
 import type { PageResponse } from '../../api/types'
 import { formatDateTime } from '../../components/format'
+import { ResponsiveTable } from '../../components/ResponsiveTable'
 
 /** 작업 종류별 태그 색 */
 const ACTION_COLOR: Record<ChangeItem['action'], string> = {
@@ -74,7 +75,7 @@ export function ChangeLogTable({ data, loading, page, onPageChange, showSupplier
   }
 
   return (
-    <Table<ChangeItem> rowKey="id" dataSource={data?.content} loading={loading} size="small" scroll={{ x: 1080 }}
+    <ResponsiveTable<ChangeItem> rowKey="id" dataSource={data?.content} loading={loading} size="small" scroll={{ x: 1080 }}
       locale={{ emptyText: '변경 이력이 없습니다.' }}
       pagination={{ current: page + 1, pageSize: 20, total: data?.totalElements ?? 0, showSizeChanger: false, onChange: (next) => onPageChange(next - 1) }}
       columns={[

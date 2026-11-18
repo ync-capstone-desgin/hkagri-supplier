@@ -12,6 +12,7 @@ import { DataGrid } from '../../components/DataGrid'
 import { DdayBadge, URGENCY_COLOR } from '../../components/DdayBadge'
 import { RenewalStatusTag } from '../../components/RenewalStatusTag'
 import { useCodes } from '../../hooks/useCodes'
+import { ExpiryCard } from '../expiry/ExpiryCard'
 
 /** 클릭하면 관련 화면으로 이동하는 숫자 카드 */
 function KpiCard({ title, value, sub, icon, onClick }: {
@@ -141,7 +142,8 @@ export function DashboardPage() {
       </Card>
 
       <Card size="small" title="가장 급한 항목" extra={<Typography.Link onClick={() => openExpiries('D30')}>전체 보기 <RightOutlined /></Typography.Link>}>
-        <DataGrid rows={data.urgent} columns={columns} rowId={(r) => `${r.targetType}-${r.targetId}`} paginate={false} height={400} />
+        <DataGrid rows={data.urgent} columns={columns} rowId={(r) => `${r.targetType}-${r.targetId}`} paginate={false} height={400}
+          renderCard={(item) => <ExpiryCard item={item} canEdit={false} showDate />} />
       </Card>
     </Flex>
   )
