@@ -19,7 +19,7 @@
 **처음이라면 [CONTRIBUTING.md](CONTRIBUTING.md)를 먼저 읽는다.** 이슈 작성부터 PR 머지까지 따라 하기 순서와 규칙이 있다.
 
 ```
-이슈 작성 → develop에서 브랜치 생성 → 개발·커밋 → 푸시 → PR → 자동 테스트 통과 → 다른 팀원 1명 승인 → 리뷰어가 머지
+이슈 작성 → develop에서 브랜치 생성 → 개발·커밋 → 푸시 → PR → 자동 테스트 통과 → 작성자 셀프 체크 → 작성자가 머지 (리뷰 선택)
 ```
 
 - 기본 브랜치는 `develop`이다. `main`은 배포용이며 `main`·`develop`에 직접 푸시할 수 없다.
@@ -105,13 +105,20 @@ API·입력 규칙·검증 방법은 [docs/signup.md](docs/signup.md)를 참고�
 
 | 문서 | 내용 |
 |---|---|
+| [API 명세](docs/api.md) | 기능별 경로·권한, 요청·응답 예시와 오류 형식 |
+| [ERD와 테이블 정의서](docs/erd.md) | 업무별 테이블 관계, 컬럼·기본값·제약 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 협업 규칙과 따라 하기 (이슈·브랜치·커밋·PR·리뷰) |
 | [docs/user-guide.md](docs/user-guide.md) | 메뉴별 사용 설명서 (스크린샷 포함) |
 | [docs/forms-api.md](docs/forms-api.md) | 양식 자료실 API·첨부·권한·DB 적용 순서 |
 | [docs/forms-ui.md](docs/forms-ui.md) | 하위 폴더 탐색·양식 등록·첨부 다운로드 및 화면 검증 |
-| [docs/cert-types.md](docs/cert-types.md) | 인증 종류 관리·권한·비활성 선택 규칙·DB |
+| [docs/file-categories.md](docs/file-categories.md) | 자료 종류와 필수 서류 점검: 규칙·API·DB |
+| [docs/file-search.md](docs/file-search.md) | 자료 검색: 찾는 범위·검색어·API |
+| [docs/change-log.md](docs/change-log.md) | 변경 이력: 남는 내용·보는 곳·API·DB |
+| [docs/delete.md](docs/delete.md) | 협력업체·계약·인증 삭제 규칙·API·DB (지운 표시만 남김) |
+| [docs/cert-types.md](docs/cert-types.md) | 인증 종류 관리·권한·비활성 선택 규칙·필수 인증 만료 표시·DB |
 | [docs/cert-scope.md](docs/cert-scope.md) | 인증 적용 대상 입력·검색·갱신·만료 안내·API·DB |
 | [docs/demo-data.md](docs/demo-data.md) | 가상 시연 데이터 구성과 기존 DB를 보존하는 실행 방법 |
+| [docs/supplier-contacts.md](docs/supplier-contacts.md) | 업체 담당자 탭·소통 메모 탭 규칙·API·DB |
 | [docs/supplier-files.md](docs/supplier-files.md) | 업체 자료 탭 사용법, 파일 연결 API·DB, 검증 방법 |
 | [docs/deploy-aws.md](docs/deploy-aws.md) | AWS EC2 배포 가이드 |
 | [capstone-docs](https://github.com/ync-capstone-desgin/capstone-docs) | 기획서, 설계, 미팅 자료 |

@@ -30,6 +30,9 @@ public class CertType {
     /** 새 인증에서 선택할 수 있는지 여부. 기존 인증 연결은 보존한다. */
     private boolean active = true;
 
+    /** 필수 인증인지 여부 (#46). 필수 종류의 현재 인증이 만료되면 그 업체에 "인증 만료"를 표시한다. */
+    private boolean required;
+
     /** 선택상자 표시 순서 */
     private int sortOrder;
 
@@ -39,6 +42,11 @@ public class CertType {
         this.name = name;
         this.nameKey = nameKey;
         this.sortOrder = sortOrder;
+    }
+
+    /** 필수 인증 여부를 바꾼다. */
+    public void changeRequired(boolean required) {
+        this.required = required;
     }
 
     /** 식별자와 표시 순서를 유지하면서 관리 항목만 바꾼다. */

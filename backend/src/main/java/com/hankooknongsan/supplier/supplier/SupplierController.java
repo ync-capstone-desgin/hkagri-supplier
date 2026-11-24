@@ -14,6 +14,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,21 +37,25 @@ public class SupplierController {
 
     private final SupplierService service;
 
-    /** 협력업체 목록을 검색한다. 인증 종류(certType)로 보유 업체만 걸러낼 수 있다. 기본 정렬은 업체명. */
+    /** 협력업체 목록을 검색한다. 인증 종류(certType)로 보유 업체만, missingDocs로 필수 서류가 빠진 업체만, certExpired로 필수 인증이 만료된 업체만 걸러낼 수 있다. 기본 정렬은 업체명. */
     @GetMapping
     public PageResponse<SupplierListItem> search(@RequestParam(required = false) String keyword,
                                                  @RequestParam(required = false) SupplierStatus status,
                                                  @RequestParam(required = false) String certType,
+                                                 @RequestParam(defaultValue = "false") boolean missingDocs,
+                                                 @RequestParam(defaultValue = "false") boolean certExpired,
                                                  @RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "50") int size) {
-        return service.search(keyword, status, certType, PageRequest.of(page, size, Sort.by("name")));
+        return service.search(keyword, status, certType, missingDocs, certExpired, PageRequest.of(page, size, Sort.by("name")));
     }
 
     /** 현재 검색조건의 협력업체 목록을 엑셀 파일로 내려받는다. */
     @GetMapping("/excel")
     public ResponseEntity<byte[]> excel(@RequestParam(required = false) String keyword,
                                         @RequestParam(required = false) SupplierStatus status,
-                                        @RequestParam(required = false) String certType) {
+                                        @RequestParam(required = false) String certType,
+                                        @RequestParam(defaultValue = "false") boolean missingDocs,
+                                        @RequestParam(defaultValue = "false") boolean certExpired) {
         List<Column<SupplierListItem>> columns = List.of(
                 new Column<>("업체코드", SupplierListItem::code),
                 new Column<>("업체명", SupplierListItem::name),
@@ -58,8 +64,10 @@ public class SupplierController {
                 new Column<>("내부 담당자", SupplierListItem::ownerName),
                 new Column<>("계약수", SupplierListItem::contractCount),
                 new Column<>("인증수", SupplierListItem::certCount),
-                new Column<>("만료·임박(90일)", SupplierListItem::expiringCount));
-        return ExcelExporter.export("협력업체목록", columns, service.searchAll(keyword, status, certType));
+                new Column<>("만료·임박(90일)", SupplierListItem::expiringCount),
+                new Column<>("필수 서류 누락", SupplierListItem::missingDocCount),
+                new Column<>("필수 인증 만료", SupplierListItem::expiredRequiredCertCount));
+        return ExcelExporter.export("협력업체목록", columns, service.searchAll(keyword, status, certType, missingDocs, certExpired));
     }
 
     /** 협력업체 상세정보를 조회한다. */
@@ -79,5 +87,26 @@ public class SupplierController {
     @PutMapping("/{id}")
     public SupplierDetail update(@PathVariable Long id, @Valid @RequestBody SupplierRequest req) {
         return service.update(id, req);
+    }
+
+    /** 협력업체를 삭제한다. 계약·인증이 남아 있으면 409, 업체에 올린 자료는 함께 삭제한다. */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id, Authentication auth) {
+        service.delete(id, auth.getName());
+    }
+
+    /** 삭제한 협력업체를 되살린다. 관리자만 할 수 있다 (보안 설정의 restore 규칙). */
+    @PostMapping("/{id}/restore")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restore(@PathVariable Long id) {
+        service.restore(id);
+    }
+
+    /** 삭제된 협력업체을(를) 영구삭제한다. 되돌릴 수 없고 관리자만 할 수 있다 (보안 설정의 purge 규칙). */
+    @DeleteMapping("/{id}/purge")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void purge(@PathVariable Long id) {
+        service.purge(id);
     }
 }

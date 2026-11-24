@@ -1,5 +1,6 @@
 package com.hankooknongsan.supplier.supplier;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -7,16 +8,25 @@ import java.util.stream.Collectors;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
+import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
+import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
+import com.hankooknongsan.supplier.common.SupplierPurgedEvent;
+import com.hankooknongsan.supplier.common.SupplierRestoredEvent;
+import com.hankooknongsan.supplier.history.ChangeAction;
+import com.hankooknongsan.supplier.history.ChangeLogService;
+import com.hankooknongsan.supplier.history.ChangeTarget;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierDetail;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierListItem;
 import com.hankooknongsan.supplier.supplier.SupplierDtos.SupplierRequest;
 import com.hankooknongsan.supplier.supplier.SupplierRepository.SupplierCounts;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,18 +41,23 @@ public class SupplierService {
     private final SupplierRepository suppliers;
     private final AppUserRepository users;
     private final ExpiryPolicy policy;
+    private final AppClock clock;
+    private final ApplicationEventPublisher events;
+    private final ChangeLogService history;
 
-    /** 조건에 맞는 협력업체 목록을 페이지 단위로 조회한다. */
+    /** 조건에 맞는 협력업체 목록을 페이지 단위로 조회한다. missingDocs가 true면 필수 서류가 빠진 업체만, certExpired가 true면 필수 인증이 만료된 업체만 조회한다. */
     public PageResponse<SupplierListItem> search(String keyword, SupplierStatus status, String certType,
-                                                 Pageable pageable) {
-        Page<Supplier> page = suppliers.search(nullToEmpty(keyword).trim(), status, nullToEmpty(certType), pageable);
+                                                 boolean missingDocs, boolean certExpired, Pageable pageable) {
+        Page<Supplier> page = suppliers.search(nullToEmpty(keyword).trim(), status, nullToEmpty(certType), missingDocs,
+                certExpired, policy.today(), pageable);
         Map<Long, SupplierCounts> counts = countsOf(page.getContent());
         return PageResponse.of(page, s -> toListItem(s, counts.get(s.getId())));
     }
 
     /** 조건에 맞는 협력업체 전체를 조회한다. (엑셀 다운로드용) */
-    public List<SupplierListItem> searchAll(String keyword, SupplierStatus status, String certType) {
-        return search(keyword, status, certType, Pageable.ofSize(10_000)).content();
+    public List<SupplierListItem> searchAll(String keyword, SupplierStatus status, String certType,
+                                            boolean missingDocs, boolean certExpired) {
+        return search(keyword, status, certType, missingDocs, certExpired, Pageable.ofSize(10_000)).content();
     }
 
     /** 협력업체 한 곳의 상세정보를 조회한다. 없으면 404. */
@@ -53,8 +68,8 @@ public class SupplierService {
         return new SupplierDetail(s.getId(), s.getCode(), s.getName(), s.getBusinessNumber(), s.getStatus(),
                 s.getContactName(), s.getContactPhone(), s.getContactEmail(),
                 owner == null ? null : owner.getId(), owner == null ? null : owner.getName(), s.getMemo(),
-                c.getContractCount(), c.getCertCount(), c.getExpiringCount(),
-                s.getCreatedAt(), s.getCreatedBy(), s.getUpdatedAt(), s.getUpdatedBy());
+                c.getContractCount(), c.getCertCount(), c.getExpiringCount(), c.getMissingDocCount(),
+                c.getExpiredRequiredCertCount(), s.getCreatedAt(), s.getCreatedBy(), s.getUpdatedAt(), s.getUpdatedBy());
     }
 
     /**
@@ -68,15 +83,93 @@ public class SupplierService {
         suppliers.save(s);
         s.assignCode("SUP-%04d".formatted(s.getId()));
         suppliers.flush();
+        log(s, ChangeAction.CREATE, Map.of(), snapshot(s));
         return get(s.getId());
     }
 
     /** 협력업체 기본정보를 수정한다. */
     @Transactional
     public SupplierDetail update(Long id, SupplierRequest req) {
-        apply(find(id), req);
+        Supplier s = find(id);
+        Map<String, String> before = snapshot(s);
+        apply(s, req);
         suppliers.flush();
+        log(s, ChangeAction.UPDATE, before, snapshot(s));
         return get(id);
+    }
+
+    /**
+     * 협력업체를 삭제한다 (#44). 지운 표시만 남긴다.
+     * 계약·인증(이전 이력 포함)이 남아 있으면 409로 막고, 업체에 올린 일반 자료는 이벤트로 함께 삭제한다.
+     */
+    @Transactional
+    public void delete(Long id, String actor) {
+        Supplier s = find(id);
+        long contracts = suppliers.countContracts(id);
+        long certifications = suppliers.countCertifications(id);
+        if (contracts + certifications > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "계약 %d건, 인증 %d건이 남아 있어 삭제할 수 없습니다. 계약·인증을 먼저 삭제해 주세요."
+                            .formatted(contracts, certifications));
+        }
+        s.delete(actor, clock.now());
+        suppliers.flush();
+        log(s, ChangeAction.DELETE, Map.of(), Map.of());
+        events.publishEvent(new SupplierDeletedEvent(id, actor));
+    }
+
+    /** 삭제한 협력업체를 되살린다 (#72, 관리자 전용). 삭제할 때 함께 지워진 일반 자료도 되살린다. */
+    @Transactional
+    public void restore(Long id) {
+        if (suppliers.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 협력업체");
+        }
+        // 자료는 업체의 지운 시각과 비교해 되살리므로 지운 표시를 지우기 전에 알린다.
+        events.publishEvent(new SupplierRestoredEvent(id));
+        suppliers.undelete(id);
+        log(find(id), ChangeAction.RESTORE, Map.of(), Map.of());
+    }
+
+    /**
+     * 삭제된 협력업체를 영구삭제한다 (#77, 관리자 전용). 되돌릴 수 없다.
+     * 삭제된 계약·인증이 남아 있으면 409로 막고 건수를 안내한다. 따로 지울 화면이 없는 담당자·메모·업체 자료는 함께 지운다.
+     */
+    @Transactional
+    public void purge(Long id) {
+        if (suppliers.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 협력업체");
+        }
+        long contracts = suppliers.countContractRows(id);
+        long certifications = suppliers.countCertificationRows(id);
+        if (contracts + certifications > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "삭제된 계약 %d건, 인증 %d건이 남아 있어 영구삭제할 수 없습니다. 계약·인증을 먼저 영구삭제해 주세요."
+                            .formatted(contracts, certifications));
+        }
+        events.publishEvent(new SupplierPurgedEvent(id));
+        suppliers.purgeContacts(id);
+        suppliers.purgeNotes(id);
+        suppliers.purge(id);
+        history.recordPurge(ChangeTarget.SUPPLIER, id);
+    }
+
+    /** 협력업체의 변경 이력을 남긴다 (#45). */
+    private void log(Supplier s, ChangeAction action, Map<String, String> before, Map<String, String> after) {
+        history.record(ChangeTarget.SUPPLIER, s.getId(), s.getId(), s.getName(), s.getName(), action, before, after);
+    }
+
+    /** 변경 이력 비교용으로 협력업체의 현재 값을 화면 항목 이름과 함께 뽑는다. */
+    private static Map<String, String> snapshot(Supplier s) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("업체명", s.getName());
+        m.put("사업자번호", s.getBusinessNumber());
+        m.put("거래상태", s.getStatus().label());
+        m.put("업체 담당자", s.getContactName());
+        m.put("연락처", s.getContactPhone());
+        m.put("이메일", s.getContactEmail());
+        m.put("내부 담당자", s.getOwner() == null ? null : s.getOwner().getName());
+        m.put("비고", s.getMemo());
+        return m;
     }
 
     /** ID로 협력업체 엔티티를 찾는다. 다른 기능(계약·인증)에서도 업체 확인에 사용한다. */
@@ -101,7 +194,7 @@ public class SupplierService {
             return Map.of();
         }
         return suppliers.counts(list.stream().map(Supplier::getId).toList(),
-                        policy.horizon())
+                        policy.horizon(), policy.today())
                 .stream().collect(Collectors.toMap(SupplierCounts::getId, Function.identity()));
     }
 
@@ -110,7 +203,8 @@ public class SupplierService {
         AppUser owner = s.getOwner();
         return new SupplierListItem(s.getId(), s.getCode(), s.getName(), s.getStatus(), s.getContactName(),
                 owner == null ? null : owner.getId(), owner == null ? null : owner.getName(),
-                c.getContractCount(), c.getCertCount(), c.getExpiringCount());
+                c.getContractCount(), c.getCertCount(), c.getExpiringCount(), c.getMissingDocCount(),
+                c.getExpiredRequiredCertCount());
     }
 
     /** null을 빈 문자열로 바꾼다. (검색 조건 무시 처리용) */

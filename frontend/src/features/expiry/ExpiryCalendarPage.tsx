@@ -1,18 +1,17 @@
 import { useMemo, useState } from 'react'
-import { Button, Calendar, Card, Empty, Flex, Segmented, Select, Space, Tag, Typography } from 'antd'
-import { LeftOutlined, RightOutlined, SyncOutlined } from '@ant-design/icons'
+import { Button, Calendar, Card, Empty, Flex, Grid, Segmented, Select, Space, Typography } from 'antd'
+import { LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
-import { useNavigate } from 'react-router'
 import { fetchDashboard } from '../../api/dashboard'
 import { findExpiryCalendar } from '../../api/expiries'
 import type { ExpiryItem, TargetType } from '../../api/types'
 import { useAuth } from '../../app/AuthContext'
-import { DdayBadge, URGENCY_COLOR } from '../../components/DdayBadge'
-import { RenewalStatusSelect, RenewalStatusTag } from '../../components/RenewalStatusTag'
+import { URGENCY_COLOR } from '../../components/DdayBadge'
 import { useCodes } from '../../hooks/useCodes'
 import { useOwnerOptions } from '../../hooks/useOptions'
 import { usePersistedState } from '../../hooks/usePersistedState'
+import { ExpiryCard } from './ExpiryCard'
 import { useExpiryActions } from './useExpiryActions'
 
 /** 날짜 칸 하나에 바로 보여줄 최대 건수. 넘치면 "+N건"으로 줄인다. */
@@ -50,8 +49,8 @@ function visibleRange(month: Dayjs) {
  * 처음 열면 기준일(시연 기준일 포함)이 있는 달과 날짜가 선택된다.
  */
 export function ExpiryCalendarPage() {
-  const navigate = useNavigate()
   const { canEdit, me } = useAuth()
+  const mobile = Grid.useBreakpoint().md === false
   const { options, label } = useCodes()
   const ownerOptions = useOwnerOptions()
   const { changeStatus, renew, modals } = useExpiryActions()
@@ -155,7 +154,31 @@ export function ExpiryCalendarPage() {
         </Flex>
       </Flex>
 
-      <Flex gap={16} align="flex-start" className="expiry-calendar-layout">
+      {/* 휴대폰에서는 달력 칸이 좁아 글자가 잘리므로, 이번 달 만료 건을 날짜별 목록으로 보여준다. */}
+      {mobile && (monthItems.length === 0 ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="이번 달에 만료되는 계약·인증이 없습니다." />
+      ) : (
+        <Flex vertical gap={8}>
+          {[...byDate.keys()].filter((date) => dayjs(date).isSame(month, 'month')).sort().map((date) => (
+            <section key={date}>
+              <Typography.Text strong className="num" style={{ display: 'block', margin: '8px 0 6px' }}>
+                {dayjs(date).format('M월 D일 (dd)')}
+                {today && dayjs(date).isSame(today, 'day') && <Typography.Text type="secondary" style={{ fontSize: 12 }}> · 기준일</Typography.Text>}
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}> · {byDate.get(date)!.length}건</Typography.Text>
+              </Typography.Text>
+              <Flex vertical gap={8}>
+                {byDate.get(date)!.map((i) => (
+                  <div key={`${i.targetType}-${i.targetId}`} className="data-card" style={{ borderLeft: `3px solid ${chipColor(i.daysLeft)}` }}>
+                    <ExpiryCard item={i} canEdit={canEdit} onChangeStatus={changeStatus} onRenew={renew} />
+                  </div>
+                ))}
+              </Flex>
+            </section>
+          ))}
+        </Flex>
+      ))}
+
+      {!mobile && <Flex gap={16} align="flex-start" className="expiry-calendar-layout">
         <Card size="small" style={{ flex: 1, minWidth: 0 }} loading={!selected}>
           <Calendar
             className="expiry-calendar"
@@ -178,32 +201,13 @@ export function ExpiryCalendarPage() {
             <Flex vertical gap={10}>
               {selectedItems.map((i) => (
                 <div key={`${i.targetType}-${i.targetId}`} className="expiry-day-item">
-                  <Flex align="center" gap={6} wrap>
-                    <DdayBadge daysLeft={i.daysLeft} status={i.expiryStatus} />
-                    <Tag color={i.targetType === 'CONTRACT' ? 'blue' : 'cyan'}>{label('targetType', i.targetType)}</Tag>
-                    <Typography.Link strong onClick={() => navigate(`/suppliers/${i.supplierId}`)}>{i.supplierName}</Typography.Link>
-                  </Flex>
-                  <div style={{ margin: '6px 0' }}>
-                    {i.name}
-                    <Typography.Text type="secondary" className="num" style={{ marginInlineStart: 6, fontSize: 12 }}>{i.number}</Typography.Text>
-                  </div>
-                  <Flex align="center" justify="space-between" gap={8}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>담당 {i.ownerName ?? '미지정'}</Typography.Text>
-                    {canEdit ? (
-                      <Flex align="center" gap={4}>
-                        <RenewalStatusSelect value={i.renewalStatus} onChange={(s) => changeStatus(i, s)} />
-                        <Button size="small" type="primary" ghost icon={<SyncOutlined />} onClick={() => renew(i)}>갱신 등록</Button>
-                      </Flex>
-                    ) : (
-                      <RenewalStatusTag status={i.renewalStatus} />
-                    )}
-                  </Flex>
+                  <ExpiryCard item={i} canEdit={canEdit} onChangeStatus={changeStatus} onRenew={renew} />
                 </div>
               ))}
             </Flex>
           )}
         </Card>
-      </Flex>
+      </Flex>}
 
       {modals}
     </>

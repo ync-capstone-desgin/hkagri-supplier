@@ -4,17 +4,27 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
+import com.hankooknongsan.supplier.common.SupplierDeletedEvent;
+import com.hankooknongsan.supplier.common.SupplierPurgedEvent;
+import com.hankooknongsan.supplier.common.SupplierRestoredEvent;
+import com.hankooknongsan.supplier.common.TargetDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetPurgedEvent;
+import com.hankooknongsan.supplier.common.TargetRestoredEvent;
+import com.hankooknongsan.supplier.common.TargetType;
 import com.hankooknongsan.supplier.file.FileDtos.DeletedFile;
 import com.hankooknongsan.supplier.file.FileDtos.Download;
 import com.hankooknongsan.supplier.file.FileDtos.FileInfo;
+import com.hankooknongsan.supplier.file.FileDtos.FileSearchItem;
 import com.hankooknongsan.supplier.file.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +50,89 @@ public class FileService {
     private final FileStorage storage;
     private final FilePolicy policy;
     private final AppClock clock;
+
+    /** 계약·인증이 삭제되면 그 건의 첨부도 함께 삭제한다 (#44). 삭제 이력은 남는다. */
+    @EventListener
+    @Transactional
+    public void onTargetDeleted(TargetDeletedEvent event) {
+        var attached = event.targetType() == TargetType.CONTRACT
+                ? files.findByContractIdAndDeletedAtIsNullOrderByCreatedAtDesc(event.targetId())
+                : files.findByCertificationIdAndDeletedAtIsNullOrderByCreatedAtDesc(event.targetId());
+        deleteAll(attached, event.deletedBy());
+    }
+
+    /** 협력업체가 삭제되면 그 업체에 올린 일반 자료도 함께 삭제한다 (#44). */
+    @EventListener
+    @Transactional
+    public void onSupplierDeleted(SupplierDeletedEvent event) {
+        deleteAll(files.findBySupplierIdAndDeletedAtIsNull(event.supplierId()), event.deletedBy());
+    }
+
+    /** 계약·인증을 되살리면 삭제할 때 함께 지워진 첨부도 되살린다 (#72). */
+    @EventListener
+    @Transactional
+    public void onTargetRestored(TargetRestoredEvent event) {
+        if (event.targetType() == TargetType.CONTRACT) {
+            files.undeleteWithContract(event.targetId());
+        } else {
+            files.undeleteWithCertification(event.targetId());
+        }
+    }
+
+    /** 협력업체를 되살리면 삭제할 때 함께 지워진 일반 자료도 되살린다 (#72). */
+    @EventListener
+    @Transactional
+    public void onSupplierRestored(SupplierRestoredEvent event) {
+        files.undeleteWithSupplier(event.supplierId());
+    }
+
+    /** 계약·인증을 영구삭제하면 그 건의 첨부를 DB와 저장소에서 모두 지운다 (#77). */
+    @EventListener
+    @Transactional
+    public void onTargetPurged(TargetPurgedEvent event) {
+        boolean contract = event.targetType() == TargetType.CONTRACT;
+        purge(contract ? event.targetId() : null, contract ? null : event.targetId(), null);
+    }
+
+    /** 협력업체를 영구삭제하면 업체 자료를 DB와 저장소에서 모두 지운다 (#77). */
+    @EventListener
+    @Transactional
+    public void onSupplierPurged(SupplierPurgedEvent event) {
+        purge(null, null, event.supplierId());
+    }
+
+    /** 영구삭제하면 함께 없어질 파일 수 (삭제된 것 포함). 확인 창에 보여 준다. 셋 중 하나만 준다. */
+    public long purgeCount(Long contractId, Long certificationId, Long supplierId) {
+        return files.findStorageKeysOf(contractId, certificationId, supplierId).size();
+    }
+
+    /**
+     * 딸린 파일의 기록을 지우고, 그 삭제가 확정(커밋)된 뒤에 저장소의 내용을 지운다.
+     * 저장소에서 지우다 실패하면 주인 없는 파일만 남고 업무 자료는 어긋나지 않으므로 경고만 남긴다.
+     */
+    private void purge(Long contractId, Long certificationId, Long supplierId) {
+        List<String> keys = files.findStorageKeysOf(contractId, certificationId, supplierId);
+        files.purgeOf(contractId, certificationId, supplierId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                for (String key : keys) {
+                    try {
+                        storage.delete(key);
+                    } catch (RuntimeException e) {
+                        log.warn("영구삭제한 파일의 내용을 저장소에서 지우지 못했습니다: {}", key, e);
+                    }
+                }
+            }
+        });
+    }
+
+    /** 여러 파일에 지운 표시를 남긴다. 삭제 쿼리가 조회 결과를 비우므로 ID를 먼저 꺼내 둔다. */
+    private void deleteAll(List<StoredFile> targets, String deletedBy) {
+        for (Long id : targets.stream().map(StoredFile::getId).toList()) {
+            delete(id, deletedBy);
+        }
+    }
 
     /**
      * 파일을 올린다.
@@ -77,6 +170,11 @@ public class FileService {
     /** 삭제한 파일 목록(삭제 이력)을 최근에 지운 순으로 조회한다. (관리자용) */
     public PageResponse<DeletedFile> deletedHistory(Pageable pageable) {
         return PageResponse.of(files.findByDeletedAtIsNotNullOrderByDeletedAtDesc(pageable), DeletedFile::of);
+    }
+
+    /** 업체 자료·계약·인증 첨부·양식 자료실 파일을 검색어와 자료 종류로 한 번에 찾는다 (#53, #54). */
+    public PageResponse<FileSearchItem> search(String keyword, Long categoryId, Pageable pageable) {
+        return PageResponse.of(files.search(keyword == null ? "" : keyword.trim(), categoryId, pageable), FileSearchItem::of);
     }
 
     /** 파일 정보를 조회한다. 없으면 404. */

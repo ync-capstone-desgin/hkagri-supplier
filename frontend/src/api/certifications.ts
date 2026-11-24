@@ -30,6 +30,11 @@ export async function updateCertType(code: string, name: string): Promise<CertTy
   return (await api.put(`/admin/cert-types/${encodeURIComponent(code)}`, { name })).data
 }
 
+/** 인증 종류를 필수 인증으로 정하거나 해제한다. (관리자 전용) */
+export async function changeCertTypeRequired(code: string, required: boolean): Promise<CertType> {
+  return (await api.patch(`/admin/cert-types/${encodeURIComponent(code)}/required`, { required })).data
+}
+
 /** 이름 변경과 독립적으로 사용 여부만 바꾼다. */
 export async function changeCertTypeActive(code: string, active: boolean): Promise<CertType> {
   return (await api.patch(`/admin/cert-types/${encodeURIComponent(code)}/active`, { active })).data
@@ -63,6 +68,11 @@ export async function renewCertification(id: number, req: CertificationRequest):
 /** 인증의 갱신 처리상태만 바꾼다. */
 export async function changeCertificationRenewalStatus(id: number, renewalStatus: RenewalStatus): Promise<CertificationItem> {
   return (await api.patch(`/certifications/${id}/renewal-status`, { renewalStatus })).data
+}
+
+/** 인증을 삭제한다. 갱신으로 등록한 인증이면 이전 인증이 다시 현재 인증이 된다. */
+export async function deleteCertification(id: number): Promise<void> {
+  await api.delete(`/certifications/${id}`)
 }
 
 /** 현재 검색조건의 인증 목록을 엑셀로 내려받는다. */

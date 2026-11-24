@@ -6,6 +6,7 @@ import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.file.FileDtos.DeletedFile;
 import com.hankooknongsan.supplier.file.FileDtos.Download;
 import com.hankooknongsan.supplier.file.FileDtos.FileInfo;
+import com.hankooknongsan.supplier.file.FileDtos.FileSearchItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
@@ -42,6 +43,15 @@ public class FileController {
         return service.upload(file);
     }
 
+    /** 전체 자료를 검색한다. 로그인한 모든 사용자가 쓸 수 있다. 검색어가 없으면 최신순 전체다. */
+    @GetMapping("/api/files/search")
+    public PageResponse<FileSearchItem> search(@RequestParam(required = false) String keyword,
+                                               @RequestParam(required = false) Long categoryId,
+                                               @RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "20") int size) {
+        return service.search(keyword, categoryId, PageRequest.of(page, size));
+    }
+
     /** 파일 정보(이름·크기·올린 사람)를 조회한다. */
     @GetMapping("/api/files/{id}")
     public FileInfo get(@PathVariable Long id) {
@@ -67,6 +77,14 @@ public class FileController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id, Authentication auth) {
         service.delete(id, auth.getName());
+    }
+
+    /** 계약·인증·협력업체를 영구삭제하면 함께 없어질 파일 수. 셋 중 하나만 준다. (관리자 전용, #77) */
+    @GetMapping("/api/admin/files/purge-count")
+    public long purgeCount(@RequestParam(required = false) Long contractId,
+                           @RequestParam(required = false) Long certificationId,
+                           @RequestParam(required = false) Long supplierId) {
+        return service.purgeCount(contractId, certificationId, supplierId);
     }
 
     /** 삭제한 파일 목록(삭제 이력)을 최근에 지운 순으로 조회한다. (관리자 전용) */

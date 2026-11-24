@@ -1,7 +1,9 @@
 package com.hankooknongsan.supplier.certification;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
@@ -9,14 +11,21 @@ import com.hankooknongsan.supplier.certification.CertificationDtos.CertTypeItem;
 import com.hankooknongsan.supplier.certification.CertificationDtos.CertificationItem;
 import com.hankooknongsan.supplier.certification.CertificationDtos.CertificationRequest;
 import com.hankooknongsan.supplier.certification.CertificationDtos.Saved;
+import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.RenewalStatus;
+import com.hankooknongsan.supplier.history.ChangeAction;
+import com.hankooknongsan.supplier.history.ChangeLogService;
+import com.hankooknongsan.supplier.history.ChangeTarget;
 import com.hankooknongsan.supplier.supplier.Supplier;
 import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
 import com.hankooknongsan.supplier.common.RenewalClosedEvent;
+import com.hankooknongsan.supplier.common.TargetDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetPurgedEvent;
+import com.hankooknongsan.supplier.common.TargetRestoredEvent;
 import com.hankooknongsan.supplier.common.TargetType;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +47,8 @@ public class CertificationService {
     private final AppUserRepository users;
     private final ExpiryPolicy policy;
     private final ApplicationEventPublisher events;
+    private final AppClock clock;
+    private final ChangeLogService history;
 
     /** 인증 종류 목록을 표시 순서대로 조회한다. */
     public List<CertTypeItem> certTypes() {
@@ -66,6 +77,7 @@ public class CertificationService {
         Certification x = new Certification(supplierService.find(req.supplierId()));
         List<String> warnings = apply(x, req, null);
         certifications.save(x);
+        log(x, ChangeAction.CREATE, Map.of(), snapshot(x));
         return new Saved(toItem(x), warnings);
     }
 
@@ -73,8 +85,10 @@ public class CertificationService {
     @Transactional
     public Saved update(Long id, CertificationRequest req) {
         Certification x = find(id);
+        Map<String, String> before = snapshot(x);
         List<String> warnings = apply(x, req, id);
         certifications.flush();
+        log(x, ChangeAction.UPDATE, before, snapshot(x));
         return new Saved(toItem(x), warnings);
     }
 
@@ -91,7 +105,9 @@ public class CertificationService {
         if (!x.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 인증은 처리상태를 바꿀 수 없습니다.");
         }
+        Map<String, String> before = Map.of("갱신 처리상태", x.getRenewalStatus().label());
         x.changeRenewalStatus(status);
+        log(x, ChangeAction.STATUS, before, Map.of("갱신 처리상태", status.label()));
         if (status.closed()) {
             events.publishEvent(new RenewalClosedEvent(TargetType.CERTIFICATION, id));
         }
@@ -110,6 +126,7 @@ public class CertificationService {
         if (!old.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 인증입니다.");
         }
+        Map<String, String> before = snapshot(old);
         old.markRenewed();
         events.publishEvent(new RenewalClosedEvent(TargetType.CERTIFICATION, old.getId()));
         certifications.flush();
@@ -117,7 +134,92 @@ public class CertificationService {
         List<String> warnings = apply(renewed, req, null);
         renewed.linkPrevious(old);
         certifications.save(renewed);
+        log(renewed, ChangeAction.RENEW, before, snapshot(renewed));
         return new Saved(toItem(renewed), warnings);
+    }
+
+    /**
+     * 인증을 삭제한다 (#44). 지운 표시만 남기고, 알림과 첨부는 이벤트로 함께 정리한다.
+     * 갱신으로 등록한 건이면 이전 인증이 다시 현재 인증이 된다. 이전 이력은 직접 지울 수 없어 409로 막는다.
+     */
+    @Transactional
+    public void delete(Long id, String actor) {
+        Certification target = find(id);
+        if (!target.isActive()) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "이전 이력은 삭제할 수 없습니다. 현재 인증을 삭제하면 이전 인증이 다시 현재 인증이 됩니다.");
+        }
+        target.delete(actor, clock.now());
+        if (target.getPrev() != null) {
+            target.getPrev().restore();
+        }
+        certifications.flush();
+        log(target, ChangeAction.DELETE, Map.of(), Map.of());
+        events.publishEvent(new TargetDeletedEvent(TargetType.CERTIFICATION, id, actor));
+    }
+
+    /**
+     * 삭제한 인증을 되살린다 (#72, 관리자 전용). 삭제할 때 함께 지워진 첨부도 되살린다.
+     * 갱신으로 등록했던 건이면, 삭제 때 다시 현재 건이 됐던 이전 인증을 "갱신완료" 이력으로 돌려놓는다.
+     * 협력업체가 삭제된 상태이거나 이전 인증이 그 사이 다시 갱신·삭제되었으면 409로 막는다.
+     */
+    @Transactional
+    public void restore(Long id) {
+        if (certifications.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 인증");
+        }
+        if (certifications.countDeletedSupplier(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT, "협력업체가 삭제된 상태입니다. 협력업체를 먼저 되살려 주세요.");
+        }
+        if (certifications.countUnavailablePrev(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "이전 인증이 그 사이 다시 갱신되었거나 삭제되어 되살릴 수 없습니다. 이전 인증을 현재 인증으로 돌려놓은 뒤 다시 시도해 주세요.");
+        }
+        // 파일은 인증의 지운 시각과 비교해 되살리므로 지운 표시를 지우기 전에 알린다.
+        events.publishEvent(new TargetRestoredEvent(TargetType.CERTIFICATION, id));
+        certifications.undelete(id);
+        Certification target = find(id);
+        if (target.getPrev() != null) {
+            target.getPrev().markRenewed();
+            events.publishEvent(new RenewalClosedEvent(TargetType.CERTIFICATION, target.getPrev().getId()));
+        }
+        log(target, ChangeAction.RESTORE, Map.of(), Map.of());
+    }
+
+    /**
+     * 삭제된 인증을 영구삭제한다 (#77, 관리자 전용). 되돌릴 수 없다.
+     * 첨부는 이벤트로 DB와 저장소에서 함께 지우고, 영구삭제했다는 사실만 변경 이력에 남긴다.
+     */
+    @Transactional
+    public void purge(Long id) {
+        if (certifications.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 인증");
+        }
+        events.publishEvent(new TargetPurgedEvent(TargetType.CERTIFICATION, id));
+        certifications.detachPrev(id);
+        certifications.purge(id);
+        history.recordPurge(ChangeTarget.CERTIFICATION, id);
+    }
+
+    /** 인증의 변경 이력을 남긴다 (#45). */
+    private void log(Certification x, ChangeAction action, Map<String, String> before, Map<String, String> after) {
+        history.record(ChangeTarget.CERTIFICATION, x.getId(), x.getSupplier().getId(), x.getSupplier().getName(),
+                x.getDisplayName(), action, before, after);
+    }
+
+    /** 변경 이력 비교용으로 인증의 현재 값을 화면 항목 이름과 함께 뽑는다. */
+    private static Map<String, String> snapshot(Certification x) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("업체", x.getSupplier().getName());
+        m.put("인증 종류", x.getCertType().getName());
+        m.put("인증번호", x.getCertificateNumber());
+        m.put("적용 대상", x.getScope());
+        m.put("발급일", String.valueOf(x.getIssuedDate()));
+        m.put("만료일", x.getExpiryDate() == null ? "없음" : x.getExpiryDate().toString());
+        m.put("담당자", x.getOwner() == null ? null : x.getOwner().getName());
+        m.put("문서 링크", x.getDocumentUrl());
+        m.put("비고", x.getMemo());
+        return m;
     }
 
     /** ID로 인증 엔티티를 찾는다. */

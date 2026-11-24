@@ -12,6 +12,7 @@ import { DataGrid } from '../../components/DataGrid'
 import { DdayBadge, URGENCY_COLOR } from '../../components/DdayBadge'
 import { RenewalStatusTag } from '../../components/RenewalStatusTag'
 import { useCodes } from '../../hooks/useCodes'
+import { ExpiryCard } from '../expiry/ExpiryCard'
 
 /** 클릭하면 관련 화면으로 이동하는 숫자 카드 */
 function KpiCard({ title, value, sub, icon, onClick }: {
@@ -22,7 +23,7 @@ function KpiCard({ title, value, sub, icon, onClick }: {
   onClick: () => void
 }) {
   return (
-    <Card hoverable size="small" onClick={onClick} styles={{ body: { padding: 16 } }}>
+    <Card hoverable size="small" onClick={onClick} style={{ height: '100%' }} styles={{ body: { padding: 16 } }}>
       <Flex justify="space-between" align="flex-start">
         <div>
           <Typography.Text type="secondary">{title}</Typography.Text>
@@ -101,7 +102,16 @@ export function DashboardPage() {
 
       <Row gutter={[12, 12]}>
         <Col xs={24} md={12} lg={6}>
-          <KpiCard title="협력업체" value={data.supplierTotal} sub={`거래중 ${data.supplierActive}곳`} icon={<ShopOutlined />} onClick={() => navigate('/suppliers')} />
+          <KpiCard title="협력업체" value={data.supplierTotal} icon={<ShopOutlined />} onClick={() => navigate('/suppliers')}
+            sub={<>
+              거래중 {data.supplierActive}곳
+              {data.certExpiredSuppliers > 0 && (
+                <Typography.Link type="danger" strong style={{ marginInlineStart: 8 }}
+                  onClick={(e) => { e.stopPropagation(); navigate('/suppliers?certExpired=1') }}>
+                  인증 만료 {data.certExpiredSuppliers}곳
+                </Typography.Link>
+              )}
+            </>} />
         </Col>
         <Col xs={24} md={12} lg={6}>
           <KpiCard title="유효 계약" value={data.activeContracts} icon={<FileTextOutlined />} onClick={() => navigate('/contracts')} />
@@ -115,13 +125,14 @@ export function DashboardPage() {
       </Row>
 
       <Card size="small" title="만료 현황" extra={<Typography.Text type="secondary" style={{ fontSize: 12 }}>숫자를 누르면 해당 목록이 열립니다</Typography.Text>}>
-        <Row gutter={[12, 12]}>
-          <Col xs={24} md={8} xl={4}><BucketTile label="만료됨" value={data.expired} color={URGENCY_COLOR.expired} hint="즉시 확인" onClick={() => openExpiries('EXPIRED')} /></Col>
-          <Col xs={24} md={8} xl={5}><BucketTile label="7일 이내" value={data.within7} color={URGENCY_COLOR.d7} hint="오늘 포함" onClick={() => openExpiries('D7')} /></Col>
-          <Col xs={24} md={8} xl={5}><BucketTile label="30일 이내" value={data.within30} color={URGENCY_COLOR.d30} hint="7일 이내 포함" onClick={() => openExpiries('D30')} /></Col>
-          <Col xs={24} md={8} xl={5}><BucketTile label="90일 이내" value={data.within90} color={URGENCY_COLOR.d90} hint="30일 이내 포함" onClick={() => openExpiries('D90')} /></Col>
-          <Col xs={24} md={8} xl={5}><BucketTile label="확인 필요" value={data.unknown} color={URGENCY_COLOR.unknown} hint="만료일 미등록 인증" onClick={() => openExpiries('UNKNOWN')} /></Col>
-        </Row>
+        {/* 5칸은 24칸 틀로 똑같이 나눌 수 없어 같은 너비의 격자를 쓴다. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+          <BucketTile label="만료됨" value={data.expired} color={URGENCY_COLOR.expired} hint="즉시 확인" onClick={() => openExpiries('EXPIRED')} />
+          <BucketTile label="7일 이내" value={data.within7} color={URGENCY_COLOR.d7} hint="오늘 포함" onClick={() => openExpiries('D7')} />
+          <BucketTile label="30일 이내" value={data.within30} color={URGENCY_COLOR.d30} hint="7일 이내 포함" onClick={() => openExpiries('D30')} />
+          <BucketTile label="90일 이내" value={data.within90} color={URGENCY_COLOR.d90} hint="30일 이내 포함" onClick={() => openExpiries('D90')} />
+          <BucketTile label="확인 필요" value={data.unknown} color={URGENCY_COLOR.unknown} hint="만료일 미등록 인증" onClick={() => openExpiries('UNKNOWN')} />
+        </div>
         <Flex className="dashboard-progress" align="center" gap={12} style={{ marginTop: 14 }}>
           <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
             조치 대상 {actionable}건 중 갱신진행 <b>{data.inProgress}</b> · 미착수 <b>{data.notStarted}</b>
@@ -131,7 +142,8 @@ export function DashboardPage() {
       </Card>
 
       <Card size="small" title="가장 급한 항목" extra={<Typography.Link onClick={() => openExpiries('D30')}>전체 보기 <RightOutlined /></Typography.Link>}>
-        <DataGrid rows={data.urgent} columns={columns} rowId={(r) => `${r.targetType}-${r.targetId}`} paginate={false} height={400} />
+        <DataGrid rows={data.urgent} columns={columns} rowId={(r) => `${r.targetType}-${r.targetId}`} paginate={false} height={400}
+          renderCard={(item) => <ExpiryCard item={item} canEdit={false} showDate />} />
       </Card>
     </Flex>
   )

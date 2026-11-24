@@ -33,10 +33,10 @@ public final class CertificationDtos {
     }
 
     /** 인증 종류 선택상자용 */
-    public record CertTypeItem(String code, String name, boolean active) {
+    public record CertTypeItem(String code, String name, boolean active, boolean required) {
         /** 입력 화면이 신규 선택 가능 여부를 판별할 수 있게 한다. */
         static CertTypeItem of(CertType type) {
-            return new CertTypeItem(type.getCode(), type.getName(), type.isActive());
+            return new CertTypeItem(type.getCode(), type.getName(), type.isActive(), type.isRequired());
         }
     }
 

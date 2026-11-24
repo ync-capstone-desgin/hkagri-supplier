@@ -3,13 +3,12 @@ import { Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Tabs, Tag,
 import { useQuery } from '@tanstack/react-query'
 import { fetchAdminUsers } from '../api/userAdmin'
 import { IdcardOutlined, LogoutOutlined, MenuOutlined, UserOutlined } from '@ant-design/icons'
-import { Outlet, useNavigate } from 'react-router'
+import { Link, Outlet, useNavigate } from 'react-router'
 import { useAuth } from './AuthContext'
 import { ClockIndicator } from './ClockIndicator'
 import { NotificationBell } from './NotificationBell'
 import { findMenu, MENU } from './menu'
 import { useTabs } from './TabsContext'
-import { BRAND } from './theme'
 import { useCodes } from '../hooks/useCodes'
 
 const { Header, Sider, Content } = Layout
@@ -52,49 +51,60 @@ export function AppLayout() {
     navigate('/login', { replace: true })
   }
 
-  const menuItems = MENU.filter((m) => !m.adminOnly || me?.role === 'ADMIN').map((m) => ({
-    key: m.path, icon: m.icon, disabled: m.planned,
-    label: <span>
-      {m.label}
-      {m.path === '/users' && <Badge count={adminUsers?.pendingCount ?? 0} style={{ marginInlineStart: 6 }} />}
-      {m.planned && <Tag variant="filled" style={{ marginInlineStart: 6, fontSize: 11 }}>예정</Tag>}
-    </span>,
-  }))
+  // 보이는 메뉴를 묶음별로 모아 구분 제목을 붙인다 (#65). 묶음이 없는 항목은 제목 없이 그대로 둔다.
+  const menuItems: NonNullable<MenuProps['items']> = []
+  for (const m of MENU.filter((entry) => !entry.adminOnly || me?.role === 'ADMIN')) {
+    const item = {
+      key: m.path, icon: m.icon, disabled: m.planned,
+      label: <span>
+        {m.label}
+        {m.path === '/users' && <Badge count={adminUsers?.pendingCount ?? 0} style={{ marginInlineStart: 6 }} />}
+        {m.planned && <Tag variant="filled" style={{ marginInlineStart: 6, fontSize: 11 }}>예정</Tag>}
+      </span>,
+    }
+    const last = menuItems[menuItems.length - 1]
+    if (!m.group) menuItems.push(item)
+    else if (last && 'type' in last && last.type === 'group' && last.key === m.group) last.children!.push(item)
+    else menuItems.push({ type: 'group', key: m.group, label: m.group, children: [item] })
+  }
 
   return (
     <Layout className="app-layout">
       <Header className="app-header">
-        {showDrawerMenu && <DrawerMenu key={activePath} items={menuItems} selectedPath={activeMenu?.path} />}
-        <img className="app-logo" src="/favicon.svg" width={28} height={28} alt="" />
-        <Typography.Text className="app-brand" strong style={{ color: BRAND }}>
+        <div className="app-header-start">
+          <Link className="app-home-link" to="/dashboard" aria-label="한국농산 대시보드">
+            <img src="/hkagri-logo.png" width={144} height={42} alt="한국농산" />
+          </Link>
+          {showDrawerMenu && <DrawerMenu key={activePath} items={menuItems} selectedPath={activeMenu?.path} />}
+        </div>
+        <span className="app-brand">
           협력업체 통합관리
-        </Typography.Text>
-        <Tag className="app-demo-tag" color="green" style={{ marginInlineStart: 4 }}>
-          PoC
-        </Tag>
-        <div className="app-header-spacer" />
-        <div className="app-clock"><ClockIndicator /></div>
-        <NotificationBell mobile={mobile} />
-        <Dropdown
-          trigger={mobile ? ['click'] : ['hover', 'click']}
-          menu={{
-            items: [
-              { key: 'mypage', icon: <IdcardOutlined />, label: '마이페이지', onClick: () => navigate('/mypage') },
-              { type: 'divider' },
-              { key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout },
-            ],
-          }}
-        >
-          <button type="button" className="app-user-menu" aria-label={`사용자 메뉴: ${me?.name} (${label('role', me?.role)})`}>
-            <Avatar size="small" icon={<UserOutlined />} style={{ background: BRAND }} />
-            <span className="app-user-label" style={{ whiteSpace: 'nowrap' }}>
-              {me?.name} <Typography.Text type="secondary">({label('role', me?.role)})</Typography.Text>
-            </span>
-          </button>
-        </Dropdown>
+        </span>
+        <div className="app-header-tools">
+          <div className="app-clock"><ClockIndicator /></div>
+          <NotificationBell mobile={mobile} />
+          <Dropdown
+            trigger={mobile ? ['click'] : ['hover', 'click']}
+            menu={{
+              items: [
+                { key: 'mypage', icon: <IdcardOutlined />, label: '마이페이지', onClick: () => navigate('/mypage') },
+                { type: 'divider' },
+                { key: 'logout', icon: <LogoutOutlined />, label: '로그아웃', onClick: handleLogout },
+              ],
+            }}
+          >
+            <button type="button" className="app-user-menu" aria-label={`사용자 메뉴: ${me?.name} (${label('role', me?.role)})`}>
+              <Avatar size="small" icon={<UserOutlined />} style={{ background: '#222' }} />
+              <span className="app-user-label" style={{ whiteSpace: 'nowrap' }}>
+                {me?.name} <Typography.Text type="secondary">({label('role', me?.role)})</Typography.Text>
+              </span>
+            </button>
+          </Dropdown>
+        </div>
       </Header>
       <Layout style={{ minHeight: 0 }}>
-        {!showDrawerMenu && <Sider width={200} style={{ borderRight: '1px solid #e5e7eb' }}>
+        {/* 구분 제목만큼 메뉴가 길어져, 창이 낮으면 넘치는 만큼 사이드바 안에서 스크롤한다. */}
+        {!showDrawerMenu && <Sider width={200} style={{ borderRight: '1px solid #e5e7eb', overflowY: 'auto' }}>
           <Menu
             mode="inline"
             selectedKeys={activeMenu ? [activeMenu.path] : []}

@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { App, Button, Card, Empty, Flex, Segmented, Select, Skeleton, Tag, Tooltip, Typography } from 'antd'
+import { App, Button, Card, Empty, Flex, Grid, Segmented, Select, Skeleton, Tag, Tooltip, Typography } from 'antd'
 import { CheckOutlined, CloseCircleOutlined, ClockCircleOutlined, MailOutlined, DesktopOutlined, ShopOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { toProblem } from '../../api/client'
 import { changeNotificationAction, fetchInbox, markAllRead } from '../../api/notifications'
 import type { ActionStatus, DeliveryItem, NotificationItem } from '../../api/types'
+import { ChipTabs } from '../../components/ChipTabs'
 import { DdayBadge } from '../../components/DdayBadge'
 import { formatDateTime } from '../../components/format'
 import { useCodes } from '../../hooks/useCodes'
@@ -44,6 +45,7 @@ export function NotificationInboxPage() {
   const queryClient = useQueryClient()
   const { options, label } = useCodes()
   const [tab, setTab] = useState<InboxTab>('UNREAD')
+  const mobile = Grid.useBreakpoint().md === false
   const { data, isLoading } = useQuery({
     queryKey: ['notifications', 'inbox', tab],
     queryFn: () => fetchInbox(tab === 'ALL' ? undefined : tab),
@@ -64,10 +66,10 @@ export function NotificationInboxPage() {
     }
   }
 
-  /** 업체 상세로 이동한다. 미확인이면 확인 처리한다. */
+  /** 알림 대상(계약·인증) 탭이 열린 업체 상세로 이동한다. 미확인이면 확인 처리한다. */
   const openSupplier = (n: NotificationItem) => {
     if (n.actionStatus === 'UNREAD') changeAction(n, 'READ', true)
-    navigate(`/suppliers/${n.supplierId}`)
+    navigate(`/suppliers/${n.supplierId}?tab=${n.targetType === 'CONTRACT' ? 'contracts' : 'certifications'}`)
   }
 
   /** 미확인 알림을 모두 확인 처리한다. */
@@ -77,21 +79,21 @@ export function NotificationInboxPage() {
     message.success(`${updated}건을 확인 처리했습니다.`)
   }
 
+  /** 처리상태 탭과 탭별 건수 */
+  const tabOptions: { value: InboxTab; label: string }[] = [
+    { value: 'UNREAD', label: `미확인 ${countOf('UNREAD')}` },
+    { value: 'READ', label: `확인 ${countOf('READ')}` },
+    { value: 'IN_PROGRESS', label: `처리중 ${countOf('IN_PROGRESS')}` },
+    { value: 'DONE', label: `완료 ${countOf('DONE')}` },
+    { value: 'ALL', label: `전체 ${all?.totalElements ?? 0}` },
+  ]
+
   return (
     <Card>
       <Flex justify="space-between" align="center" wrap gap={8} style={{ marginBottom: 12 }}>
-        <Segmented<InboxTab>
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'UNREAD', label: `미확인 ${countOf('UNREAD')}` },
-            { value: 'READ', label: `확인 ${countOf('READ')}` },
-            { value: 'IN_PROGRESS', label: `처리중 ${countOf('IN_PROGRESS')}` },
-            { value: 'DONE', label: `완료 ${countOf('DONE')}` },
-            { value: 'ALL', label: `전체 ${all?.totalElements ?? 0}` },
-          ]}
-        />
-        <Flex gap={8} align="center">
+        {/* 휴대폰에서는 탭 5개가 한 줄에 안 들어가므로 여러 줄로 놓을 수 있는 단추 묶음을 쓴다. */}
+        {mobile ? <ChipTabs value={tab} onChange={setTab} options={tabOptions} /> : <Segmented<InboxTab> value={tab} onChange={setTab} options={tabOptions} />}
+        <Flex gap={8} align="center" wrap>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>만료일이 가까운 순 · 갱신이 등록되면 자동으로 완료됩니다.</Typography.Text>
           <Button onClick={handleReadAll} disabled={countOf('UNREAD') === 0}>모두 확인</Button>
         </Flex>
@@ -105,7 +107,7 @@ export function NotificationInboxPage() {
             <Flex key={n.id} gap={12} align="flex-start" wrap
               style={{ background: n.actionStatus === 'UNREAD' ? '#fffbe6' : '#fff', border: '1px solid #f0f0f0', padding: '12px 14px', borderRadius: 6 }}>
               <DdayBadge daysLeft={n.daysLeft} status={n.daysLeft != null && n.daysLeft < 0 ? 'EXPIRED' : 'IMMINENT'} />
-              <div style={{ flex: 1, minWidth: 260 }}>
+              <div style={{ flex: 1, minWidth: 'min(260px, 100%)' }}>
                 <Flex align="center" gap={8} wrap>
                   <Typography.Text strong={n.actionStatus === 'UNREAD'}>{n.title.replace(/^\[[^\]]+\]\s*/, '')}</Typography.Text>
                   <Tag color={ACTION_COLOR[n.actionStatus]}>{label('actionStatus', n.actionStatus)}</Tag>
@@ -118,7 +120,7 @@ export function NotificationInboxPage() {
                   {n.deliveries.map((d) => <DeliveryMark key={d.channel} d={d} />)}
                 </Flex>
               </div>
-              <Flex gap={8} align="center">
+              <Flex gap={8} align="center" wrap>
                 <Button size="small" icon={<ShopOutlined />} onClick={() => openSupplier(n)}>업체 보기</Button>
                 <Select<ActionStatus> size="small" style={{ width: 100 }} value={n.actionStatus}
                   options={options('actionStatus')} onChange={(s) => changeAction(n, s)} />

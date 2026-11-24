@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { App, Button, Flex, Tag, Tooltip, Typography } from 'antd'
-import { EditOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
 import { useNavigate } from 'react-router'
-import { changeContractRenewalStatus } from '../../api/contracts'
+import { changeContractRenewalStatus, deleteContract } from '../../api/contracts'
 import { toProblem } from '../../api/client'
 import { fetchContractFileCounts, fetchContractFiles } from '../../api/files'
 import type { ContractItem, RenewalStatus } from '../../api/types'
@@ -28,7 +28,7 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
   height?: number
 }) {
   const navigate = useNavigate()
-  const { message } = App.useApp()
+  const { message, modal: confirmModal } = App.useApp()
   const queryClient = useQueryClient()
   const { canEdit } = useAuth()
   const [modal, setModal] = useState<{ mode: ContractFormMode; contract: ContractItem }>()
@@ -39,11 +39,30 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
   const handleStatusChange = async (row: ContractItem, status: RenewalStatus) => {
     try {
       await changeContractRenewalStatus(row.id, status)
-      await Promise.all(['contracts', 'expiries', 'dashboard'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
+      await Promise.all(['contracts', 'expiries', 'dashboard', 'changes'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
       message.success(`${row.contractNumber || row.title} 처리상태를 변경했습니다.`)
     } catch (e) {
       message.error(toProblem(e).detail)
     }
+  }
+
+  /** 삭제 전에 함께 사라지는 것을 알리고 확인받은 뒤 삭제한다. 갱신 건이면 이전 계약이 되살아난다. */
+  const confirmDelete = (row: ContractItem) => {
+    confirmModal.confirm({
+      title: '이 계약을 삭제하시겠습니까?',
+      content: `첨부 파일과 알림도 함께 삭제됩니다.${row.prevId ? ' 갱신 전 계약이 다시 현재 계약으로 돌아옵니다.' : ''}`,
+      okText: '삭제', okButtonProps: { danger: true }, cancelText: '취소',
+      onOk: async () => {
+        try {
+          await deleteContract(row.id)
+          await Promise.all(['contracts', 'expiries', 'dashboard', 'supplier', 'suppliers', 'supplier-files', 'notifications', 'changes']
+            .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+          message.success('계약을 삭제했습니다.')
+        } catch (e) {
+          message.error(toProblem(e).detail)
+        }
+      },
+    })
   }
 
   /** 그리드 컬럼 정의. 날짜·번호는 고정폭 숫자, 무기한은 글자로 표시한다. */
@@ -92,19 +111,58 @@ export function ContractGrid({ rows, loading, showSupplier = true, height }: {
     },
     { field: 'ownerName', headerName: '담당자', width: 100 },
     ...(canEdit ? [{
-      headerName: '작업', width: 150, sortable: false, pinned: 'right',
+      headerName: '작업', width: 215, sortable: false, pinned: 'right',
       cellRenderer: (p: { data: ContractItem }) => p.data.active && (
         <Flex gap={4}>
           <Button size="small" icon={<EditOutlined />} onClick={() => setModal({ mode: 'edit', contract: p.data })}>수정</Button>
           <Button size="small" icon={<SyncOutlined />} onClick={() => setModal({ mode: 'renew', contract: p.data })}>갱신</Button>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => confirmDelete(p.data)}>삭제</Button>
         </Flex>
       ),
     } as ColDef<ContractItem>] : []),
   ], [showSupplier, canEdit, navigate, counts.data])
 
+  /** 휴대폰 카드 한 장: D-day·업체명, 계약명·번호, 기간·담당자, 갱신 처리와 작업 버튼 순으로 보여준다. */
+  const renderCard = (row: ContractItem) => (
+    <>
+      <Flex align="center" gap={6} wrap>
+        {row.active ? <DdayBadge daysLeft={row.daysLeft} status={row.expiryStatus} /> : <Tag>이전</Tag>}
+        {showSupplier && (
+          <Typography.Link strong onClick={() => navigate(`/suppliers/${row.supplierId}`)}>{row.supplierName}</Typography.Link>
+        )}
+      </Flex>
+      <div style={{ margin: '6px 0' }}>
+        {row.title}
+        {row.documentUrl && (
+          <a href={row.documentUrl} target="_blank" rel="noreferrer" aria-label="계약서 열기" style={{ marginInlineStart: 6 }}><LinkOutlined /></a>
+        )}
+        <span style={{ marginInlineStart: 6 }}>
+          <AttachmentIcon count={counts.data?.[row.id] ?? 0} fetchFiles={() => fetchContractFiles(row.id)} />
+        </span>
+        <Typography.Text type="secondary" className="num" style={{ marginInlineStart: 6, fontSize: 12 }}>{row.contractNumber}</Typography.Text>
+      </div>
+      <Typography.Text type="secondary" className="num" style={{ display: 'block', marginBottom: 6, fontSize: 12 }}>
+        {row.startDate} ~ {row.endDate ?? '무기한'}{row.autoRenew && ' · 자동연장'} · 담당 {row.ownerName ?? '미지정'}
+      </Typography.Text>
+      <Flex align="center" gap={4} wrap>
+        {canEdit && row.active
+          ? <RenewalStatusSelect value={row.renewalStatus} onChange={(s) => handleStatusChange(row, s)} />
+          : <RenewalStatusTag status={row.renewalStatus} />}
+        {canEdit && row.active && (
+          <>
+            <Button size="small" icon={<EditOutlined />} onClick={() => setModal({ mode: 'edit', contract: row })}>수정</Button>
+            <Button size="small" icon={<SyncOutlined />} onClick={() => setModal({ mode: 'renew', contract: row })}>갱신</Button>
+            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => confirmDelete(row)}>삭제</Button>
+          </>
+        )}
+      </Flex>
+    </>
+  )
+
   return (
     <>
       <DataGrid rows={rows} columns={columns} loading={loading} height={height}
+        renderCard={renderCard} cardClassName={(row) => (row.active ? undefined : 'row-inactive')}
         rowClassRules={{ 'row-inactive': (p) => p.data?.active === false }}
         onRowDoubleClick={canEdit ? (row) => row.active && setModal({ mode: 'edit', contract: row }) : undefined} />
       <ContractFormModal open={!!modal} mode={modal?.mode ?? 'edit'} contract={modal?.contract} onClose={() => setModal(undefined)} />

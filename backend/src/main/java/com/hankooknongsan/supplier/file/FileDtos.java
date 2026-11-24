@@ -22,9 +22,10 @@ public final class FileDtos {
         }
     }
 
-    /** 업체 자료 목록의 한 행. 일반 자료는 계약·인증 정보가 null이다. */
+    /** 업체 자료 목록의 한 행. 일반 자료는 계약·인증 정보가 null이고, 종류를 붙이지 않았으면 종류도 null이다. */
     public record SupplierFile(FileInfo file, Long contractId, String contractName,
-                               Long certificationId, String certificationName) {
+                               Long certificationId, String certificationName,
+                               Long categoryId, String categoryName) {
         /** 파일 정보와 현재 연결된 계약·인증 이름을 함께 보여준다. */
         static SupplierFile of(StoredFile f) {
             var c = f.getContract();
@@ -32,7 +33,31 @@ public final class FileDtos {
             return new SupplierFile(FileInfo.of(f), c == null ? null : c.getId(),
                     c == null ? null : (c.getContractNumber().isEmpty() ? "" : c.getContractNumber() + " · ") + c.getTitle(),
                     cert == null ? null : cert.getId(),
-                    cert == null ? null : cert.getDisplayName() + " · " + cert.getCertificateNumber());
+                    cert == null ? null : cert.getDisplayName() + " · " + cert.getCertificateNumber(),
+                    f.getCategory() == null ? null : f.getCategory().getId(),
+                    f.getCategory() == null ? null : f.getCategory().getName());
+        }
+    }
+
+    /**
+     * 전체 자료 검색 결과의 한 행 (#53). 파일이 어디에 있는지와, 그곳으로 이동하는 데 필요한 ID를 함께 준다.
+     * location은 "업체 자료"·"계약 첨부"·"인증 첨부"·"양식 자료실" 중 하나다. 해당하지 않는 항목은 null이다.
+     */
+    public record FileSearchItem(FileInfo file, String location, Long supplierId, String supplierName,
+                                 String contractName, String certificationName, String categoryName,
+                                 Long formId, String formTitle, Long folderId) {
+        /** 검색 결과 한 행을 응답 형식으로 바꾼다. 업체는 파일이 직접 또는 계약·인증을 거쳐 속한 업체다. */
+        static FileSearchItem of(StoredFileRepository.FileHit hit) {
+            StoredFile f = hit.getFile();
+            SupplierFile linked = SupplierFile.of(f);
+            var supplier = f.getContract() != null ? f.getContract().getSupplier()
+                    : f.getCertification() != null ? f.getCertification().getSupplier() : f.getSupplier();
+            String location = f.getContract() != null ? "계약 첨부" : f.getCertification() != null ? "인증 첨부"
+                    : supplier != null ? "업체 자료" : "양식 자료실";
+            return new FileSearchItem(linked.file(), location, supplier == null ? null : supplier.getId(),
+                    supplier == null ? null : supplier.getName(), linked.contractName(), linked.certificationName(),
+                    linked.categoryName(),
+                    hit.getFormId(), hit.getFormTitle(), hit.getFolderId());
         }
     }
 

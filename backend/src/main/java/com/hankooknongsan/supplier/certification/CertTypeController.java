@@ -38,4 +38,10 @@ public class CertTypeController {
     public CertTypeItem changeActive(@PathVariable String code, @Valid @RequestBody CertTypeDtos.ActiveRequest request) {
         return service.changeActive(code, request.active());
     }
+
+    /** 인증 종류를 필수 인증으로 정하거나 해제한다. 필수 종류의 인증이 만료된 업체에 "인증 만료"가 표시된다. */
+    @PatchMapping("/{code}/required")
+    public CertTypeItem changeRequired(@PathVariable String code, @Valid @RequestBody CertTypeDtos.RequiredRequest request) {
+        return service.changeRequired(code, request.required());
+    }
 }

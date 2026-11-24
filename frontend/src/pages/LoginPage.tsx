@@ -4,7 +4,6 @@ import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { useAuth } from '../app/AuthContext'
 import { toProblem } from '../api/client'
-import { BRAND } from '../app/theme'
 
 /** 로그인 입력값 */
 interface LoginForm {
@@ -43,11 +42,11 @@ export function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100%', display: 'grid', placeItems: 'center', padding: 16 }}>
+    <div style={{ minHeight: '100%', boxSizing: 'border-box', display: 'grid', placeItems: 'center', padding: 16 }}>
       <Card style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <img src="/favicon.svg" width={44} height={44} alt="" />
-          <Typography.Title level={4} style={{ margin: '12px 0 4px', color: BRAND }}>
+          <img src="/hkagri-logo.png" width={99} height={29} alt="한국농산" />
+          <Typography.Title level={4} style={{ margin: '12px 0 4px' }}>
             협력업체 통합관리
           </Typography.Title>
           <Typography.Text type="secondary">계약·인증 만료를 놓치지 않도록</Typography.Text>
@@ -60,6 +59,7 @@ export function LoginPage() {
           <Form.Item name="password" label="비밀번호" rules={[{ required: true, message: '비밀번호를 입력해 주세요.' }]}>
             <Input.Password prefix={<LockOutlined />} size="large" autoComplete="current-password" />
           </Form.Item>
+          <div style={{ textAlign: 'right', marginTop: -12, marginBottom: 16 }}><Link to="/forgot-password">비밀번호 찾기</Link></div>
           <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
             로그인
           </Button>

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { App, Button, Flex, Tag, Tooltip, Typography } from 'antd'
-import { EditOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColDef } from 'ag-grid-community'
 import { useNavigate } from 'react-router'
-import { changeCertificationRenewalStatus } from '../../api/certifications'
+import { changeCertificationRenewalStatus, deleteCertification } from '../../api/certifications'
 import { toProblem } from '../../api/client'
 import { fetchCertificationFileCounts, fetchCertificationFiles } from '../../api/files'
 import type { CertificationItem, RenewalStatus } from '../../api/types'
@@ -28,7 +28,7 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
   height?: number
 }) {
   const navigate = useNavigate()
-  const { message } = App.useApp()
+  const { message, modal: confirmModal } = App.useApp()
   const queryClient = useQueryClient()
   const { canEdit } = useAuth()
   const [modal, setModal] = useState<{ mode: CertificationFormMode; certification: CertificationItem }>()
@@ -39,11 +39,30 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
   const handleStatusChange = async (row: CertificationItem, status: RenewalStatus) => {
     try {
       await changeCertificationRenewalStatus(row.id, status)
-      await Promise.all(['certifications', 'expiries', 'dashboard'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
+      await Promise.all(['certifications', 'expiries', 'dashboard', 'changes'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
       message.success(`${row.certificateNumber} 처리상태를 변경했습니다.`)
     } catch (e) {
       message.error(toProblem(e).detail)
     }
+  }
+
+  /** 삭제 전에 함께 사라지는 것을 알리고 확인받은 뒤 삭제한다. 갱신 건이면 이전 인증이 되살아난다. */
+  const confirmDelete = (row: CertificationItem) => {
+    confirmModal.confirm({
+      title: '이 인증을 삭제하시겠습니까?',
+      content: `첨부 파일과 알림도 함께 삭제됩니다.${row.prevId ? ' 갱신 전 인증이 다시 현재 인증으로 돌아옵니다.' : ''}`,
+      okText: '삭제', okButtonProps: { danger: true }, cancelText: '취소',
+      onOk: async () => {
+        try {
+          await deleteCertification(row.id)
+          await Promise.all(['certifications', 'expiries', 'dashboard', 'supplier', 'suppliers', 'supplier-files', 'notifications', 'changes']
+            .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+          message.success('인증을 삭제했습니다.')
+        } catch (e) {
+          message.error(toProblem(e).detail)
+        }
+      },
+    })
   }
 
   /** 그리드 컬럼 정의. 만료일이 없으면 "없음"으로 표시한다. */
@@ -92,19 +111,58 @@ export function CertificationGrid({ rows, loading, showSupplier = true, height }
     },
     { field: 'ownerName', headerName: '담당자', width: 100 },
     ...(canEdit ? [{
-      headerName: '작업', width: 150, sortable: false, pinned: 'right',
+      headerName: '작업', width: 215, sortable: false, pinned: 'right',
       cellRenderer: (p: { data: CertificationItem }) => p.data.active && (
         <Flex gap={4}>
           <Button size="small" icon={<EditOutlined />} onClick={() => setModal({ mode: 'edit', certification: p.data })}>수정</Button>
           <Button size="small" icon={<SyncOutlined />} onClick={() => setModal({ mode: 'renew', certification: p.data })}>갱신</Button>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => confirmDelete(p.data)}>삭제</Button>
         </Flex>
       ),
     } as ColDef<CertificationItem>] : []),
   ], [showSupplier, canEdit, navigate, counts.data])
 
+  /** 휴대폰 카드 한 장: D-day·업체명, 인증명·번호, 기간·담당자, 갱신 처리와 작업 버튼 순으로 보여준다. */
+  const renderCard = (row: CertificationItem) => (
+    <>
+      <Flex align="center" gap={6} wrap>
+        {row.active ? <DdayBadge daysLeft={row.daysLeft} status={row.expiryStatus} /> : <Tag>이전</Tag>}
+        {showSupplier && (
+          <Typography.Link strong onClick={() => navigate(`/suppliers/${row.supplierId}`)}>{row.supplierName}</Typography.Link>
+        )}
+      </Flex>
+      <div style={{ margin: '6px 0' }}>
+        {row.certTypeName}
+        {row.documentUrl && (
+          <a href={row.documentUrl} target="_blank" rel="noreferrer" aria-label="인증서 열기" style={{ marginInlineStart: 6 }}><LinkOutlined /></a>
+        )}
+        <span style={{ marginInlineStart: 6 }}>
+          <AttachmentIcon count={counts.data?.[row.id] ?? 0} fetchFiles={() => fetchCertificationFiles(row.id)} />
+        </span>
+        <Typography.Text type="secondary" className="num" style={{ marginInlineStart: 6, fontSize: 12 }}>{row.certificateNumber}</Typography.Text>
+      </div>
+      <Typography.Text type="secondary" className="num" style={{ display: 'block', marginBottom: 6, fontSize: 12 }}>
+        {row.scope && <>{row.scope} · </>}발급 {row.issuedDate} · 만료 {row.expiryDate ?? '없음'} · 담당 {row.ownerName ?? '미지정'}
+      </Typography.Text>
+      <Flex align="center" gap={4} wrap>
+        {canEdit && row.active
+          ? <RenewalStatusSelect value={row.renewalStatus} onChange={(s) => handleStatusChange(row, s)} />
+          : <RenewalStatusTag status={row.renewalStatus} />}
+        {canEdit && row.active && (
+          <>
+            <Button size="small" icon={<EditOutlined />} onClick={() => setModal({ mode: 'edit', certification: row })}>수정</Button>
+            <Button size="small" icon={<SyncOutlined />} onClick={() => setModal({ mode: 'renew', certification: row })}>갱신</Button>
+            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => confirmDelete(row)}>삭제</Button>
+          </>
+        )}
+      </Flex>
+    </>
+  )
+
   return (
     <>
       <DataGrid rows={rows} columns={columns} loading={loading} height={height}
+        renderCard={renderCard} cardClassName={(row) => (row.active ? undefined : 'row-inactive')}
         rowClassRules={{ 'row-inactive': (p) => p.data?.active === false }}
         onRowDoubleClick={canEdit ? (row) => row.active && setModal({ mode: 'edit', certification: row }) : undefined} />
       <CertificationFormModal open={!!modal} mode={modal?.mode ?? 'edit'} certification={modal?.certification}

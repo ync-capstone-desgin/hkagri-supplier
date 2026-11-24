@@ -71,14 +71,14 @@ export function CertificationListPage() {
         )}
       </SearchPanel>
 
-      <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+      <Flex justify="space-between" align="center" wrap gap={8} style={{ marginBottom: 8 }}>
         <Typography.Text>
           총 <b className="num">{data?.totalElements ?? 0}</b>건
           <Typography.Text type="secondary" style={{ marginInlineStart: 12, fontSize: 12 }}>
-            만료일이 가까운 순 · 행을 더블클릭하면 수정할 수 있습니다.
+            만료일이 가까운 순<span className="pc-only"> · 행을 더블클릭하면 수정할 수 있습니다.</span>
           </Typography.Text>
         </Typography.Text>
-        <Flex gap={8}>
+        <Flex gap={8} wrap>
           {me?.role === 'ADMIN' && <Button icon={<SettingOutlined />} onClick={() => setTypesOpen(true)}>인증 종류 관리</Button>}
           <Button icon={<DownloadOutlined />} onClick={handleExcel} loading={downloading}>엑셀 다운로드</Button>
           {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>인증 등록</Button>}

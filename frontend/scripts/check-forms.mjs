@@ -33,6 +33,12 @@ function responseFor(path, method) {
   return pending
 }
 
+/** 폴더 줄의 ⋯ 메뉴를 열고 항목(이름 변경·삭제)을 누른다. 마우스 오른쪽 버튼 메뉴와 같은 메뉴다. */
+async function folderMenu(name, item) {
+  await page.getByRole('button', { name: `메뉴: ${name}`, exact: true }).click()
+  await page.getByRole('menuitem', { name: item, exact: true }).click()
+}
+
 /** 화면에서 현재 폴더 아래 새 폴더를 생성한다. */
 async function createFolder(name) {
   await page.getByRole('button', { name: /새 폴더$/ }).click()
@@ -63,7 +69,7 @@ try {
   await createFolder(parentName)
   await page.getByRole('button', { name: `폴더 열기: ${parentName}`, exact: true }).click()
   const child = await createFolder('월별 점검표')
-  await page.getByRole('button', { name: '폴더 이름 변경: 월별 점검표', exact: true }).click()
+  await folderMenu('월별 점검표', '이름 변경')
   const rename = page.getByRole('dialog', { name: '폴더 이름 변경', exact: true })
   await rename.getByLabel('폴더 이름', { exact: true }).fill('정기 점검표')
   await rename.getByRole('button', { name: '저장', exact: true }).click()
@@ -139,9 +145,9 @@ try {
   await page.getByRole('searchbox', { name: '양식 이름 검색', exact: true }).fill('개정 점검표')
   await page.getByRole('searchbox', { name: '양식 이름 검색', exact: true }).press('Enter')
   await page.getByRole('button', { name: `양식 열기: 개정 점검표 ${suffix}`, exact: true }).waitFor()
-  await page.getByRole('tab', { name: '계약 양식', exact: true }).click()
+  await page.getByRole('tab', { name: /^계약 양식/ }).click()
   await page.getByText('검색 결과가 없습니다.', { exact: true }).waitFor()
-  await page.getByRole('tab', { name: '전체', exact: true }).click()
+  await page.getByRole('tab', { name: /^전체/ }).click()
   await page.getByRole('button', { name: `양식 열기: 개정 점검표 ${suffix}`, exact: true }).waitFor()
   await capture('manager.png')
 
@@ -161,7 +167,7 @@ try {
 
   // 비어 있지 않은 폴더 삭제는 거절하고, 양식 삭제 후 빈 폴더만 지운다.
   await page.getByRole('navigation', { name: '폴더 경로' }).getByRole('link', { name: parentName, exact: true }).click()
-  await page.getByRole('button', { name: '폴더 삭제: 정기 점검표', exact: true }).click()
+  await folderMenu('정기 점검표', '삭제')
   const confirmFolder = page.getByRole('dialog', { name: '폴더를 삭제하시겠습니까?', exact: true })
   const denied = responseFor(`/form-folders/${child}`, 'DELETE')
   await confirmFolder.getByRole('button', { name: '삭제', exact: true }).click()
@@ -180,7 +186,7 @@ try {
   assert.equal((await deleted).status(), 204)
   await page.getByText('등록된 양식이 없습니다.', { exact: true }).waitFor()
   await page.getByRole('navigation', { name: '폴더 경로' }).getByRole('link', { name: parentName, exact: true }).click()
-  await page.getByRole('button', { name: '폴더 삭제: 정기 점검표', exact: true }).click()
+  await folderMenu('정기 점검표', '삭제')
   const folderDeleted = responseFor(`/form-folders/${child}`, 'DELETE')
   await page.getByRole('dialog', { name: '폴더를 삭제하시겠습니까?', exact: true }).getByRole('button', { name: '삭제', exact: true }).click()
   assert.equal((await folderDeleted).status(), 204)

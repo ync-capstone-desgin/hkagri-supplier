@@ -1,20 +1,30 @@
-import { App, Button, Flex, List, Typography, Upload } from 'antd'
+import { App, Button, Flex, List, Typography, Upload, type UploadFile } from 'antd'
 import { DeleteOutlined, DownloadOutlined, InboxOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { deleteStoredFile, downloadStoredFile, uploadSupplierFile, type FileInfo } from '../api/files'
 import { toProblem } from '../api/client'
+import { fileSize } from './format'
 
-/** 파일 크기를 화면에서 읽기 쉬운 단위로 표시한다. */
-function fileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+/** 첨부로 올릴 수 있는 파일 형식 (서버의 파일 규칙과 같다) */
+const ACCEPT = '.pdf,.jpg,.jpeg,.png,.gif,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx'
+
+/**
+ * 계약·인증 등록·갱신 창의 첨부파일 칸 (#83).
+ * 새 건은 아직 id가 없어 바로 올릴 수 없으므로 파일을 골라만 두고, 저장한 직후 uploadFilesTo로 올린다.
+ */
+export function PendingFilesField({ files, onChange }: { files: UploadFile[]; onChange: (files: UploadFile[]) => void }) {
+  return (
+    <Upload.Dragger multiple accept={ACCEPT} fileList={files} beforeUpload={() => false}
+      onChange={({ fileList }) => onChange(fileList)} style={{ padding: '4px 0' }}>
+      <p className="ant-upload-drag-icon" style={{ margin: 4, fontSize: 20 }}><InboxOutlined /></p>
+      <p className="ant-upload-text" style={{ fontSize: 13, margin: 0 }}>파일을 끌어다 놓거나 클릭해서 고르세요. 저장할 때 함께 올라갑니다.</p>
+    </Upload.Dragger>
+  )
 }
 
 /**
  * 계약·인증 수정 창의 첨부파일 섹션 (FR-021, FR-012).
- * 이미 저장된 건(id가 있는 수정 모드)에서만 쓴다. 등록 중인 새 건은 id가 없어 연결할 수 없으므로,
- * 먼저 저장한 뒤 다시 열어 첨부하도록 안내한다.
+ * 이미 저장된 건(id가 있는 수정 모드)에서 쓴다. 고르는 즉시 올라간다. 새 건은 PendingFilesField를 쓴다.
  */
 export function AttachmentField({ queryKey, supplierId, target, fetchFiles, onChanged }: {
   /** 목록 캐시 구분용 키 (예: ['contract-files', 3]) */
@@ -73,7 +83,7 @@ export function AttachmentField({ queryKey, supplierId, target, fetchFiles, onCh
             </List.Item>
           )} />
       )}
-      <Upload.Dragger accept=".pdf,.jpg,.jpeg,.png,.gif,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+      <Upload.Dragger accept={ACCEPT}
         customRequest={async ({ file, onSuccess, onError }) => {
           try {
             const saved = await uploadSupplierFile(supplierId, file as File, target)

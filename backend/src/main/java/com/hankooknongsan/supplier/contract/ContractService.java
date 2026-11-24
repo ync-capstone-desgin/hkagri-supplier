@@ -1,14 +1,20 @@
 package com.hankooknongsan.supplier.contract;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.hankooknongsan.supplier.auth.AppUser;
 import com.hankooknongsan.supplier.auth.AppUserRepository;
+import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.ExpiryPolicy;
 import com.hankooknongsan.supplier.common.PageResponse;
 import com.hankooknongsan.supplier.common.RenewalStatus;
+import com.hankooknongsan.supplier.history.ChangeAction;
+import com.hankooknongsan.supplier.history.ChangeLogService;
+import com.hankooknongsan.supplier.history.ChangeTarget;
 import com.hankooknongsan.supplier.contract.ContractDtos.ContractItem;
 import com.hankooknongsan.supplier.contract.ContractDtos.ContractRequest;
 import com.hankooknongsan.supplier.contract.ContractDtos.Saved;
@@ -16,6 +22,9 @@ import com.hankooknongsan.supplier.supplier.Supplier;
 import com.hankooknongsan.supplier.supplier.SupplierService;
 import lombok.RequiredArgsConstructor;
 import com.hankooknongsan.supplier.common.RenewalClosedEvent;
+import com.hankooknongsan.supplier.common.TargetDeletedEvent;
+import com.hankooknongsan.supplier.common.TargetPurgedEvent;
+import com.hankooknongsan.supplier.common.TargetRestoredEvent;
 import com.hankooknongsan.supplier.common.TargetType;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +45,8 @@ public class ContractService {
     private final AppUserRepository users;
     private final ExpiryPolicy policy;
     private final ApplicationEventPublisher events;
+    private final AppClock clock;
+    private final ChangeLogService history;
 
     /** 조건에 맞는 계약 목록을 조회한다. */
     public PageResponse<ContractItem> search(Long supplierId, String keyword, Long ownerId,
@@ -55,6 +66,7 @@ public class ContractService {
         Contract c = new Contract(supplierService.find(req.supplierId()));
         List<String> warnings = apply(c, req, null);
         contracts.save(c);
+        log(c, ChangeAction.CREATE, Map.of(), snapshot(c));
         return new Saved(toItem(c), warnings);
     }
 
@@ -62,8 +74,10 @@ public class ContractService {
     @Transactional
     public Saved update(Long id, ContractRequest req) {
         Contract c = find(id);
+        Map<String, String> before = snapshot(c);
         List<String> warnings = apply(c, req, id);
         contracts.flush();
+        log(c, ChangeAction.UPDATE, before, snapshot(c));
         return new Saved(toItem(c), warnings);
     }
 
@@ -80,7 +94,9 @@ public class ContractService {
         if (!c.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 계약은 처리상태를 바꿀 수 없습니다.");
         }
+        Map<String, String> before = Map.of("갱신 처리상태", c.getRenewalStatus().label());
         c.changeRenewalStatus(status);
+        log(c, ChangeAction.STATUS, before, Map.of("갱신 처리상태", status.label()));
         if (status.closed()) {
             events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, id));
         }
@@ -99,6 +115,7 @@ public class ContractService {
         if (!old.isActive()) {
             throw new BusinessException(HttpStatus.CONFLICT, "이미 갱신된 계약입니다.");
         }
+        Map<String, String> before = snapshot(old);
         old.markRenewed();
         events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, old.getId()));
         contracts.flush();
@@ -106,7 +123,92 @@ public class ContractService {
         List<String> warnings = apply(renewed, req, null);
         renewed.linkPrevious(old);
         contracts.save(renewed);
+        log(renewed, ChangeAction.RENEW, before, snapshot(renewed));
         return new Saved(toItem(renewed), warnings);
+    }
+
+    /**
+     * 계약을 삭제한다 (#44). 지운 표시만 남기고, 알림과 첨부는 이벤트로 함께 정리한다.
+     * 갱신으로 등록한 건이면 이전 계약이 다시 현재 계약이 된다. 이전 이력은 직접 지울 수 없어 409로 막는다.
+     */
+    @Transactional
+    public void delete(Long id, String actor) {
+        Contract target = find(id);
+        if (!target.isActive()) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "이전 이력은 삭제할 수 없습니다. 현재 계약을 삭제하면 이전 계약이 다시 현재 계약이 됩니다.");
+        }
+        target.delete(actor, clock.now());
+        if (target.getPrev() != null) {
+            target.getPrev().restore();
+        }
+        contracts.flush();
+        log(target, ChangeAction.DELETE, Map.of(), Map.of());
+        events.publishEvent(new TargetDeletedEvent(TargetType.CONTRACT, id, actor));
+    }
+
+    /**
+     * 삭제한 계약을 되살린다 (#72, 관리자 전용). 삭제할 때 함께 지워진 첨부도 되살린다.
+     * 갱신으로 등록했던 건이면, 삭제 때 다시 현재 건이 됐던 이전 계약을 "갱신완료" 이력으로 돌려놓는다.
+     * 협력업체가 삭제된 상태이거나 이전 계약이 그 사이 다시 갱신·삭제되었으면 409로 막는다.
+     */
+    @Transactional
+    public void restore(Long id) {
+        if (contracts.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 계약");
+        }
+        if (contracts.countDeletedSupplier(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT, "협력업체가 삭제된 상태입니다. 협력업체를 먼저 되살려 주세요.");
+        }
+        if (contracts.countUnavailablePrev(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "이전 계약이 그 사이 다시 갱신되었거나 삭제되어 되살릴 수 없습니다. 이전 계약을 현재 계약으로 돌려놓은 뒤 다시 시도해 주세요.");
+        }
+        // 파일은 계약의 지운 시각과 비교해 되살리므로 지운 표시를 지우기 전에 알린다.
+        events.publishEvent(new TargetRestoredEvent(TargetType.CONTRACT, id));
+        contracts.undelete(id);
+        Contract target = find(id);
+        if (target.getPrev() != null) {
+            target.getPrev().markRenewed();
+            events.publishEvent(new RenewalClosedEvent(TargetType.CONTRACT, target.getPrev().getId()));
+        }
+        log(target, ChangeAction.RESTORE, Map.of(), Map.of());
+    }
+
+    /**
+     * 삭제된 계약을 영구삭제한다 (#77, 관리자 전용). 되돌릴 수 없다.
+     * 첨부는 이벤트로 DB와 저장소에서 함께 지우고, 영구삭제했다는 사실만 변경 이력에 남긴다.
+     */
+    @Transactional
+    public void purge(Long id) {
+        if (contracts.countDeleted(id) == 0) {
+            throw BusinessException.notFound("삭제된 계약");
+        }
+        events.publishEvent(new TargetPurgedEvent(TargetType.CONTRACT, id));
+        contracts.detachPrev(id);
+        contracts.purge(id);
+        history.recordPurge(ChangeTarget.CONTRACT, id);
+    }
+
+    /** 계약의 변경 이력을 남긴다 (#45). */
+    private void log(Contract c, ChangeAction action, Map<String, String> before, Map<String, String> after) {
+        history.record(ChangeTarget.CONTRACT, c.getId(), c.getSupplier().getId(), c.getSupplier().getName(),
+                c.getTitle(), action, before, after);
+    }
+
+    /** 변경 이력 비교용으로 계약의 현재 값을 화면 항목 이름과 함께 뽑는다. */
+    private static Map<String, String> snapshot(Contract c) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("업체", c.getSupplier().getName());
+        m.put("계약번호", c.getContractNumber() == null || c.getContractNumber().isEmpty() ? null : c.getContractNumber());
+        m.put("계약명", c.getTitle());
+        m.put("시작일", String.valueOf(c.getStartDate()));
+        m.put("종료일", c.getEndDate() == null ? "무기한" : c.getEndDate().toString());
+        m.put("자동연장", c.isAutoRenew() ? "예" : "아니오");
+        m.put("담당자", c.getOwner() == null ? null : c.getOwner().getName());
+        m.put("문서 링크", c.getDocumentUrl());
+        m.put("비고", c.getMemo());
+        return m;
     }
 
     /** ID로 계약 엔티티를 찾는다. */

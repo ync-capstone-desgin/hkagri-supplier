@@ -17,9 +17,19 @@ spring:
           time_zone: Asia/Seoul
   flyway:
     locations: classpath:db/migration
+  # 기본값은 로컬 Mailpit(인증 없음)이다. 실제 발송(Gmail 등)으로 바꿀 때만 username·password와
+  # auth·starttls를 함께 켠다. Mailpit은 STARTTLS를 지원하지 않으므로 기본값은 꺼둔다.
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
   mvc:
     async:
       request-timeout: -1
@@ -41,8 +51,9 @@ app:
   zone: Asia/Seoul
   # 만료 예정으로 보는 최대 기간(일). 오늘부터 이 기간 안에 만료되면 "만료예정"
   expiry-horizon-days: 90
-  # 알림 메일 발신 주소와, 메일 본문에 넣을 화면 주소
-  mail-from: noreply@supplier-poc.local
+  # 알림 메일 발신 표시 이름·주소와, 메일 본문에 넣을 화면 주소.
+  # Gmail처럼 인증 계정과 발신 주소가 같아야 하는 곳에서는 MAIL_FROM을 실제 발신 계정 주소로 맞춘다.
+  mail-from: ${MAIL_FROM:한국농산 협력업체 통합관리 <noreply@supplier-poc.local>}
   web-url: ${WEB_URL:http://localhost:5173}
   # 만료 점검 작업 실행 시각 (매일 08:00, Asia/Seoul)
   scan-cron: "0 0 8 * * *"

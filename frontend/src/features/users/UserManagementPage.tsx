@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Alert, App, Badge, Button, Card, Modal, Select, Space, Table, Tabs, Tag, Typography } from 'antd'
+import { Alert, App, Badge, Button, Card, Modal, Select, Space, Tabs, Tag, Typography } from 'antd'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../app/AuthContext'
 import { changeUser, fetchAdminUsers, type AdminUser, type UserAction } from '../../api/userAdmin'
 import { toProblem } from '../../api/client'
 import type { Role } from '../../api/types'
 import { formatDateTime } from '../../components/format'
+import { ResponsiveTable } from '../../components/ResponsiveTable'
 
 const roleNames: Record<Role, string> = { ADMIN: '관리자', MANAGER: '담당자', VIEWER: '조회자' }
 const statusNames = { PENDING: '승인 대기', ACTIVE: '사용', REJECTED: '거절', INACTIVE: '비활성' }
@@ -68,7 +69,7 @@ export function UserManagementPage() {
         { key: 'pending', label: <Space>승인 대기<Badge count={data?.pendingCount ?? 0} showZero /></Space> },
         { key: 'all', label: '전체 사용자' },
       ]} />
-      <Table<AdminUser> rowKey="id" loading={isLoading} scroll={{ x: 1000 }}
+      <ResponsiveTable<AdminUser> rowKey="id" loading={isLoading} scroll={{ x: 1000 }}
         dataSource={data?.users.filter((u) => tab === 'all' || u.status === 'PENDING')}
         pagination={{ pageSize: 10 }} columns={[
           { title: '이름 / 아이디', key: 'name', render: (_, u) => <><strong>{u.name}</strong><br />{u.username}</> },

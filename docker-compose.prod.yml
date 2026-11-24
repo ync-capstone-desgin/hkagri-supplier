@@ -33,8 +33,14 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       SEED_PASSWORD: ${SEED_PASSWORD}
+      # 기본값은 내부 Mailpit(메일 미발송). 실제 발송으로 바꾸려면 .env.prod에 MAIL_* 값을 채운다(deploy-aws.md 11장).
       MAIL_HOST: ${MAIL_HOST:-mailpit}
       MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-한국농산 협력업체 통합관리 <noreply@supplier-poc.local>}
       WEB_URL: https://${SITE_ADDRESS}
       # 첨부파일은 컨테이너 밖 볼륨(file-data)에 저장해, 새 코드 반영으로 컨테이너가 바뀌어도 남게 한다.
       FILE_DIR: /app/data/files

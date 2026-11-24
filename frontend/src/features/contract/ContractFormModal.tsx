@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Switch, Typography } from 'antd'
+import { Alert, App, Col, DatePicker, Form, Input, Modal, Row, Select, Switch, type UploadFile } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import { toProblem } from '../../api/client'
 import { createContract, renewContract, updateContract } from '../../api/contracts'
-import { fetchContractFiles } from '../../api/files'
+import { fetchContractFiles, uploadFilesTo } from '../../api/files'
 import type { ContractItem, ContractRequest } from '../../api/types'
-import { AttachmentField } from '../../components/AttachmentField'
+import { AttachmentField, PendingFilesField } from '../../components/AttachmentField'
 import { fromDayjs, toDayjs } from '../../components/format'
 import { useOwnerOptions, useSupplierOptions } from '../../hooks/useOptions'
 import { useSaveShortcut } from '../../hooks/useSaveShortcut'
@@ -64,6 +64,8 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
   const queryClient = useQueryClient()
   const [form] = Form.useForm<FormValues>()
   const [saving, setSaving] = useState(false)
+  /** 등록·갱신 창에서 골라 둔 파일. 저장한 직후 새 계약에 올린다 (#83). */
+  const [pending, setPending] = useState<UploadFile[]>([])
   const supplierOptions = useSupplierOptions(open)
   const ownerOptions = useOwnerOptions(open, contract)
   useSaveShortcut(open, () => form.submit())
@@ -72,6 +74,7 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
   useEffect(() => {
     if (!open) return
     form.resetFields()
+    setPending([])
     form.setFieldsValue(initialValues(mode, contract, supplierId))
   }, [open, mode, contract, supplierId, form])
 
@@ -84,9 +87,16 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
         mode === 'create' ? await createContract(req)
           : mode === 'edit' ? await updateContract(contract!.id, req)
             : await renewContract(contract!.id, req)
-      await Promise.all(['contracts', 'suppliers', 'supplier', 'expiries', 'dashboard'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+      await Promise.all(['contracts', 'suppliers', 'supplier', 'expiries', 'dashboard', 'changes'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
       message.success(mode === 'renew' ? '갱신 계약을 등록했습니다. 기존 계약은 이전 이력으로 옮겨졌습니다.' : '저장했습니다.')
       saved.warnings.forEach((w) => message.warning(w, 6))
+      if (mode !== 'edit' && pending.length > 0) {
+        const failed = await uploadFilesTo(values.supplierId, `contract:${saved.item.id}`, pending.map((f) => (f.originFileObj ?? f) as File))
+        await Promise.all([['contract-file-counts'], ['supplier-files', values.supplierId]].map((queryKey) => queryClient.invalidateQueries({ queryKey })))
+        if (failed.length > 0) {
+          message.warning(`계약은(는) 저장됐고 파일 ${failed.length}개는 올리지 못했습니다: ${failed.join(', ')}. 수정 창에서 다시 첨부해 주세요.`, 10)
+        }
+      }
       onClose()
     } catch (e) {
       const problem = toProblem(e)
@@ -158,7 +168,7 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
             </Form.Item>
           </Col>
           <Col span={14}>
-            <Form.Item name="documentUrl" label="계약서 위치(링크)" rules={[{ type: 'url', message: 'http:// 또는 https://로 시작하는 주소를 입력해 주세요.' }]}>
+            <Form.Item name="documentUrl" label="외부 문서 주소 (선택)" extra="파일이 드라이브 등 다른 곳에 있을 때만 주소를 적으세요." rules={[{ type: 'url', message: 'http:// 또는 https://로 시작하는 주소를 입력해 주세요.' }]}>
               <Input placeholder="https://" maxLength={500} />
             </Form.Item>
           </Col>
@@ -174,7 +184,7 @@ export function ContractFormModal({ open, mode, contract, supplierId, onClose }:
                   target={`contract:${contract.id}`} fetchFiles={() => fetchContractFiles(contract.id)}
                   onChanged={() => void queryClient.invalidateQueries({ queryKey: ['contract-file-counts'] })} />
               ) : (
-                <Typography.Text type="secondary">저장한 뒤 다시 열면 첨부할 수 있습니다.</Typography.Text>
+                <PendingFilesField files={pending} onChange={setPending} />
               )}
             </Form.Item>
           </Col>

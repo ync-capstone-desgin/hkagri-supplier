@@ -3,7 +3,7 @@ package com.hankooknongsan.supplier.contract;
 import java.time.LocalDate;
 
 import com.hankooknongsan.supplier.auth.AppUser;
-import com.hankooknongsan.supplier.common.BaseEntity;
+import com.hankooknongsan.supplier.common.DeletableEntity;
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import com.hankooknongsan.supplier.supplier.Supplier;
 import jakarta.persistence.Entity;
@@ -18,6 +18,7 @@ import jakarta.persistence.ManyToOne;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * 협력업체 계약 엔티티 (FR-005).
@@ -28,7 +29,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Contract extends BaseEntity {
+@SQLRestriction("deleted_at is null")
+public class Contract extends DeletableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -115,5 +117,11 @@ public class Contract extends BaseEntity {
     /** 갱신으로 등록된 새 계약에 이전 계약을 연결한다. */
     public void linkPrevious(Contract prev) {
         this.prev = prev;
+    }
+
+    /** 갱신한 계약이 삭제되어 이 계약이 다시 현재 계약이 된다. 처리상태는 "미착수"로 돌린다. */
+    public void restore() {
+        this.renewalStatus = RenewalStatus.NONE;
+        this.active = true;
     }
 }

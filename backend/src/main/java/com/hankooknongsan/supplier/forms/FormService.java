@@ -1,7 +1,9 @@
 package com.hankooknongsan.supplier.forms;
 
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import com.hankooknongsan.supplier.common.AppClock;
 import com.hankooknongsan.supplier.common.BusinessException;
 import com.hankooknongsan.supplier.common.PageResponse;
@@ -33,6 +35,17 @@ public class FormService {
         FormCategory filter = category == null || category.isBlank() ? null : FormCategory.parse(category);
         if (folderId != null) folders.find(folderId);
         return PageResponse.of(posts.search(keyword == null ? "" : keyword.strip(), filter, folderId, PageRequest.of(page, size)), PostItem::of);
+    }
+
+    /** 분류 탭에 붙일 개수를 반환한다. 양식이 없는 분류도 0으로 채운다. */
+    public Map<FormCategory, Long> categoryCounts(String keyword, Long folderId) {
+        if (folderId != null) folders.find(folderId);
+        Map<FormCategory, Long> counts = new EnumMap<>(FormCategory.class);
+        for (FormCategory category : FormCategory.values()) counts.put(category, 0L);
+        for (Object[] row : posts.countByCategory(keyword == null ? "" : keyword.strip(), folderId)) {
+            counts.put((FormCategory) row[0], (Long) row[1]);
+        }
+        return counts;
     }
 
     /** 살아 있는 게시글과 첨부만 조회한다. */

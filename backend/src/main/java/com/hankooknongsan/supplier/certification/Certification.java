@@ -3,7 +3,7 @@ package com.hankooknongsan.supplier.certification;
 import java.time.LocalDate;
 
 import com.hankooknongsan.supplier.auth.AppUser;
-import com.hankooknongsan.supplier.common.BaseEntity;
+import com.hankooknongsan.supplier.common.DeletableEntity;
 import com.hankooknongsan.supplier.common.RenewalStatus;
 import com.hankooknongsan.supplier.supplier.Supplier;
 import jakarta.persistence.Entity;
@@ -18,6 +18,7 @@ import jakarta.persistence.ManyToOne;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * 협력업체 인증 엔티티 (FR-006).
@@ -27,7 +28,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Certification extends BaseEntity {
+@SQLRestriction("deleted_at is null")
+public class Certification extends DeletableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -118,5 +120,11 @@ public class Certification extends BaseEntity {
     /** 갱신으로 등록된 새 인증에 이전 인증을 연결한다. */
     public void linkPrevious(Certification prev) {
         this.prev = prev;
+    }
+
+    /** 갱신한 인증이 삭제되어 이 인증이 다시 현재 인증이 된다. 처리상태는 "미착수"로 돌린다. */
+    public void restore() {
+        this.renewalStatus = RenewalStatus.NONE;
+        this.active = true;
     }
 }

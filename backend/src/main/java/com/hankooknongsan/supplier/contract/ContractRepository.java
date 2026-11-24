@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -72,4 +73,35 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
             """)
     boolean existsDuplicate(@Param("supplierId") Long supplierId, @Param("number") String number,
                             @Param("exceptId") Long exceptId);
+
+    /** 삭제된 계약인지 확인한다. 삭제된 행은 일반 조회에서 빠지므로 표를 직접 센다. (#72 되살리기) */
+    @Query(value = "select count(*) from contract where id = :id and deleted_at is not null", nativeQuery = true)
+    long countDeleted(@Param("id") Long id);
+
+    /** 삭제된 계약의 협력업체가 삭제된 상태인지 센다. 0이 아니면 업체를 먼저 되살려야 한다. */
+    @Query(value = """
+            select count(*) from contract t join supplier s on s.id = t.supplier_id
+            where t.id = :id and s.deleted_at is not null""", nativeQuery = true)
+    long countDeletedSupplier(@Param("id") Long id);
+
+    /** 이전 계약이 삭제되었거나 그 사이 다시 갱신되어(비활성) 이력으로 돌려놓을 수 없는지 센다. */
+    @Query(value = """
+            select count(*) from contract t join contract p on p.id = t.prev_id
+            where t.id = :id and (p.deleted_at is not null or p.active = false)""", nativeQuery = true)
+    long countUnavailablePrev(@Param("id") Long id);
+
+    /** 지운 표시를 지운다. 되살린 건수를 돌려준다. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "update contract set deleted_at = null, deleted_by = null where id = :id and deleted_at is not null", nativeQuery = true)
+    int undelete(@Param("id") Long id);
+
+    /** 영구삭제할 계약을 이전 건으로 가리키는 (삭제된) 갱신 건의 연결을 끊는다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "update contract set prev_id = null where prev_id = :id", nativeQuery = true)
+    int detachPrev(@Param("id") Long id);
+
+    /** 삭제된 계약의 행을 완전히 지운다. 삭제되지 않은 건은 지우지 않는다. (#77) */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "delete from contract where id = :id and deleted_at is not null", nativeQuery = true)
+    int purge(@Param("id") Long id);
 }
